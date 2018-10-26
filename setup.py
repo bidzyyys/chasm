@@ -2,17 +2,12 @@ from setuptools import setup, find_packages
 
 requirements = []
 
-test_requirements = [
-    'behave'
-]
-
 setup(
     name='chasm',
     version='0.0.1',
-    description='ABCI for peercoin',
+    description='ABCI for xpeer',
     authors=['Daniel Bigos', 'Piotr Żelazko'],
     url='https://github.com/bidzyyys/chasm.git',
-    download_url='https://github.com/bidzyyys/chasm.git/archive/0.0.1.tar.gz',
     license='GPL-3.0',
     packages=find_packages(),
     install_requires=requirements,

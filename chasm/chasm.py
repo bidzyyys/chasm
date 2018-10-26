@@ -2,14 +2,16 @@
 """
 
 
-def make_sum(x_elem, y_elem):
-    """Simple sum method"""
-    return x_elem + y_elem
+def foo(some_bool):
+    if some_bool:
+        return 1
+    else:
+        return 2
 
 
 def cli():
     """Main method"""
-    print(make_sum(1, 2))
+    foo(False)
 
 
 if __name__ == "__main__":

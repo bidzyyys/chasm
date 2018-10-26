@@ -1,8 +1,8 @@
-import unittest
+"""Simple ABCI for peercoin.
+"""
 
-from chasm.chasm import make_sum
+from chasm import chasm
 
 
-class ChasmUnittests(unittest.TestCase):
-    def test_sum(self):
-        assert make_sum(6, 9) == 6 + 9
+def test_sample():
+    assert chasm.foo(False) == 2
