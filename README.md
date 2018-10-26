@@ -11,7 +11,6 @@ Bachelor's Thesis PoC
 The following packages must be installed:
 ```
 leveldb
-
 ```
 
 

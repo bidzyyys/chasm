@@ -34,6 +34,27 @@ pipeline {
                     '''
             }
         }
+        stage('Code style') {
+            steps{
+                echo "Checking code style"
+                sh  ''' source activate ${BUILD_TAG}
+                        pylint --disable=C,R -f parseable chasm/ tests/ > pylint.out
+                    '''
+            }
+            post{
+                always{
+                    step([$class: 'WarningsPublisher',
+                            parserConfigurations: [[
+                                parserName: 'PyLint',
+                                pattern: 'pylint.out'
+                            ]],
+                            unstableTotalAll: '0',
+                            usePreviousBuildAsReference: true
+                    ])
+                }
+            }
+        }
+
         stage('Code metrics') {
             steps {
                 echo "Test coverage"
