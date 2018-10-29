@@ -1,5 +1,7 @@
 extern crate chasm;
 
+use chasm::*;
+
 fn main() {
-    println!("Hello World!");
+    println!("{}", add(1, 1));
 }
