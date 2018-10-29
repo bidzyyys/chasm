@@ -1,6 +1,16 @@
 [package]
+
 name = "chasm"
 version = "0.1.0"
 authors = ["Piotr Żelazko <piotr.zelazko@icloud.com>"]
+
+[lib]
+name = "chasm"
+path = "src/lib.rs"
+
+[[bin]]
+name="chasm_binary"
+path="src/main.rs"
+test = false
 
 [dependencies]
