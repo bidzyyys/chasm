@@ -1,0 +1,6 @@
+[package]
+name = "chasm"
+version = "0.1.0"
+authors = ["Piotr Żelazko <piotr.zelazko@icloud.com>"]
+
+[dependencies]
