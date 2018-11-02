@@ -13,7 +13,7 @@ pipeline {
 
     stages {
         stage ("Code pull"){
-            steps{
+            steps{q
                 checkout scm
             }
         }
