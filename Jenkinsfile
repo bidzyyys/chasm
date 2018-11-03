@@ -2,46 +2,41 @@ pipeline {
     agent any
 
     options {
-        skipDefaultCheckout(true)
-        // Keep the 10 most recent builds
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
     }
-    environment {
-      PATH="/var/jenkins_home/.cargo/bin/:$PATH"
-    }
-
     stages {
-        stage ("Code pull"){
-            steps{q
+        stage('Checkout') {
+            steps {
                 checkout scm
+                sh 'mkdir -p build'
             }
         }
         stage('Build') {
             steps {
-                sh "cargo build"
+                sh '''
+                   cd build &&
+                   cmake -D CMAKE_BUILD_TYPE=Debug -D BUILD_TESTING=ON .. &&
+                   make
+                '''
             }
         }
-        stage('Unit tests') {
+        stage('Test') {
             steps {
-                sh  'cargo test --lib'
+                sh '''
+                   cd build &&
+                   ctest -R all
+                '''
             }
         }
-        stage('Integration tests'){
-            steps {
-                sh 'cargo test'
+        stage('Coverage') {
+            steps{
+                sh 'echo Coverage'
             }
         }
-        stage('Clippy') {
-            steps {
-                sh "cargo clippy --all"
-            }
-        }
-        stage('Rustfmt') {
-            steps {
-                // The build will fail if rustfmt thinks any changes are
-                // required.
-                sh "cargo fmt --all -- --check"
+        stage('Linter'){
+            steps{
+                sh 'echo Linter'
             }
         }
     }
