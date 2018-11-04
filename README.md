@@ -6,6 +6,7 @@
 # Overview
 
 Bachelor's Thesis PoC
+The aim of the project is to implement a PoC of a DEX based on xpeer protocol.
 
 ## Installation
 
@@ -16,13 +17,31 @@ boost 1.68.0
 ```
 
 ## Protocol
+_NOTE: the following protocol is an alpha version of a protocol that may be useful when it comes to implementing a fully functional DEX. Nevertheless, it contains all parts that are required to make a swap between two different tokens ex. `Bitcoin` and `Ethereum`_ 
 
-xpeer's protocol enables users to make both simple transfers and exchanges of multiple cryptocurrencies. Each vital information is stored on a blockchain.
-Blocks are mined every minute and their size is limited to 1MB. Having explored a block, miners are awarded with
-extra sum of money(that totals to fees and minted coins), what makes it easy to get xpeer(not only through an exchange at cryptomarket).
+`xpeer` is a name of a protocol that provides trustless cross-chain exchanges. The protocol is also capable of connecting sellers with buyers.
+To achieve all of above, `xpeer` protocol introduces a new intermediary blockchain. Here all the vital data is stored and it takes care of the consensus achieved across multiple chains. The protocol's design has a deeply integrated security against attacks. <br/> 
+Having introduced another blockchain, we also introduce a token `xpeer coin`. This is the currency in which the fees are paid. `xpeer coin` heavily bases on `bitcoin` - so it is a minable, fungible token. The protocol is meant to be run over a PoW blockchain.
 
-xpeer's transactions are quite similar to Bitcoin's - they take inputs and produce [UTXOs](https://www.mycryptopedia.com/bitcoin-utxo-unspent-transaction-output-set-explained/).
-UTXO contains parameters necessary for a validation process. 
+### Blockchain
+In `xpeer` blockchain, blocks are mined every minute and their size is limited to 1MB. Each block consists of transactions, but the protocol approves mining of empty blocks. First transaction in a block is a transaction without inputs which outputs totals to the sum of fees and the value of mining award. Any other transaction must take inputs. `xpeer`'s transactions are quite similar to `bitcoin`'s - they take inputs and produce outputs, which until not spent (or blocked) exist as [UTXOs](https://www.mycryptopedia.com/bitcoin-utxo-unspent-transaction-output-set-explained/).
+
+_NOTE: Although, the protocol is meant to run over a PoW blockchain, the PoC will implement a PoA blockchain (with only one node authorized to mine new blocks) as it simplifies the implementation._
+
+### XPC
+`xpeer coin` is the currency in which all transactions on `xpeer` blockchain are being held. It has a total supply of ~100 millions. The smallest denomination of `XPC` is a `bdzys` and equals to `1e-18 XPC`.
+
+### Mining award
+This is an extra amount of `xpeer coins` that is can be transferred to a miner's account and together with transaction fees is the incentive for miners to mine. At the beginning of the chain, the award equals to 50 `XPC` and is halved each million of blocks.
+
+### DUTXO and BUTXO 
+As said before, the design of the protocol is profoundly influenced by the security of the parts of the exchange. To achieve this, each transaction requires high deposits, which in case of the malicious behaviour are burnt. The deposit is a normal transaction output, but the transaction itself points to the specified output and marks it as a deposit (`DUTXO`). A `DUTXO` cannot be used as a transaction input until the user was proven to have executed its part of the exchange. If a user has acted maliciously, the protocol assumes a `DUTXO` as blocked and therefore a `BUTXO` comes into existence. 
+
+### Transactions
+
+Each transaction (beside first in the block) must take inputs (at least one) and optionally has outputs. The inputs specifies `UTXO`s to be spent and outputs create new `UTXO`s. This is a basic transaction, but the protocol introduces several other types that derive from this basic one.
+
+### Types of transactions allowed by the `xpeer` protocol
 
 #### Simple transfer
 
@@ -30,8 +49,7 @@ UTXO contains parameters necessary for a validation process.
        <img src="/docs/images/payment_seq.png" />
    </p>
 
-To make a simple transfer user has to specify the amount of money to be sent, the receiver's address and the amount of money to be sent back. Our protocol enables only to send 
-all the owner's funds, so the only one solution is to transfer the rest of money to oneself. There is no restriction related to the quantity of receivers.
+To make a simple transfer user has to specify the amount of money to be sent, the receiver's address and the amount of money to be sent back. Our protocol enables only to send all the owner's funds, so the only one solution is to transfer the rest of money to oneself. There is no restriction related to the quantity of receivers.
 Transfer is getting valid when is included in xpeer's blockchain. To make it faster user should leave higher mining fee. Of course,
 there is an award for miners when they find a block, but it is slowly decreasing and one day will have become 0. Miners are not obligated to explore blocks,
 so without any incentive there is a small possibility to get the transaction involved.
@@ -110,7 +128,7 @@ Both results are included into xpeer's blockchain as a kind of transaction.
    There is a possibility when both sides can unlock that funds - time is over and exchange was confirmed. The current owner has to remember to transfer its money another
    one on time, if not, the previous one can spend it. It eliminates amount of money which is unused.
 
-##### We as authors inform each user about that possibility and are not responsible for those deceits.
+_NOTE: We as authors inform each user about that possibility and are not responsible for those deceits._
 
 As an __input__ one provides hash of the block with previous transaction, position of the transaction in a block and its signing key.
 
