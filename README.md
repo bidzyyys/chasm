@@ -30,7 +30,7 @@ Having introduced another blockchain, we also introduce a token `xpeer coin`. Th
        <img src="/docs/images/payment_seq.png" />
    </p>
 
-To make a simple transfer user has to specify the amount of money to be sent, the receiver's address and the amount of money to be sent back. Our protocol enables only to send all the owner's funds (no less than one UTXO), so the only one solution is to transfer the rest of money to oneself. There is no restriction related to the quantity of receivers - the only limitation is the block size. The values of outputs must add up up to the sum of inputs, the difference between inputs and outputs is implicitly treated as a fee.
+To make a simple transfer user has to specify the amount of money to be sent, the receiver's address and the amount of money to be sent back. Our protocol enables only to send all the owner's funds (no less than one UTXO), so the only one solution is to transfer the rest of money to oneself. There is no restriction related to the quantity of receivers - the only limitation is the block size. The values of outputs must add up to the sum of inputs, the difference between inputs and outputs is implicitly treated as a fee.
 Transfer is getting valid when is included in xpeer's blockchain. To make it faster user should leave higher mining fee. Of course, there is an award for miners when they find a block, but it is slowly decreasing and one day will become 0, so eventually the fees will become the only incentive for the miners.
 
 #### Making an offer
@@ -64,7 +64,7 @@ that are the same as in the offer.
 #### Transaction's confirmation
 
 Transaction's confirmation is kind of information that both sides of a trade have sent money that they had agreed before. This is necessary for unlocking funds included in the exchange (each currency will have a mechanism that checks xpeer's blockchain for confirmations when the trade is done) and for getting back the deposit.
-Confirmations contain only inputs and outputs and hash of the offer, but requires the most calculations. They are automatically added when an exchange is finished, but not only depends it on our blockchain but also requires validation of other cryptocurrencies' transactions. To make an exchange valid, both parties must send their transactions within first timeout, the transfer must be of proper type, must point to the exchange hash (not to mention the receivers address and to value). If any of the requirements has not been met, the exchange cannot be confirmed as held.
+Confirmations contain only inputs and outputs and hash of the offer, but requires the most calculations. They are automatically added when an exchange is finished, but not only depends it on our blockchain but also requires validation of other cryptocurrencies' transactions. To make an exchange valid, both parties must send their parts of the agreement within first timeout, the transfer must be of proper type, must point to the exchange hash (not to mention the receivers address and to value). If any of the requirements has not been met, the exchange cannot be confirmed as held.
  
 
 #### Unlocking deposit
@@ -91,7 +91,7 @@ Both results are included into xpeer's blockchain as a kind of transaction.
 
 
 ### Blockchain
-In `xpeer` blockchain, blocks are mined every minute and their size is limited to 1MB. Each block consists of transactions, but the protocol approves mining of empty blocks. First transaction in a block is a transaction without inputs which outputs totals to the sum of fees and the value of mining award. Any other transaction must take inputs. `xpeer`'s transactions are quite similar to `bitcoin`'s - they take inputs and produce outputs, which until not spent (or blocked) exist as [UTXOs](https://www.mycryptopedia.com/bitcoin-utxo-unspent-transaction-output-set-explained/).
+In `xpeer` blockchain, blocks are mined every minute and their size is limited to 1MB. Each block consists of transactions, but the protocol approves mining of empty blocks. In each block, the first transaction is a transaction without inputs which outputs totals to the sum of fees and the value of mining award. Any other transaction must take inputs. `xpeer`'s transactions are quite similar to `bitcoin`'s - they take inputs and produce outputs, which until not spent (or blocked) exist as [UTXOs](https://www.mycryptopedia.com/bitcoin-utxo-unspent-transaction-output-set-explained/).
 
 _NOTE: Although, the protocol is meant to run over a PoW blockchain, the PoC will implement a PoA blockchain (with only one node authorized to mine new blocks) as it simplifies the implementation._
 
@@ -99,7 +99,6 @@ _NOTE: Although, the protocol is meant to run over a PoW blockchain, the PoC wil
 `xpeer coin` is the currency in which all transactions on `xpeer` blockchain are being held. It has a total supply of ~100 millions. The smallest denomination of `XPC` is a `bdzys` and equals to `1e-18 XPC`.
 
 ### Minting
-   Each block as a first transaction has minting - newly created amount of money which belongs to the miner.
    This is an extra amount of `xpeer coins` that can be transferred to a miner's account and together with transaction fees is the incentive for miners to mine. At the beginning of the chain, the award equals to 50 `XPC` and is halved each million of blocks.
    It is presented as a Minting transaction - first transaction in every block that has no inputs.
    It is a kind of encouragement for people to start mining - initially the main incentive.
