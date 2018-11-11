@@ -27,7 +27,7 @@ namespace chasm::primitives {
 
         /*! \brief adds the transaction to the block
          *
-         *  NOTE: this does not check the requirement whether, the block fulfills the 1MB limitation
+         *  \b NOTE: this does not check the requirement whether, the block fulfills the 1MB limitation
          */
          void addTransaction(std::unique_ptr<Transaction> tx);
 
