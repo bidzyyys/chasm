@@ -14,10 +14,13 @@
 #include "Serializable.h"
 
 namespace chasm::primitives {
+
+    /*!
+     * \brief Set of transactions (aka. Block)
+     *
+     */
     class Block : public Serializable {
     public:
-
-        //TODO: move to the class that will be a wrapper of Block structure
 
         //! \brief adjusts nonce by adding 1 to the current value
         void adjustNonce();
@@ -43,18 +46,18 @@ namespace chasm::primitives {
 
     private:
         using nonce_t = uint64_t;
-        using difficulty_t = uint8_t;
+        using difficulty_t = uint8_t; // no more than 256 bits as it is the size of the hash
 
         struct Header {
-            common::types::hash_t prev_tx_hash;
-            common::types::hash_t merkle_tree_root;
-            uint64_t timestamp; // TODO: must be higher than the timestamp of the previous block
-            nonce_t nonce;
-            difficulty_t difficulty;
+            common::types::hash_t prevTxHash_; //!< Pointer to the previous block
+            common::types::hash_t merkleTreeRoot_; //!< Merkle tree root of included transactions
+            uint64_t timestamp_; // TODO: must be higher than the timestamp of the previous block
+            nonce_t nonce_; //!< Adjustable field, can be adjusted to change the block hash while mining
+            difficulty_t difficulty_; //!< Specifies how many leading bits of block hash should be ones.
         };
 
         Header header_;
-        std::list<std::unique_ptr<Transaction>> transactions_;
+        std::list<std::unique_ptr<Transaction>> transactions_; //<! List of transactions included in the block
 
     };
 }
