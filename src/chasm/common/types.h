@@ -21,6 +21,9 @@ namespace chasm::common::types {
 
     using value_t = uint64_t;
 
+    using nonce_t = uint64_t;
+    using difficulty_t = uint8_t;
+
 }
 
 

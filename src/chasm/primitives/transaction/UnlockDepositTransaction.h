@@ -5,7 +5,7 @@
 #ifndef CHASM_UNLOCK_DEPOSIT_TRANSACTION_H
 #define CHASM_UNLOCK_DEPOSIT_TRANSACTION_H
 
-#include <chasm/primitives/Transaction.h>
+#include <chasm/primitives/transaction/Transaction.h>
 
 namespace chasm::primitives::transaction {
 

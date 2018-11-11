@@ -22,7 +22,7 @@ namespace chasm::primitives::transaction {
     class Input : public Serializable {
     public:
 
-        std::any acceptSerializator() override;
+//        std::any acceptSerializator() override;
 
         ~Input() override = default;
 

@@ -5,7 +5,7 @@
 #ifndef CHASM_OFFER_TRANSACTION_H
 #define CHASM_OFFER_TRANSACTION_H
 
-#include <chasm/primitives/Transaction.h>
+#include <chasm/primitives/transaction/Transaction.h>
 #include <chasm/common/tokens.hpp>
 
 

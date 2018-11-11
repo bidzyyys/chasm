@@ -7,8 +7,8 @@
 
 #include <list>
 #include <chasm/primitives/transaction/Output.h>
-#include "transaction/Input.h"
-#include "Serializable.h"
+#include "Input.h"
+#include "chasm/primitives/Serializable.h"
 
 namespace chasm::primitives {
 
@@ -18,13 +18,13 @@ namespace chasm::primitives {
     class Transaction : public Serializable {
     public:
 
-        std::any acceptSerializator() override;
-
-        const transaction::Input& getInput(size_t index) const;
-        const transaction::Input& getInput(common::types::hash_t index) const;
-
-        const transaction::Input& getOutput(size_t index) const;
-        const transaction::Input& getOutput(common::types::hash_t index) const;
+//        std::any acceptSerializator() override;
+//
+//        const transaction::Input& getInput(size_t index) const;
+//        const transaction::Input& getInput(common::types::hash_t index) const;
+//
+//        const transaction::Input& getOutput(size_t index) const;
+//        const transaction::Input& getOutput(common::types::hash_t index) const;
 
 
         ~Transaction() override = default;

@@ -5,7 +5,7 @@
 #ifndef CHASM_MINING_TRANSACTION_H
 #define CHASM_MINING_TRANSACTION_H
 
-#include <chasm/primitives/Transaction.h>
+#include <chasm/primitives/transaction/Transaction.h>
 
 namespace chasm::primitives::transaction{
     class MiningTransaction : public Transaction {

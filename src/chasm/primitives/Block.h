@@ -10,7 +10,7 @@
 #include <list>
 
 #include "chasm/common/types.h"
-#include "Transaction.h"
+#include "chasm/primitives/transaction/Transaction.h"
 #include "Serializable.h"
 
 namespace chasm::primitives {
@@ -42,16 +42,9 @@ namespace chasm::primitives {
         ~Block() override = default;
 
     private:
-        using nonce_t = uint64_t;
-        using difficulty_t = uint8_t;
+        
 
-        struct Header {
-            common::types::hash_t prev_tx_hash;
-            common::types::hash_t merkle_tree_root;
-            uint64_t timestamp; // TODO: must be higher than the timestamp of the previous block
-            nonce_t nonce;
-            difficulty_t difficulty;
-        };
+
 
         Header header_;
         std::list<std::unique_ptr<Transaction>> transactions_;
