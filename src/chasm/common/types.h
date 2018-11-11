@@ -21,6 +21,8 @@ namespace chasm::common::types {
 
     using value_t = uint64_t;
 
+    using out_idx_t = uint16_t; // A transaction cannot have more outputs, as there is block size limitation
+    using in_idx_t = out_idx_t;
 }
 
 
