@@ -8,7 +8,7 @@ endif()
 
 set(CMAKE_CXX_FLAGS "-Werror -pedantic")
 
-find_package(Boost 1.62 REQUIRED COMPONENTS unit_test_framework)
+find_package(Boost 1.62 REQUIRED COMPONENTS unit_test_framework serialization)
 
 include_directories(src/)
 include_directories(${Boost_INCLUDE_DIRS})
