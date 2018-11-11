@@ -10,18 +10,12 @@
 
 namespace chasm::primitives {
 
-    struct DTO {
+    class Serializable {
+    public:
         //TODO: change return type
         virtual std::any acceptSerializator() = 0;
 
-        virtual ~DTO() = 0;
-    };
-
-    class Serializable {
-    public:
-        virtual std::unique_ptr<DTO> toDTO() = 0;
-
-        virtual ~Serializable() = default;
+        virtual ~Serializable() = 0;
     };
 
 }

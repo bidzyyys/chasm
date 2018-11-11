@@ -13,7 +13,8 @@ namespace chasm::primitives::transaction {
     /*!
      * \brief Base class for all kinds of outputs. Abstract.
      */
-    struct Output : public DTO {
+    class Output : public Serializable {
+    public:
         ~Output() override = 0;
     };
 
@@ -22,14 +23,13 @@ namespace chasm::primitives::transaction {
      *
      * To unlock this output, the spender must sign the transaction with the private key corresponding to the address.
      */
-    struct SimpleOutput : public Output {
-
-        std::any acceptSerializator() override;
-
+    class SimpleOutput : public Output {
+    public:
         ~SimpleOutput() override = default;
 
-        common::types::address_t receiver;
-        common::types::value_t value;
+    private:
+        common::types::address_t receiver_;
+        common::types::value_t value_;
     };
 
 
@@ -40,14 +40,14 @@ namespace chasm::primitives::transaction {
      *  - as an input to the confirmation tx (hashes of the offers must be equal)
      *  - as an input to the deposit unlock tx
      */
-    struct FeeOutput : public Output {
-
-        std::any acceptSerializator() override;
+    class FeeOutput : public Output {
+    public:
 
         ~FeeOutput() override = default;
 
-        common::types::hash_t offer_hash;
-        common::types::value_t value;
+    private:
+        common::types::hash_t offer_hash_;
+        common::types::value_t value_;
 
     };
 

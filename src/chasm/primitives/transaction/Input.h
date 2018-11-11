@@ -19,14 +19,16 @@ namespace chasm::primitives::transaction {
      * In a valid transaction this represents an UTXO to be used in the transaction.
      * The signature must sign the whole transaction (serialized), besides the signature itself.
      */
-    struct Input : public DTO {
+    class Input : public Serializable {
+    public:
 
         std::any acceptSerializator() override;
 
         ~Input() override = default;
 
-        TXO utxo; //!< A transaction output. The transaction is invalid unless this field is an UTXO.
-        chasm::common::types::signature_t signature;
+    private:
+        TXO utxo_; //!< A transaction output. The transaction is invalid unless this field is an UTXO.
+        chasm::common::types::signature_t signature_;
     };
 
 }

@@ -12,20 +12,29 @@
 
 namespace chasm::primitives {
 
-    /*! \brief Basic transaction
-     *
-     *  This is a DTO type.
+    /*!
+     * \brief Basic transaction
      */
-    struct Transaction : public DTO {
-        using input_t = transaction::Input;
-        using output_t = transaction::Output;
+    class Transaction : public Serializable {
+    public:
 
         std::any acceptSerializator() override;
 
+        const transaction::Input& getInput(size_t index) const;
+        const transaction::Input& getInput(common::types::hash_t index) const;
+
+        const transaction::Input& getOutput(size_t index) const;
+        const transaction::Input& getOutput(common::types::hash_t index) const;
+
+
         ~Transaction() override = default;
 
-        std::list<input_t> inputs;
-        std::list<output_t> outputs;
+    private:
+        using input_t = transaction::Input;
+        using output_t = transaction::Output;
+
+        std::list<std::unique_ptr<input_t>> inputs_;
+        std::list<std::unique_ptr<output_t>> outputs_;
     };
 }
 
