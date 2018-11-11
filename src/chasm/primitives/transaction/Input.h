@@ -17,7 +17,6 @@ namespace chasm::primitives::transaction {
      * \brief Input of a transaction
      *
      * In a valid transaction this represents an UTXO to be used in the transaction.
-     * The signature must sign the whole transaction (serialized), besides the signature itself.
      */
     class Input : public Serializable {
     public:
@@ -28,7 +27,6 @@ namespace chasm::primitives::transaction {
 
     private:
         TXO utxo_; //!< A transaction output. The transaction is invalid unless this field is an UTXO.
-        chasm::common::types::signature_t signature_;
     };
 
 }

@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <array>
 #include <list>
+#include <chasm/primitives/transaction/SignedTransaction.hpp>
 
 #include "chasm/common/types.h"
 #include "Transaction.h"
@@ -32,7 +33,7 @@ namespace chasm::primitives {
          *
          *  \b NOTE: this does not check the requirement whether, the block fulfills the 1MB limitation
          */
-         void addTransaction(std::unique_ptr<Transaction> tx);
+        void addTransaction(std::unique_ptr<Transaction> tx);
 
 
         /*! \brief adds a transaction and checks size limitation
@@ -57,7 +58,7 @@ namespace chasm::primitives {
         };
 
         Header header_;
-        std::list<std::unique_ptr<Transaction>> transactions_; //<! List of transactions included in the block
+        std::list<std::unique_ptr<transaction::SignedTransaction>> transactions_; //<! List of transactions included in the block
 
     };
 }
