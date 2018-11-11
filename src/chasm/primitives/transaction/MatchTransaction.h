@@ -22,11 +22,11 @@ namespace chasm::primitives::transaction {
 
     private:
 
-        common::types::hash_t offer_hash_; //!< Hash of the accepted offer
+        common::types::hash_t offerHash_; //!< Hash of the accepted offer
         common::types::address_t address_; //!< Receiver's address (on the blockchain where the exchange happens)
 
-        common::types::out_idx_t confirmation_fee_idx_; //!< Index of confirmation fee. The output must be of type \b FeeOutput
-        common::types::out_idx_t bail_idx_; //!< Index of a bail.
+        common::types::out_idx_t confirmationFeeIdx_; //!< Index of confirmation fee. The output must be of type \b FeeOutput
+        common::types::out_idx_t bailIdx_; //!< Index of a bail.
 
     };
 }

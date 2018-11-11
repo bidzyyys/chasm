@@ -20,7 +20,7 @@ namespace chasm::primitives::transaction {
 
     private:
 
-        chasm::common::types::hash_t tx_hash_; //!< Pointer to an existing transaction
+        chasm::common::types::hash_t txHash_; //!< Pointer to an existing transaction
         chasm::common::types::out_idx_t index_; //!< Index of the output
 
     };

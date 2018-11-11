@@ -46,7 +46,7 @@ namespace chasm::primitives::transaction {
         ~FeeOutput() override = default;
 
     private:
-        common::types::hash_t offer_hash_;
+        common::types::hash_t offerHash_;
         common::types::value_t value_;
 
     };
