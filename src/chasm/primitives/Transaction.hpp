@@ -8,7 +8,7 @@
 #include <list>
 #include <chasm/primitives/transaction/Output.hpp>
 #include "chasm/primitives/transaction/Input.hpp"
-#include "chasm/primitives/Serializable.hpp"
+#include "chasm/serialization/Serializable.hpp"
 
 namespace chasm::primitives {
     class Transaction;

@@ -11,7 +11,7 @@
 
 #include "chasm/primitives/transaction/SignedTransaction.hpp"
 #include "chasm/types.hpp"
-#include "Serializable.hpp"
+#include "chasm/serialization/Serializable.hpp"
 #include "Header.hpp"
 
 namespace chasm::primitives {

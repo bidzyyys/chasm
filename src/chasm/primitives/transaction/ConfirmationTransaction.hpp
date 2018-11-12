@@ -5,7 +5,7 @@
 #ifndef CHASM_CONFIRMATION_TRANSACTION_H
 #define CHASM_CONFIRMATION_TRANSACTION_H
 
-#include <chasm/primitives/Serializable.hpp>
+#include <chasm/serialization/Serializable.hpp>
 #include <chasm/types.hpp>
 #include <chasm/tokens/Token.hpp>
 

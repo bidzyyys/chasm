@@ -6,7 +6,7 @@
 #define CHASM_HEADER_H
 
 #include <chasm/types.hpp>
-#include "Serializable.hpp"
+#include "chasm/serialization/Serializable.hpp"
 
 namespace chasm::primitives {
     class Header;
