@@ -19,6 +19,12 @@ namespace boost::serialization {
 }
 
 namespace chasm::primitives {
+
+    /*!
+     * \brief Represents Block's header
+     *
+     * \b Note: Hash of the block is a hash of the header.
+     */
     class Header : public Serializable {
     public:
         ~Header() override = default;
@@ -32,15 +38,16 @@ namespace chasm::primitives {
         friend void boost::serialization::serialize(Archive &ar, Header &header,
                                                     unsigned int version);
 
-        types::hash_t prevTxHash_;
+        hash_t prevTxHash_; //!< Pointer to the previous block
 
-        types::hash_t merkleTreeRoot_;
+        hash_t merkleTreeRoot_; //!< Merkle tree root of a tree made of included transactions
 
-        types::timestamp_t timestamp_; // TODO: must be higher than the timestamp of the previous block
+        // TODO: must be higher than the timestamp of the previous block
+        timestamp_t timestamp_; //!< Timestamp of the current block
 
-        types::nonce_t nonce_;
+        nonce_t nonce_; //!< Adjustable value. Used when mining new blocks
 
-        types::difficulty_t difficulty_;
+        difficulty_t difficulty_; //!< Number of leading bits of hash that must be zeroed
     };
 }
 

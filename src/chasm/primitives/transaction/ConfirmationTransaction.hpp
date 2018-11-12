@@ -25,10 +25,10 @@ namespace chasm::primitives::transaction {
 
     private:
 
-        types::hash_t offerHash_;
+        hash_t offerHash_; //!< Exchange to be confirmed
 
-        uptr_t<types::proof_t> proofTokenIn_;
-        uptr_t<types::proof_t> proofTokenOut_;
+        uptr_t<proof_t> proofTokenIn_; //!< Proof of tx inclusion (seller's transaction)
+        uptr_t<proof_t> proofTokenOut_; //!< Proof of tx inclusion (buyer's transaction)
 
     };
 }

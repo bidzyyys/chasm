@@ -51,10 +51,10 @@ namespace chasm::primitives::transaction {
         token_t tokenOut_; //!< Token being demanded
         value_t valueOut_; //!< Value being demanded
 
-        address_t address_; //!< Receiver's address (on the blockchain where the exchange happens)
+        address_t address_; //!< Receiver's address (on tokenOut blockchain)
 
         //! Time in seconds how long will the offer be 'matchable',
-        //! starting from the timestamp of the block in which the transaction was included in.
+        //! starting from the timestamp of a block which the transaction was included in.
         timestamp_t offerTimeout_;
         nonce_t nonce_; //!< used to adjust a hash of an offer. \b Note: it is not of the same type as \ref Block::nonce_t
 
