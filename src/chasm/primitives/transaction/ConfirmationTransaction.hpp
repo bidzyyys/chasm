@@ -6,7 +6,8 @@
 #define CHASM_CONFIRMATION_TRANSACTION_H
 
 #include <chasm/primitives/Serializable.hpp>
-#include <chasm/common/types.hpp>
+#include <chasm/types.hpp>
+#include <chasm/tokens/Token.hpp>
 
 namespace chasm::primitives::transaction {
 
@@ -23,10 +24,11 @@ namespace chasm::primitives::transaction {
         ~ConfirmationTransaction() override = default;
 
     private:
-        common::types::hash_t offerHash_;
 
-        std::unique_ptr<chasm::common::types::proof_t> proofTokenIn_;
-        std::unique_ptr<chasm::common::types::proof_t> proofTokenOut_;
+        types::hash_t offerHash_;
+
+        uptr_t<types::proof_t> proofTokenIn_;
+        uptr_t<types::proof_t> proofTokenOut_;
 
     };
 }

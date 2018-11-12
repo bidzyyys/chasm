@@ -7,7 +7,7 @@
 
 #include <chasm/primitives/Transaction.hpp>
 
-namespace chasm::primitives::transaction{
+namespace chasm::primitives::transaction {
 
     /*!
      * \brief Transaction of type mining.
@@ -21,8 +21,6 @@ namespace chasm::primitives::transaction{
 
     };
 }
-
-
 
 
 #endif //CHASM_MINING_TRANSACTION_H

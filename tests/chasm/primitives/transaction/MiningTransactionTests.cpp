@@ -9,7 +9,7 @@
 #include "chasm/primitives/transaction/MiningTransaction.hpp"
 
 using namespace chasm::primitives::transaction;
-using namespace chasm::common::types;
+using namespace chasm::types;
 
 BOOST_AUTO_TEST_SUITE(primitives_mining_transaction)
 

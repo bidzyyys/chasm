@@ -6,9 +6,9 @@
 #include "Token.hpp"
 #include "XpeerCoinToken.hpp"
 
-using namespace chasm::common::tokens;
+using namespace chasm::tokens;
 
-const Token& Token::getToken(Tokens token){
+const Token &Token::getToken(Tokens token) {
     static auto tokens = [tokens = std::map<Tokens, std::unique_ptr<Token>>{}]() mutable {
 
         tokens.emplace(Tokens::XPEER_COIN, std::make_unique<XpeerCoinToken>());

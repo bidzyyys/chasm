@@ -5,17 +5,18 @@
 #ifndef CHASM_UNLOCK_DEPOSIT_TRANSACTION_H
 #define CHASM_UNLOCK_DEPOSIT_TRANSACTION_H
 
-#include <chasm/primitives/Transaction.hpp>
 #include <vector>
+#include <chasm/primitives/Transaction.hpp>
+#include <chasm/tokens/Token.hpp>
 
-namespace chasm::primitives::transaction{
+namespace chasm::primitives::transaction {
     class UnlockDepositTransaction;
 }
 
-namespace boost::serialization{
+namespace boost::serialization {
     template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::transaction::UnlockDepositTransaction &tx,
-                    unsigned int version);
+                   unsigned int version);
 }
 
 namespace chasm::primitives::transaction {
@@ -41,15 +42,15 @@ namespace chasm::primitives::transaction {
 
         template<typename Archive>
         friend void boost::serialization::serialize(Archive &ar, UnlockDepositTransaction &tx,
-                       unsigned int version);
+                                                    unsigned int version);
 
         using proof_t = std::vector<std::byte>;
 
-        common::types::hash_t offerHash_;
-        common::types::token_t token_;
-        std::unique_ptr<common::types::proof_t> proof_;
+        hash_t offerHash_;
+        token_t token_;
+        uptr_t<proof_t> proof_;
 
-        common::types::out_idx_t bailIndex_;
+        out_idx_t bailIndex_;
     };
 }
 

@@ -4,11 +4,11 @@
 
 #include "TXO.hpp"
 
+using namespace chasm;
 using namespace chasm::primitives::transaction;
-using namespace chasm::common::types;
 
 bool TXO::operator==(const TXO &rh) const {
-    return compare_collection(txHash_,rh.txHash_) &&
-            index_ == rh.index_;
+    return compare_collection(txHash_, rh.txHash_) &&
+           index_ == rh.index_;
 }
 

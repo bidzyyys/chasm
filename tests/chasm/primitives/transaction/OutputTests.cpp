@@ -9,7 +9,7 @@
 #include "chasm/primitives/transaction/Output.hpp"
 
 using namespace chasm::primitives::transaction;
-using namespace chasm::common::types;
+using namespace chasm::types;
 
 BOOST_AUTO_TEST_SUITE(primitives_output)
 

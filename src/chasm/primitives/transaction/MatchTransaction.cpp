@@ -4,12 +4,12 @@
 
 #include "MatchTransaction.hpp"
 
+using namespace chasm;
 using namespace chasm::primitives::transaction;
-using namespace chasm::common::types;
 
 bool MatchTransaction::operator==(const MatchTransaction &rh) const {
     return compare_collection(offerHash_, rh.offerHash_) &&
-            compare_collection(address_, rh.address_) &&
-            confirmationFeeIdx_ == rh.confirmationFeeIdx_ &&
-            bailIdx_ == rh.bailIdx_;
+           compare_collection(address_, rh.address_) &&
+           confirmationFeeIdx_ == rh.confirmationFeeIdx_ &&
+           bailIdx_ == rh.bailIdx_;
 }

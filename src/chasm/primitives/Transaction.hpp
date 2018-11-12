@@ -10,14 +10,14 @@
 #include "chasm/primitives/transaction/Input.hpp"
 #include "chasm/primitives/Serializable.hpp"
 
-namespace chasm::primitives{
+namespace chasm::primitives {
     class Transaction;
 }
 
-namespace boost::serialization{
-    template <typename Archive>
+namespace boost::serialization {
+    template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::Transaction &tx,
-                    unsigned int version);
+                   unsigned int version);
 }
 
 namespace chasm::primitives {
@@ -44,23 +44,23 @@ namespace chasm::primitives {
     private:
         friend class boost::serialization::access;
 
-        template <typename Archive>
+        template<typename Archive>
         friend void boost::serialization::serialize(Archive &ar, Transaction &tx,
                                                     unsigned int version);
 
         using input_t = transaction::Input;
         using output_t = transaction::Output;
 
-        std::list<std::unique_ptr<input_t>> inputs_;
+        std::list<uptr_t<input_t>> inputs_;
 
-        std::list<std::unique_ptr<output_t>> outputs_;
+        std::list<uptr_t<output_t>> outputs_;
     };
 }
 
-namespace boost::serialization{
-    template <typename Archive>
+namespace boost::serialization {
+    template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::Transaction &tx,
-                   unsigned int version){
+                   unsigned int version) {
         ar & boost::serialization::base_object<chasm::primitives::Serializable>(tx);
         ar & tx.inputs_;
         ar & tx.outputs_;

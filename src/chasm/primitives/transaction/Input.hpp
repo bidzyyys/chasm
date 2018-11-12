@@ -7,17 +7,17 @@
 
 #include <cstdint>
 #include <boost/optional.hpp>
-#include <chasm/common/types.hpp>
+#include <chasm/types.hpp>
 #include "TXO.hpp"
 
-namespace chasm::primitives::transaction{
+namespace chasm::primitives::transaction {
     class Input;
 }
 
-namespace boost::serialization{
+namespace boost::serialization {
     template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::transaction::Input &input,
-                    unsigned int version);
+                   unsigned int version);
 }
 
 namespace chasm::primitives::transaction {
@@ -39,7 +39,7 @@ namespace chasm::primitives::transaction {
     private:
         friend class boost::serialization::access;
 
-        template <typename Archive>
+        template<typename Archive>
         friend void boost::serialization::serialize(Archive &ar, Input &input,
                                                     unsigned int version);
 
@@ -48,10 +48,10 @@ namespace chasm::primitives::transaction {
 
 }
 
-namespace boost::serialization{
+namespace boost::serialization {
     template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::transaction::Input &input,
-                   unsigned int version){
+                   unsigned int version) {
         ar & boost::serialization::base_object<chasm::primitives::Serializable>(input);
         ar & input.utxo_;
     }

@@ -5,7 +5,6 @@
 #include <boost/archive/binary_oarchive.hpp>
 #include <sstream>
 #include "chasm/primitives/Serializable.hpp"
-#include "Serializable.hpp"
 
 
 using namespace chasm::primitives;
@@ -17,9 +16,9 @@ std::vector<std::byte> Serializable::toByteArray() {
     auto str = ofs.str();
     std::vector<std::byte> bytes;
     std::transform(str.begin(), str.end(),
-            std::back_inserter(bytes),
-            [](const unsigned char c){
-        return static_cast<std::byte>(c);
-    });
+                   std::back_inserter(bytes),
+                   [](const unsigned char c) {
+                       return static_cast<std::byte>(c);
+                   });
     return bytes;
 }

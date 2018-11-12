@@ -9,7 +9,7 @@
 #include "chasm/primitives/Block.hpp"
 
 using namespace chasm::primitives;
-using namespace chasm::common::types;
+using namespace chasm::types;
 
 BOOST_AUTO_TEST_SUITE(primitives_block)
 

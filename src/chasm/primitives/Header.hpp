@@ -5,7 +5,7 @@
 #ifndef CHASM_HEADER_H
 #define CHASM_HEADER_H
 
-#include <chasm/common/types.hpp>
+#include <chasm/types.hpp>
 #include "Serializable.hpp"
 
 namespace chasm::primitives {
@@ -32,15 +32,15 @@ namespace chasm::primitives {
         friend void boost::serialization::serialize(Archive &ar, Header &header,
                                                     unsigned int version);
 
-        common::types::hash_t prev_tx_hash_;
+        types::hash_t prevTxHash_;
 
-        common::types::hash_t merkle_tree_root_;
+        types::hash_t merkleTreeRoot_;
 
-        uint64_t timestamp_; // TODO: must be higher than the timestamp of the previous block
+        types::timestamp_t timestamp_; // TODO: must be higher than the timestamp of the previous block
 
-        common::types::nonce_t nonce_;
+        types::nonce_t nonce_;
 
-        common::types::difficulty_t difficulty_;
+        types::difficulty_t difficulty_;
     };
 }
 
@@ -50,8 +50,8 @@ namespace boost::serialization {
     void serialize(Archive &ar, chasm::primitives::Header &header,
                    unsigned int version) {
         ar & boost::serialization::base_object<chasm::primitives::Serializable>(header);
-        ar & header.prev_tx_hash_;
-        ar & header.merkle_tree_root_;
+        ar & header.prevTxHash_;
+        ar & header.merkleTreeRoot_;
         ar & header.timestamp_;
         ar & header.nonce_;
         ar & header.difficulty_;
