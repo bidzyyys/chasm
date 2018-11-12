@@ -9,7 +9,7 @@ using namespace chasm::primitives::transaction;
 
 bool UnlockDepositTransaction::operator==(const UnlockDepositTransaction &rh) const {
     return compare_collection(offerHash_, rh.offerHash_) &&
-           token_ == rh.token_ &&
+            proof_ == rh.proof_ &&
            //           compare_collection(proof_, rh.proof_) &&
            bailIndex_ == rh.bailIndex_;
 }
