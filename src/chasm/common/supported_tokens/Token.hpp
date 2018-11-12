@@ -30,6 +30,8 @@ namespace chasm::common::tokens{
 
         virtual std::unique_ptr<TransactionInclusionProof> buildProof(const std::vector<std::byte>&) const = 0;
 
+
+        virtual ~Token() = default;
     };
 
 }

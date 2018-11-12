@@ -9,6 +9,11 @@
 
 namespace chasm::common::tokens {
     class XpeerCoinToken : public Token {
+    public:
+        std::unique_ptr<TransactionInclusionProof> buildProof(const std::vector<std::byte> &vector) const override;
+
+
+        ~XpeerCoinToken() override = default;
 
     };
 }
