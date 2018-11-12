@@ -5,14 +5,9 @@
 #include "Transaction.hpp"
 
 using namespace chasm::primitives;
+using namespace chasm::common::types;
 
 bool Transaction::operator==(const Transaction &rh) const {
-    return std::equal(inputs_.begin(), inputs_.end(), rh.inputs_.begin(),
-            [](const std::unique_ptr<transaction::Input> & l,
-                    const std::unique_ptr<transaction::Input> & r) {
-                    return (*l == *r);}) &&
-        std::equal(outputs_.begin(), outputs_.end(), rh.outputs_.begin(),
-                [](const std::unique_ptr<transaction::Output> & l,
-                        const std::unique_ptr<transaction::Output> & r) {
-                        return (*l == *r);});
+    return compare_list_of_ptrs(inputs_, rh.inputs_) &&
+            compare_list_of_ptrs(outputs_, rh.outputs_);
 }

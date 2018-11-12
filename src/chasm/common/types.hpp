@@ -8,6 +8,7 @@
 
 #include <cstddef>
 #include <array>
+#include <list>
 #include "tokens.hpp"
 
 namespace chasm::common::types {
@@ -30,6 +31,18 @@ namespace chasm::common::types {
     using token_t = chasm::common::Token;
 
     using timestamp_t = uint64_t;
+
+    template <typename T>
+    bool compare_collection(const T &l, const T &r){
+        return std::equal(l.cbegin(), l.cend(), r.cbegin());
+    }
+
+    template <typename T>
+    bool compare_list_of_ptrs(const std::list<T> &l, const std::list<T> &r){
+        return std::equal(l.cbegin(), l.cend(), r.cbegin(), [](const T &l_ptr, const T &r_ptr){
+            return *l_ptr == *r_ptr;
+        });
+    }
 }
 
 
