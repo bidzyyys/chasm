@@ -13,13 +13,6 @@ pipeline {
             }
         }
 
-        stage ('Pre-analysis') {
-            steps {
-                sh 'cppcheck --enable=all --inconclusive --xml --xml-version=2 `git ls-files "*.hpp" "*.cpp"` 2> cppcheck.xml'
-                publishCppcheck pattern:'cppcheck.xml'
-                }
-        }
-
         stage('Build') {
             steps {
                 sh '''
@@ -29,12 +22,61 @@ pipeline {
                 '''
             }
         }
+
         stage('Test') {
             steps {
                 sh '''
                    cd build &&
                    ctest -R all
                 '''
+            }
+        }
+
+        stage ('CppCheck') {
+            steps {
+                sh 'cppcheck --enable=all --inconclusive --xml --xml-version=2 `git ls-files "*.hpp" "*.cpp"` 2> cppcheck.xml'
+                publishCppcheck pattern:'cppcheck.xml'
+            }
+        }
+
+        stage('Valgrind') {
+            steps {
+                runValgrind (
+                  childSilentAfterFork: true,
+                  excludePattern: '',
+                  generateSuppressions: true,
+                  ignoreExitCode: true,
+                  includePattern: 'build/tests/all_unit_tests',
+                  outputDirectory: '',
+                  outputFileEnding: '.memcheck',
+                  programOptions: '',
+                  removeOldReports: true,
+                  suppressionFiles: '',
+                  tool: [$class: 'ValgrindToolMemcheck',
+                    leakCheckLevel: 'full',
+                    showReachable: true,
+                    trackOrigins: true,
+                    undefinedValueErrors: true],
+                  traceChildren: true,
+                  valgrindExecutable: '',
+                  valgrindOptions: '',
+                  workingDirectory: ''
+                )
+
+                publishValgrind (
+                  failBuildOnInvalidReports: false,
+                  failBuildOnMissingReports: false,
+                  failThresholdDefinitelyLost: '',
+                  failThresholdInvalidReadWrite: '',
+                  failThresholdTotal: '',
+                  pattern: '*.memcheck',
+                  publishResultsForAbortedBuilds: false,
+                  publishResultsForFailedBuilds: false,
+                  sourceSubstitutionPaths: '',
+                  unstableThresholdDefinitelyLost: '',
+                  unstableThresholdInvalidReadWrite: '',
+                  unstableThresholdTotal: ''
+                )
             }
         }
     }
