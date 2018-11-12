@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.7)
 project(chasm)
 
-set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_STANDARD 17)
 if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "-pthread")
 endif()

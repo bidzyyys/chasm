@@ -4,8 +4,8 @@
 
 #include <boost/archive/binary_oarchive.hpp>
 #include <sstream>
-#include "chasm/primitives/Serializable.h"
-#include "Serializable.h"
+#include "chasm/primitives/Serializable.hpp"
+#include "Serializable.hpp"
 
 
 using namespace chasm::primitives;

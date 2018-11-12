@@ -9,7 +9,7 @@
 
 namespace chasm::common{
 
-    enum class token_t : uint16_t {
+    enum class Token : uint16_t {
         Bitcoin,
         Ethereum,
         Litecoin,

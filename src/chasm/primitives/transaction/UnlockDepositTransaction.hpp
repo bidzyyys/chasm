@@ -5,7 +5,8 @@
 #ifndef CHASM_UNLOCK_DEPOSIT_TRANSACTION_H
 #define CHASM_UNLOCK_DEPOSIT_TRANSACTION_H
 
-#include <chasm/primitives/transaction/Transaction.h>
+#include <chasm/primitives/Transaction.hpp>
+#include <vector>
 
 namespace chasm::primitives::transaction {
 
@@ -19,10 +20,16 @@ namespace chasm::primitives::transaction {
      *  This type of a transaction is also send in when an offer has not been accepted
      *  and the confirmation fee should unlocked.
      */
-    struct UnlockDepositTransaction : public Transaction {
+    class UnlockDepositTransaction : public Transaction {
 
+    private:
+        using proof_t = std::vector<std::byte>;
 
+        common::types::hash_t offerHash_;
+        common::types::token_t token_;
+        proof_t proof_;
 
+        common::types::out_idx_t bailIndex_;
     };
 }
 

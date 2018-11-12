@@ -2,7 +2,7 @@
 // Created by Daniel Bigos on 11.11.18.
 //
 
-#include "Header.h"
+#include "Header.hpp"
 
 using namespace chasm::primitives;
 

@@ -9,27 +9,31 @@
 #include <array>
 #include <list>
 
+#include "chasm/primitives/transaction/SignedTransaction.hpp"
 #include "chasm/common/types.h"
-#include "chasm/primitives/transaction/Transaction.h"
-#include "Serializable.h"
+#include "Serializable.hpp"
+#include "Header.hpp"
 
 namespace chasm::primitives {
+
+    /*!
+     * \brief Set of transactions (aka. Block)
+     *
+     */
     class Block : public Serializable {
     public:
 
-        //TODO: move to the class that will be a wrapper of Block structure
-
         //! \brief adjusts nonce by adding 1 to the current value
-        void adjustNonce();
+//        void adjustNonce();
 
         //! \brief sets the timestamp field to the current timestamp
-        void adjustTimestamp();
+//        void adjustTimestamp();
 
         /*! \brief adds the transaction to the block
          *
-         *  NOTE: this does not check the requirement whether, the block fulfills the 1MB limitation
+         *  \b NOTE: this does not check the requirement whether, the block fulfills the 1MB limitation
          */
-         void addTransaction(std::unique_ptr<Transaction> tx);
+//        void addTransaction(std::unique_ptr<Transaction> tx);
 
 
         /*! \brief adds a transaction and checks size limitation
@@ -37,22 +41,17 @@ namespace chasm::primitives {
          * \arg tx - a transaction to be added
          * \returns either empty optional in case the \a tx was added or given tx when it was impossible to add the \a tx
          */
-        boost::optional<std::unique_ptr<Transaction>> tryAddTransaction(std::unique_ptr<Transaction> tx);
+//        boost::optional<std::unique_ptr<Transaction>> tryAddTransaction(std::unique_ptr<Transaction> tx);
 
         ~Block() override = default;
 
     private:
-        
-
-
 
         Header header_;
-        std::list<std::unique_ptr<Transaction>> transactions_;
+//        std::list<std::unique_ptr<chasm::primitives::transaction::SignedTransaction> > transactions_; //<! List of transactions included in the block
 
     };
 }
 
 
 #endif //CHASM_BLOCK_H
-
-
