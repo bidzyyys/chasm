@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <boost/optional.hpp>
-#include <chasm/common/types.h>
+#include <chasm/common/types.hpp>
 #include "TXO.hpp"
 
 namespace chasm::primitives::transaction{
@@ -56,7 +56,5 @@ namespace boost::serialization{
         ar & input.utxo_;
     }
 }
-
-BOOST_CLASS_EXPORT(chasm::primitives::transaction::Input)
 
 #endif //CHASM_INPUT_H

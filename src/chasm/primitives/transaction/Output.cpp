@@ -5,6 +5,7 @@
 #include "Output.hpp"
 
 using namespace chasm::primitives::transaction;
+using namespace chasm::common::types;
 
 bool Output::operator==(const Output &rh) const {
     return value_ == rh.value_;
@@ -12,11 +13,11 @@ bool Output::operator==(const Output &rh) const {
 
 bool FeeOutput::operator==(const FeeOutput &rh) const {
     return  Output::operator==(rh) &&
-        offerHash_ == rh.offerHash_;
+        compare_collection(offerHash_,rh.offerHash_);
 }
 
 bool SimpleOutput::operator==(const SimpleOutput &rh) const {
     return Output::operator==(rh) &&
-        receiver_ == rh.receiver_;
+            compare_collection(receiver_,rh.receiver_);
 }
 

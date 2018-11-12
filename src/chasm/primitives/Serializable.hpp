@@ -48,6 +48,5 @@ namespace boost::serialization{
 }
 
 BOOST_SERIALIZATION_ASSUME_ABSTRACT(chasm::primitives::Serializable)
-BOOST_CLASS_EXPORT(chasm::primitives::Serializable)
 
 #endif //CHASM_SERIALIZABLE_H

@@ -5,7 +5,7 @@
 #ifndef CHASM_UTXO_H
 #define CHASM_UTXO_H
 
-#include <chasm/common/types.h>
+#include <chasm/common/types.hpp>
 #include <chasm/primitives/Serializable.hpp>
 
 namespace chasm::primitives::transaction{
@@ -53,7 +53,5 @@ namespace boost::serialization{
         ar & txo.index_;
     }
 }
-
-BOOST_CLASS_EXPORT(chasm::primitives::transaction::TXO)
 
 #endif //CHASM_UTXO_H
