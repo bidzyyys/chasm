@@ -46,7 +46,7 @@ Another important factor are fees (in xpeer currency) - for adding an offer, for
 than simple transfers, so miners have more expensive computations. This is the way to make the offer valid in a blockchain faster - the more mining fee,
 the more miners who want to catch it. It is worth mentioning that the offer becomes visible only when is included in xpeer's blockchain. The same with incentive for adding
 a confirmation block, which requires the most computations in our protocol. A deposit is a kind of protection for cheating. When the side of exchange plays the game, it is handed back. 
-There is also another vital information - timeout. Timeout says how much time an offer is valid and, in case of acceptance, how much time sides have for an exchange then.
+There is also another vital information - timeout. Timeout says how much time an offer is valid and, in case of match, how much time sides have for an exchange then.
 The offer has one more additional field - nonce. Once the fields has been set, the offer is hashed and the hash becomes an id of the exchange. One cannot send an offer with an id of some other transaction - if your offer's id is a duplicate, please adjust the nonce field.
 
 #### Taking an offer
@@ -56,8 +56,8 @@ The offer has one more additional field - nonce. Once the fields has been set, t
    </p>
 
 Taking an offer means that one find an offer and is willing to exchange its money. That info makes some kind of a contract between those two sides, each of them agrees to
-send funds on time. In our protocol it means that an acceptance transaction is involved into xpeer's blockchain. In addition to inputs and outputs lists, acceptance transaction
-contains hash of the offer, specifies taker's address for income and can be created only if matching offer exists in our blockchain. To make an acceptance, user has to send fees
+send funds on time. In our protocol it means that a match transaction is involved into xpeer's blockchain. In addition to inputs and outputs lists, match transaction
+contains hash of the offer, specifies taker's address for income and can be created only if matching offer exists in our blockchain. To make a match, user has to send fees
 that are the same as in the offer.
 
 
@@ -80,7 +80,7 @@ That deposit is the same as the one that user want to get back. It is connected 
 the time for an exchange is out.
 
 In case of unaccepted offer, the way of getting money back is quite similar. Maker has to specify hash of the offer and pay transaction fee and a __deposit__. If there is no 
-offer acceptance the deposit and the fee for a confirmation block is unlocked, in other case those deposits and fees are finally blocked. 
+offer match the deposit and the fee for a confirmation block is unlocked, in other case those deposits and fees are finally blocked. 
 
 Both results are included into xpeer's blockchain as a kind of transaction. 
 
@@ -111,8 +111,8 @@ Each transaction (beside first in the block) must take inputs (at least one) and
    1. __Minting transaction__ - first transaction in the block, takes no inputs, but produces outputs. No additional data is stored.
    1. __Simple transfer__ - transaction only takes inputs and produces outputs. No additional data is needed.
    1. __Exchange offer__ - transaction takes inputs, produces outputs (two of special type). The additional data describes the exchange offer.
-   1. __Offer acceptance__ - transaction takes inputs, produces outputs (two of special type). The additional data describes the offer that is accepted. Containing this tx in a block defines the timeouts.
-   1. __Exchange confirmation__ - as inputs takes fees (ones of the special outputs) from the exchange offer and its acceptance, produces outputs (one of deposit type). The additional data describes which exchange is to be confirmed and proves of the exchange proper execution.
+   1. __Offer match__ - transaction takes inputs, produces outputs (two of special type). The additional data describes the offer that is accepted. Containing this tx in a block defines the timeouts.
+   1. __Exchange confirmation__ - as inputs takes fees (ones of the special outputs) from the exchange offer and its match, produces outputs (one of deposit type). The additional data describes which exchange is to be confirmed and proves of the exchange proper execution.
    1. __Deposit unlock__ - similar to the previous one, besides that the additional data contains the proof of only one side of the exchange had been executed.
 
 
@@ -125,7 +125,7 @@ Each transaction should leave some fee for the miner.
 
 ### Exchange timeouts
 The protocol specifies timeout for the transactions to be held. We must provide those timeouts in order to secure funds of a non-malicious player, when confronted with a malicious. The timeouts ensure that the honest player will have his funds blocked and they will be returned after the timeouts.
-We introduce two timeouts and both are counted from the time the offer acceptance tx has been included in a block.
+We introduce two timeouts and both are counted from the time the offer match tx has been included in a block.
 The first timeout is one week - within this time both parties must make transaction on the external chains.
 The second timeout is two weeks - in case the exchange did not finish successfully, after this time the money will be returned to the honest parties. This is also the time, when one can prove its honesty and get the deposit back. This takes very long, but only this ensures that each transaction will be included in its blockchain and will then be of trust (ex. forks, reorgs). 
 
@@ -231,10 +231,10 @@ A transaction of any kind can take outputs of type 1 and 2 without any restricti
         <img src="/docs/images/offer.png" alt="Image" />
    </p>
 
-   __Acceptance__
+   __Match__
 
    <p align="center">
-        <img src="/docs/images/acceptance.png" alt="Image" />
+        <img src="/docs/images/match.png" alt="Image" />
    </p>
 
    __Confirmation__
