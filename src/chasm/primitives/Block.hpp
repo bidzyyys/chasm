@@ -15,6 +15,16 @@
 #include "Header.hpp"
 
 namespace chasm::primitives {
+    class Block;
+}
+
+namespace boost::serialization {
+    template<typename Archive>
+    void serialize(Archive &ar, chasm::primitives::Block &block,
+                   unsigned int version);
+}
+
+namespace chasm::primitives {
 
     /*!
      * \brief Set of transactions (aka. Block)
@@ -45,14 +55,34 @@ namespace chasm::primitives {
 
         ~Block() override = default;
 
+        bool operator==(const Block &rh) const;
+
     private:
+        friend class boost::serialization::access;
+
+
+        template<typename Archive>
+        friend void boost::serialization::serialize(Archive &ar, Block &block,
+                       unsigned int version);
+
+
         using signed_tx_t = chasm::primitives::transaction::SignedTransaction;
         
         Header header_;
-//        std::list<uptr_t<signed_tx_t>> transactions_; //<! List of transactions included in the block
+
+        std::list<uptr_t<signed_tx_t>> transactions_; //<! List of transactions included in the block
 
     };
 }
 
+namespace boost::serialization {
+    template<typename Archive>
+    void serialize(Archive &ar, chasm::primitives::Block &block,
+                   unsigned int version){
+        ar & boost::serialization::base_object<chasm::primitives::Serializable>(block);
+        ar & block.header_;
+        ar & block.transactions_;
+    }
+}
 
 #endif //CHASM_BLOCK_H

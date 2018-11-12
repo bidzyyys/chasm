@@ -47,7 +47,9 @@ namespace chasm::primitives::transaction {
         using proof_t = std::vector<std::byte>;
 
         hash_t offerHash_;
+
         token_t token_;
+
         uptr_t<proof_t> proof_;
 
         out_idx_t bailIndex_;
