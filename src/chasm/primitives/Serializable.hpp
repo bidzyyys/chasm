@@ -12,12 +12,12 @@
 #include <boost/serialization/export.hpp>
 #include <vector>
 
-namespace chasm::primitives{
+namespace chasm::primitives {
     class Serializable;
 }
 
-namespace boost::serialization{
-    template <typename Archive>
+namespace boost::serialization {
+    template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::Serializable &obj, unsigned int version);
 }
 
@@ -40,10 +40,10 @@ namespace chasm::primitives {
     };
 }
 
-namespace boost::serialization{
-    template <typename Archive>
+namespace boost::serialization {
+    template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::Serializable &obj,
-            unsigned int version){
+                   unsigned int version) {
     }
 }
 

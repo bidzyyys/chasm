@@ -10,7 +10,7 @@
 #include <list>
 
 #include "chasm/primitives/transaction/SignedTransaction.hpp"
-#include "chasm/common/types.hpp"
+#include "chasm/types.hpp"
 #include "Serializable.hpp"
 #include "Header.hpp"
 
@@ -46,9 +46,10 @@ namespace chasm::primitives {
         ~Block() override = default;
 
     private:
-
+        using signed_tx_t = chasm::primitives::transaction::SignedTransaction;
+        
         Header header_;
-//        std::list<std::unique_ptr<chasm::primitives::transaction::SignedTransaction> > transactions_; //<! List of transactions included in the block
+//        std::list<uptr_t<signed_tx_t>> transactions_; //<! List of transactions included in the block
 
     };
 }

@@ -4,10 +4,10 @@
 
 #include "Transaction.hpp"
 
+using namespace chasm;
 using namespace chasm::primitives;
-using namespace chasm::common::types;
 
 bool Transaction::operator==(const Transaction &rh) const {
     return compare_list_of_ptrs(inputs_, rh.inputs_) &&
-            compare_list_of_ptrs(outputs_, rh.outputs_);
+           compare_list_of_ptrs(outputs_, rh.outputs_);
 }

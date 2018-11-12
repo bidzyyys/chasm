@@ -4,8 +4,6 @@
 
 #include "chasm/primitives/transaction/Input.hpp"
 
-#include "Input.hpp"
-
 using namespace chasm::primitives::transaction;
 
 bool Input::operator==(const Input &rh) const {

@@ -9,7 +9,7 @@
 #include "chasm/primitives/transaction/UnlockDepositTransaction.hpp"
 
 using namespace chasm::primitives::transaction;
-using namespace chasm::common::types;
+using namespace chasm::types;
 
 BOOST_AUTO_TEST_SUITE(primitives_unlock_deposit_transaction)
 

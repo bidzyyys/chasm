@@ -9,7 +9,7 @@
 #include "chasm/primitives/Transaction.hpp"
 
 using namespace chasm::primitives;
-using namespace chasm::common::types;
+using namespace chasm::types;
 
 BOOST_AUTO_TEST_SUITE(primitives_transaction)
 

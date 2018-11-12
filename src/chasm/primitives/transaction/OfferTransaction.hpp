@@ -6,13 +6,13 @@
 #define CHASM_OFFER_TRANSACTION_H
 
 #include <chasm/primitives/Transaction.hpp>
-#include <chasm/common/tokens.hpp>
+#include <chasm/tokens/Token.hpp>
 
-namespace chasm::primitives::transaction{
+namespace chasm::primitives::transaction {
     class OfferTransaction;
 }
 
-namespace boost::serialization{
+namespace boost::serialization {
     template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::transaction::OfferTransaction &tx,
                    unsigned int version);
@@ -41,25 +41,25 @@ namespace chasm::primitives::transaction {
 
         template<typename Archive>
         friend void boost::serialization::serialize(Archive &ar, OfferTransaction &tx,
-                       unsigned int version);
+                                                    unsigned int version);
 
         using nonce_t = uint16_t;
 
-        common::types::token_t tokenIn_; //!< Token being offered
-        common::types::value_t valueIn_; //!< Value being offered
+        token_t tokenIn_; //!< Token being offered
+        value_t valueIn_; //!< Value being offered
 
-        common::types::token_t tokenOut_; //!< Token being demanded
-        common::types::value_t valueOut_; //!< Value being demanded
+        token_t tokenOut_; //!< Token being demanded
+        value_t valueOut_; //!< Value being demanded
 
-        common::types::address_t address_; //!< Receiver's address (on the blockchain where the exchange happens)
+        address_t address_; //!< Receiver's address (on the blockchain where the exchange happens)
 
         //! Time in seconds how long will the offer be 'matchable',
         //! starting from the timestamp of the block in which the transaction was included in.
-        common::types::timestamp_t offerTimeout_;
+        timestamp_t offerTimeout_;
         nonce_t nonce_; //!< used to adjust a hash of an offer. \b Note: it is not of the same type as \ref Block::nonce_t
 
-        common::types::out_idx_t confirmationFeeIndex_; //!< Index of confirmation fee. The output must be of type \b FeeOutput
-        common::types::out_idx_t bailIndex_; //!< Index of bail
+        out_idx_t confirmationFeeIndex_; //!< Index of confirmation fee. The output must be of type \b FeeOutput
+        out_idx_t bailIndex_; //!< Index of bail
     };
 
 }
@@ -67,7 +67,7 @@ namespace chasm::primitives::transaction {
 namespace boost::serialization {
     template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::transaction::OfferTransaction &tx,
-                   unsigned int version){
+                   unsigned int version) {
         ar & boost::serialization::base_object<chasm::primitives::Transaction>(tx);
         ar & tx.tokenIn_;
         ar & tx.valueIn_;
