@@ -8,14 +8,14 @@
 #include <chasm/common/types.hpp>
 #include "Serializable.hpp"
 
-namespace chasm::primitives{
+namespace chasm::primitives {
     class Header;
 }
 
-namespace boost::serialization{
+namespace boost::serialization {
     template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::Header &header,
-                    unsigned int version);
+                   unsigned int version);
 }
 
 namespace chasm::primitives {
@@ -30,7 +30,7 @@ namespace chasm::primitives {
 
         template<typename Archive>
         friend void boost::serialization::serialize(Archive &ar, Header &header,
-                unsigned int version);
+                                                    unsigned int version);
 
         common::types::hash_t prev_tx_hash_;
 
@@ -45,10 +45,10 @@ namespace chasm::primitives {
 }
 
 
-namespace boost::serializable{
-    template <typename Archive>
+namespace boost::serialization {
+    template<typename Archive>
     void serialize(Archive &ar, chasm::primitives::Header &header,
-            unsigned int version){
+                   unsigned int version) {
         ar & boost::serialization::base_object<chasm::primitives::Serializable>(header);
         ar & header.prev_tx_hash_;
         ar & header.merkle_tree_root_;
