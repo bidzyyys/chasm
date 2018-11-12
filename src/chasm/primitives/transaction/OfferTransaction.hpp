@@ -80,6 +80,5 @@ namespace boost::serialization {
         ar & tx.bailIndex_;
     }
 }
-BOOST_CLASS_EXPORT(chasm::primitives::transaction::OfferTransaction)
 
 #endif //CHASM_OFFER_TRANSACTION_H

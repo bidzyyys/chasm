@@ -62,6 +62,5 @@ namespace boost::serialization{
     }
 }
 
-BOOST_CLASS_EXPORT(chasm::primitives::transaction::MatchTransaction)
 
 #endif //CHASM_MATCH_TRANSACTION_H

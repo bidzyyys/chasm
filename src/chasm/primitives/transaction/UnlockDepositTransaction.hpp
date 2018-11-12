@@ -64,6 +64,5 @@ namespace boost::serialization {
         ar & tx.bailIndex_;
     }
 }
-BOOST_CLASS_EXPORT(chasm::primitives::transaction::UnlockDepositTransaction)
 
 #endif //CHASM_UNLOCK_DEPOSIT_TRANSACTION_H

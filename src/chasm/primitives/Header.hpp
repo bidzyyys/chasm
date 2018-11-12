@@ -58,7 +58,4 @@ namespace boost::serialization {
     }
 }
 
-
-BOOST_CLASS_EXPORT(chasm::primitives::Header)
-
 #endif //CHASM_HEADER_H

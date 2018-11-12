@@ -54,6 +54,4 @@ namespace boost::serialization{
     }
 }
 
-BOOST_CLASS_EXPORT(chasm::primitives::transaction::TXO)
-
 #endif //CHASM_UTXO_H
