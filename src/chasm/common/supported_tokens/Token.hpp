@@ -6,6 +6,8 @@
 #define CHASM_TOKENS_HPP
 
 #include <memory>
+#include <vector>
+#include <cstddef>
 
 namespace chasm::common::tokens{
 
