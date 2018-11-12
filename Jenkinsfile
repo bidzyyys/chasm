@@ -12,6 +12,14 @@ pipeline {
                 sh 'mkdir -p build'
             }
         }
+
+        stage ('Pre-analysis') {
+            steps {
+                sh 'cppcheck --enable=all --inconclusive --xml --xml-version=2 `git ls-files "*.hpp" "*.cpp"` 2> cppcheck.xml'
+                publishCppcheck pattern:'cppcheck.xml'
+                }
+        }
+
         stage('Build') {
             steps {
                 sh '''
@@ -27,16 +35,6 @@ pipeline {
                    cd build &&
                    ctest -R all
                 '''
-            }
-        }
-        stage('Coverage') {
-            steps{
-                sh 'echo Coverage'
-            }
-        }
-        stage('Linter'){
-            steps{
-                sh 'echo Linter'
             }
         }
     }
