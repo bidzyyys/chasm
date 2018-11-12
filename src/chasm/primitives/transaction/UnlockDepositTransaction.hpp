@@ -8,6 +8,16 @@
 #include <chasm/primitives/Transaction.hpp>
 #include <vector>
 
+namespace chasm::primitives::transaction{
+    class UnlockDepositTransaction;
+}
+
+namespace boost::serialization{
+    template<typename Archive>
+    void serialize(Archive &ar, chasm::primitives::transaction::UnlockDepositTransaction &tx,
+                    unsigned int version);
+}
+
 namespace chasm::primitives::transaction {
 
     /*! \class UnlockDepositTransaction
@@ -21,8 +31,18 @@ namespace chasm::primitives::transaction {
      *  and the confirmation fee should unlocked.
      */
     class UnlockDepositTransaction : public Transaction {
+    public:
+        ~UnlockDepositTransaction() override = default;
+
+        bool operator==(const UnlockDepositTransaction &rh) const;
 
     private:
+        friend class boost::serialization::access;
+
+        template<typename Archive>
+        friend void boost::serialization::serialize(Archive &ar, UnlockDepositTransaction &tx,
+                       unsigned int version);
+
         using proof_t = std::vector<std::byte>;
 
         common::types::hash_t offerHash_;
@@ -32,5 +52,18 @@ namespace chasm::primitives::transaction {
         common::types::out_idx_t bailIndex_;
     };
 }
+
+namespace boost::serialization {
+    template<typename Archive>
+    void serialize(Archive &ar, chasm::primitives::transaction::UnlockDepositTransaction &tx,
+                   unsigned int version) {
+        ar & boost::serialization::base_object<chasm::primitives::Transaction>(tx);
+        ar & tx.offerHash_;
+        ar & tx.token_;
+        ar & tx.proof_;
+        ar & tx.bailIndex_;
+    }
+}
+BOOST_CLASS_EXPORT(chasm::primitives::transaction::UnlockDepositTransaction)
 
 #endif //CHASM_UNLOCK_DEPOSIT_TRANSACTION_H

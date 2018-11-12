@@ -7,6 +7,16 @@
 
 #include <chasm/primitives/Transaction.hpp>
 
+namespace chasm::primitives::transaction{
+    class MatchTransaction;
+}
+
+namespace boost::serialization{
+    template<typename Archive>
+    void serialize(Archive &ar, chasm::primitives::transaction::MatchTransaction &tx,
+                   unsigned int version);
+}
+
 namespace chasm::primitives::transaction {
 
     /*!
@@ -20,15 +30,38 @@ namespace chasm::primitives::transaction {
 
         ~MatchTransaction() override = default;
 
+        bool operator==(const MatchTransaction &rh) const;
+
     private:
+        friend class boost::serialization::access;
+
+        template<typename Archive>
+        friend void boost::serialization::serialize(Archive &ar, MatchTransaction &tx,
+                       unsigned int version);
 
         common::types::hash_t offerHash_; //!< Hash of the accepted offer
+
         common::types::address_t address_; //!< Receiver's address (on the blockchain where the exchange happens)
 
         common::types::out_idx_t confirmationFeeIdx_; //!< Index of confirmation fee. The output must be of type \b FeeOutput
+
         common::types::out_idx_t bailIdx_; //!< Index of a bail.
 
     };
 }
+
+namespace boost::serialization{
+    template<typename Archive>
+    void serialize(Archive &ar, chasm::primitives::transaction::MatchTransaction &tx,
+                   unsigned int version){
+        ar & boost::serialization::base_object<chasm::primitives::Transaction>(tx);
+        ar & tx.offerHash_;
+        ar & tx.address_;
+        ar & tx.confirmationFeeIdx_;
+        ar & tx.bailIdx_;
+    }
+}
+
+BOOST_CLASS_EXPORT(chasm::primitives::transaction::MatchTransaction)
 
 #endif //CHASM_MATCH_TRANSACTION_H
