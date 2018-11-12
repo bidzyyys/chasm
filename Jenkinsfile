@@ -25,17 +25,27 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh '''
-                   cd build &&
-                   ctest -R all
-                '''
+                sh './build/tests/all_unit_tests --log_level=all --report_level=no --log_format=XML > test_results.xml'
+            }
+            post {
+                always {
+                    xunit (
+                        thresholds: [ skipped(failureThreshold: '0'), failed(failureThreshold: '0') ],
+                        tools: [ BoostTest(pattern: 'test_results.xml') ]
+                    )
+                }
             }
         }
+
 
         stage ('CppCheck') {
             steps {
                 sh 'cppcheck --enable=all --inconclusive --xml --xml-version=2 `git ls-files "*.hpp" "*.cpp"` 2> cppcheck.xml'
-                publishCppcheck pattern:'cppcheck.xml'
+            }
+            post {
+                always {
+                    publishCppcheck pattern:'cppcheck.xml'
+                }
             }
         }
 
