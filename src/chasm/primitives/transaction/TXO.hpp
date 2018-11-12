@@ -5,7 +5,7 @@
 #ifndef CHASM_UTXO_H
 #define CHASM_UTXO_H
 
-#include <chasm/common/types.h>
+#include <chasm/common/types.hpp>
 #include <chasm/primitives/Serializable.hpp>
 
 namespace chasm::primitives::transaction{

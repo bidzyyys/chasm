@@ -7,7 +7,7 @@
 
 #include <cstdint>
 #include <boost/optional.hpp>
-#include <chasm/common/types.h>
+#include <chasm/common/types.hpp>
 #include "TXO.hpp"
 
 namespace chasm::primitives::transaction{

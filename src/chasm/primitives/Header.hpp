@@ -5,7 +5,7 @@
 #ifndef CHASM_HEADER_H
 #define CHASM_HEADER_H
 
-#include <chasm/common/types.h>
+#include <chasm/common/types.hpp>
 #include "Serializable.hpp"
 
 namespace chasm::primitives{

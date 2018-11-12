@@ -5,7 +5,7 @@
 #ifndef CHASM_OUTPUT_H
 #define CHASM_OUTPUT_H
 
-#include <chasm/common/types.h>
+#include <chasm/common/types.hpp>
 #include <chasm/primitives/Serializable.hpp>
 
 namespace chasm::primitives::transaction{
@@ -126,6 +126,3 @@ BOOST_CLASS_EXPORT(chasm::primitives::transaction::SimpleOutput)
 BOOST_CLASS_EXPORT(chasm::primitives::transaction::FeeOutput)
 
 #endif //CHASM_OUTPUT_H
-
-
-//FIXME: change headers into .hpp

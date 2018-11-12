@@ -10,7 +10,7 @@
 #include <list>
 
 #include "chasm/primitives/transaction/SignedTransaction.hpp"
-#include "chasm/common/types.h"
+#include "chasm/common/types.hpp"
 #include "Serializable.hpp"
 #include "Header.hpp"
 
