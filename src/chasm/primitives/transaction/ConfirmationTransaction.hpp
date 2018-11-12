@@ -23,13 +23,10 @@ namespace chasm::primitives::transaction {
         ~ConfirmationTransaction() override = default;
 
     private:
-
-        using proof_t = std::vector<std::byte>; //TODO: change
-
         common::types::hash_t offerHash_;
 
-        proof_t proofTokenIn_;
-        proof_t proofTokenOut_;
+        std::unique_ptr<chasm::common::types::proof_t> proofTokenIn_;
+        std::unique_ptr<chasm::common::types::proof_t> proofTokenOut_;
 
     };
 }

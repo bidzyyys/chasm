@@ -9,7 +9,7 @@
 #include <cstddef>
 #include <array>
 #include <list>
-#include "tokens.hpp"
+#include "chasm/common/supported_tokens/Token.hpp"
 
 namespace chasm::common::types {
 
@@ -28,7 +28,9 @@ namespace chasm::common::types {
 
     using out_idx_t = uint16_t; // A transaction cannot have more outputs, as there is block size limitation
     using in_idx_t = out_idx_t;
-    using token_t = chasm::common::Token;
+
+    using token_t = chasm::common::tokens::Token::Tokens;
+    using proof_t = chasm::common::tokens::Token::TransactionInclusionProof;
 
     using timestamp_t = uint64_t;
 

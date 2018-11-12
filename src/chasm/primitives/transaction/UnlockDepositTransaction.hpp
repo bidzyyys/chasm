@@ -47,7 +47,7 @@ namespace chasm::primitives::transaction {
 
         common::types::hash_t offerHash_;
         common::types::token_t token_;
-        proof_t proof_;
+        std::unique_ptr<common::types::proof_t> proof_;
 
         common::types::out_idx_t bailIndex_;
     };

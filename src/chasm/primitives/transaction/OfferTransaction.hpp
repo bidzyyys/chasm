@@ -6,7 +6,7 @@
 #define CHASM_OFFER_TRANSACTION_H
 
 #include <chasm/primitives/Transaction.hpp>
-#include <chasm/common/tokens.hpp>
+#include <chasm/common/supported_tokens/Token.hpp>
 
 namespace chasm::primitives::transaction{
     class OfferTransaction;
