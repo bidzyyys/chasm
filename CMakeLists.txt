@@ -6,10 +6,10 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "-pthread")
 endif()
 
-set(CMAKE_CXX_FLAGS "-Werror -pedantic")
+set(CMAKE_CXX_FLAGS "-Werror -pedantic -Wall -lssl -lcrypto")
 
 find_package(Boost 1.68 REQUIRED COMPONENTS unit_test_framework serialization)
-find_package(OpenSSL 1.0 REQUIRED COMPONENTS Crypto)
+find_package(OpenSSL 1.1.0 REQUIRED COMPONENTS Crypto)
 
 include_directories(src/)
 include_directories(${Boost_INCLUDE_DIRS})

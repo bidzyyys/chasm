@@ -5,16 +5,18 @@
 #ifndef CHASM_OPENSSL_H
 #define CHASM_OPENSSL_H
 
-#include <openssl/sha.h>
+#include <openssl/hmac.h>
+#include <openssl/evp.h>
 #include <array>
 #include <cstddef>
 
 namespace chasm::cryptography {
 
-    using hash256_t = std::array<std::byte, SHA256_DIGEST_LENGTH>;
+    const unsigned int HASH256 = 32;
+    using hash256_t = std::array<std::byte, HASH256>;
 
     /*!
-     * \brief Basic transaction
+     * \brief OpenSSL wrapper
      */
     class OpenSSL {
     public:
@@ -23,9 +25,11 @@ namespace chasm::cryptography {
         virtual ~OpenSSL() = default;
 
         template <typename T>
-        hash256_t generateSHA256(T const& collection){
+        hash256_t sha256(T const &collection){
             return hash256_t();
         }
+        hash256_t test();
+
     private:
 
     };

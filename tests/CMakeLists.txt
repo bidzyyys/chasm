@@ -5,7 +5,7 @@
 file(GLOB_RECURSE TEST_SOURCES "*.cpp")
 add_executable(all_unit_tests ${TEST_SOURCES})
 target_include_directories(all_unit_tests PRIVATE ${Boost_INCLUDE_DIRS})
-target_link_libraries(all_unit_tests ${Boost_LIBRARIES} primitives cryptography)
+target_link_libraries(all_unit_tests ${Boost_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARY} primitives cryptography)
 
 add_test(all all_unit_tests)
 
