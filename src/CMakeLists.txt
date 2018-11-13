@@ -16,5 +16,5 @@ add_library(supported_tokens ${SUPPORTED_TOKENS_SOURCES})
 
 ### EXECUTABLES
 add_executable(chasm main.cpp)
-target_link_libraries(chasm primitives serialization)
+target_link_libraries(chasm primitives serialization ${OPENSSL_CRYPTO_LIBRARY})
 

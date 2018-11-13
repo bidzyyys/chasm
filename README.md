@@ -14,6 +14,7 @@ The following packages must be installed:
 ```
 leveldb
 boost 1.68.0
+openssl 1.0
 ```
 
 ## Protocol
