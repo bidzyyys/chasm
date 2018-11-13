@@ -13,6 +13,9 @@ add_library(serialization ${SERIALIZATION_SOURCES})
 file(GLOB_RECURSE SUPPORTED_TOKENS_SOURCES "chasm/tokens/*.cpp")
 add_library(supported_tokens ${SUPPORTED_TOKENS_SOURCES})
 
+# cryptography
+file(GLOB_RECURSE CRYPTOGRAPHY_SOURCES "chasm/cryptography/*.cpp")
+add_library(cryptography ${CRYPTOGRAPHY_SOURCES})
 
 ### EXECUTABLES
 add_executable(chasm main.cpp)
