@@ -5,7 +5,7 @@
 #ifndef CHASM_CONFIRMATION_TRANSACTION_H
 #define CHASM_CONFIRMATION_TRANSACTION_H
 
-#include <chasm/primitives/Serializable.hpp>
+#include <chasm/serialization/Serializable.hpp>
 #include <chasm/types.hpp>
 #include <chasm/tokens/Token.hpp>
 
@@ -43,10 +43,10 @@ namespace chasm::primitives::transaction {
                        unsigned int version);
 
 
-        types::hash_t offerHash_;
+        hash_t offerHash_; //!< Exchange to be confirmed
 
-        uptr_t<types::proof_t> proofTokenIn_;
-        uptr_t<types::proof_t> proofTokenOut_;
+        uptr_t<proof_t> proofTokenIn_; //!< Proof of tx inclusion (seller's transaction)
+        uptr_t<proof_t> proofTokenOut_; //!< Proof of tx inclusion (buyer's transaction)
 
     };
 }

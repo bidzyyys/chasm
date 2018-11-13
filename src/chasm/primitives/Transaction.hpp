@@ -8,7 +8,7 @@
 #include <list>
 #include <chasm/primitives/transaction/Output.hpp>
 #include "chasm/primitives/transaction/Input.hpp"
-#include "chasm/primitives/Serializable.hpp"
+#include "chasm/serialization/Serializable.hpp"
 
 namespace chasm::primitives {
     class Transaction;
@@ -51,9 +51,9 @@ namespace chasm::primitives {
         using input_t = transaction::Input;
         using output_t = transaction::Output;
 
-        std::list<uptr_t<input_t>> inputs_;
+        std::list<uptr_t<input_t>> inputs_; //!< Ordered list of inputs. The order determines the order of signatures
 
-        std::list<uptr_t<output_t>> outputs_;
+        std::list<uptr_t<output_t>> outputs_; //!< Ordered list of outputs. The order determines future usages as inputs.
     };
 }
 

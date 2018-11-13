@@ -6,7 +6,7 @@
 #define CHASM_UTXO_H
 
 #include <chasm/types.hpp>
-#include <chasm/primitives/Serializable.hpp>
+#include <chasm/serialization/Serializable.hpp>
 
 namespace chasm::primitives::transaction {
     class TXO;

@@ -45,7 +45,7 @@ namespace chasm::primitives::transaction {
 
         out_idx_t confirmationFeeIdx_; //!< Index of confirmation fee. The output must be of type \b FeeOutput
 
-        out_idx_t bailIdx_; //!< Index of a bail.
+        out_idx_t bailIdx_; //!< Index of bail.
 
     };
 }

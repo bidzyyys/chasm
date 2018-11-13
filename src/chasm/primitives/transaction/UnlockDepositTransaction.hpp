@@ -33,6 +33,11 @@ namespace chasm::primitives::transaction {
      */
     class UnlockDepositTransaction : public Transaction {
     public:
+        enum class TransactionSide : uint8_t {
+            seller,
+            buyer
+        };
+
         ~UnlockDepositTransaction() override = default;
 
         bool operator==(const UnlockDepositTransaction &rh) const;
@@ -44,15 +49,10 @@ namespace chasm::primitives::transaction {
         friend void boost::serialization::serialize(Archive &ar, UnlockDepositTransaction &tx,
                                                     unsigned int version);
 
-        using proof_t = std::vector<std::byte>;
-
-        hash_t offerHash_;
-
-        token_t token_;
-
-        uptr_t<proof_t> proof_;
-
-        out_idx_t bailIndex_;
+        hash_t offerHash_; //!< Exchange id
+        TransactionSide side_; //!< Either seller or buyer. This side of the exchange will be checked
+        uptr_t<proof_t> proof_; //!< Proof of tx inclusion
+        out_idx_t bailIndex_; //!< Index of bail (in outputs)
     };
 }
 
@@ -62,7 +62,7 @@ namespace boost::serialization {
                    unsigned int version) {
         ar & boost::serialization::base_object<chasm::primitives::Transaction>(tx);
         ar & tx.offerHash_;
-        ar & tx.token_;
+        ar & tx.side_;
         ar & tx.proof_;
         ar & tx.bailIndex_;
     }
