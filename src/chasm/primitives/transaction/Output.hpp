@@ -6,50 +6,20 @@
 #define CHASM_OUTPUT_H
 
 #include <chasm/types.hpp>
-#include <chasm/serialization/Serializable.hpp>
-
-namespace chasm::primitives::transaction {
-    class Output;
-
-    class SimpleOutput;
-
-    class FreeOutput;
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::Output &output,
-                   unsigned int version);
-
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::SimpleOutput &output,
-                   unsigned int version);
-
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::FreeOutput &output,
-                   unsigned int version);
-}
 
 namespace chasm::primitives::transaction {
 
     /*!
      * \brief Base class for all kinds of outputs. Abstract.
      */
-    class Output : public Serializable {
+    class Output {
     public:
-        ~Output() override = 0;
+        virtual ~Output() = 0;
 
         bool operator==(const Output &rh) const;
 
     protected:
         types::value_t value_;
-
-    private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, Output &output,
-                                                    unsigned int version);
     };
 
     /*!
@@ -64,12 +34,6 @@ namespace chasm::primitives::transaction {
         bool operator==(const SimpleOutput &rh) const;
 
     private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, SimpleOutput &output,
-                                                    unsigned int version);
-
         types::address_t receiver_;
     };
 
@@ -89,40 +53,8 @@ namespace chasm::primitives::transaction {
         bool operator==(const FeeOutput &rh) const;
 
     private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, FeeOutput &output,
-                                                    unsigned int version);
-
         types::hash_t offerHash_;
     };
 
 }
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::Output &output,
-                   unsigned int version) {
-        ar & boost::serialization::base_object<chasm::primitives::Serializable>(output);
-        ar & output.value_;
-    }
-
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::SimpleOutput &output,
-                   unsigned int version) {
-        ar & boost::serialization::base_object<chasm::primitives::transaction::Output>(output);
-        ar & output.receiver_;
-    }
-
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::FeeOutput &output,
-                   unsigned int version) {
-        ar & boost::serialization::base_object<chasm::primitives::transaction::Output>(output);
-        ar & output.offerHash_;
-    }
-}
-
-BOOST_SERIALIZATION_ASSUME_ABSTRACT(chasm::primitives::transaction::Output)
-
 #endif //CHASM_OUTPUT_H

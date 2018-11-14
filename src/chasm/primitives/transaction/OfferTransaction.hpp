@@ -9,16 +9,6 @@
 #include <chasm/tokens/Token.hpp>
 
 namespace chasm::primitives::transaction {
-    class OfferTransaction;
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::OfferTransaction &tx,
-                   unsigned int version);
-}
-
-namespace chasm::primitives::transaction {
 
     /*!
      * \brief Transaction of offer type
@@ -37,11 +27,6 @@ namespace chasm::primitives::transaction {
         bool operator==(const OfferTransaction &rh) const;
 
     private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, OfferTransaction &tx,
-                                                    unsigned int version);
 
         using nonce_t = uint16_t;
 
@@ -62,23 +47,6 @@ namespace chasm::primitives::transaction {
         out_idx_t bailIndex_; //!< Index of bail
     };
 
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::OfferTransaction &tx,
-                   unsigned int version) {
-        ar & boost::serialization::base_object<chasm::primitives::Transaction>(tx);
-        ar & tx.tokenIn_;
-        ar & tx.valueIn_;
-        ar & tx.tokenOut_;
-        ar & tx.valueOut_;
-        ar & tx.address_;
-        ar & tx.offerTimeout_;
-        ar & tx.nonce_;
-        ar & tx.confirmationFeeIndex_;
-        ar & tx.bailIndex_;
-    }
 }
 
 #endif //CHASM_OFFER_TRANSACTION_H

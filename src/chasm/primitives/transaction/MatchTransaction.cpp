@@ -9,8 +9,8 @@ using namespace chasm::primitives::transaction;
 
 bool MatchTransaction::operator==(const MatchTransaction &rh) const {
     return Transaction::operator==(rh) &&
-            compare_collection(offerHash_, rh.offerHash_) &&
-            compare_collection(address_, rh.address_) &&
-            confirmationFeeIdx_ == rh.confirmationFeeIdx_ &&
-            bailIdx_ == rh.bailIdx_;
+           compare_collection(offerHash_, rh.offerHash_) &&
+           compare_collection(address_, rh.address_) &&
+           confirmationFeeIdx_ == rh.confirmationFeeIdx_ &&
+           bailIdx_ == rh.bailIdx_;
 }

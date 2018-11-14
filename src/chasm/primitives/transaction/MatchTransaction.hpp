@@ -8,16 +8,6 @@
 #include <chasm/primitives/Transaction.hpp>
 
 namespace chasm::primitives::transaction {
-    class MatchTransaction;
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::MatchTransaction &tx,
-                   unsigned int version);
-}
-
-namespace chasm::primitives::transaction {
 
     /*!
      * \brief Offer match transaction type
@@ -33,11 +23,6 @@ namespace chasm::primitives::transaction {
         bool operator==(const MatchTransaction &rh) const;
 
     private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, MatchTransaction &tx,
-                                                    unsigned int version);
 
         hash_t offerHash_; //!< Hash of the accepted offer
 
@@ -49,18 +34,5 @@ namespace chasm::primitives::transaction {
 
     };
 }
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::MatchTransaction &tx,
-                   unsigned int version) {
-        ar & boost::serialization::base_object<chasm::primitives::Transaction>(tx);
-        ar & tx.offerHash_;
-        ar & tx.address_;
-        ar & tx.confirmationFeeIdx_;
-        ar & tx.bailIdx_;
-    }
-}
-
 
 #endif //CHASM_MATCH_TRANSACTION_H

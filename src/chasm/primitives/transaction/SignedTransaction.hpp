@@ -8,16 +8,6 @@
 #include <chasm/primitives/Transaction.hpp>
 
 namespace chasm::primitives::transaction {
-    class SignedTransaction;
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::SignedTransaction &tx,
-                   unsigned int version);
-}
-
-namespace chasm::primitives::transaction {
 
     /*!
      * \brief A transaction with signatures
@@ -37,26 +27,11 @@ namespace chasm::primitives::transaction {
         bool operator==(const SignedTransaction &rh) const;
 
     private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, SignedTransaction &tx,
-                                                    unsigned int version);
-
         std::unique_ptr<Transaction> transaction_;
 
         std::list<uptr_t<signature_t>> signatures_;
     };
 
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::transaction::SignedTransaction &tx,
-                   unsigned int version) {
-        ar & tx.transaction_;
-        ar & tx.signatures_;
-    }
 }
 
 #endif //CHASM_SIGNED_TRANSACTION_HPP

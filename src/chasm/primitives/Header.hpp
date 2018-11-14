@@ -6,17 +6,6 @@
 #define CHASM_HEADER_H
 
 #include <chasm/types.hpp>
-#include "chasm/serialization/Serializable.hpp"
-
-namespace chasm::primitives {
-    class Header;
-}
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::Header &header,
-                   unsigned int version);
-}
 
 namespace chasm::primitives {
 
@@ -25,18 +14,13 @@ namespace chasm::primitives {
      *
      * \b Note: Hash of the block is a hash of the header.
      */
-    class Header : public Serializable {
+    class Header {
     public:
-        ~Header() override = default;
+//        ~Header() override = default;
 
         bool operator==(const Header &rh) const;
 
     private:
-        friend class boost::serialization::access;
-
-        template<typename Archive>
-        friend void boost::serialization::serialize(Archive &ar, Header &header,
-                                                    unsigned int version);
 
         hash_t prevTxHash_; //!< Pointer to the previous block
 
@@ -49,20 +33,6 @@ namespace chasm::primitives {
 
         difficulty_t difficulty_; //!< Number of leading bits of hash that must be zeroed
     };
-}
-
-
-namespace boost::serialization {
-    template<typename Archive>
-    void serialize(Archive &ar, chasm::primitives::Header &header,
-                   unsigned int version) {
-        ar & boost::serialization::base_object<chasm::primitives::Serializable>(header);
-        ar & header.prevTxHash_;
-        ar & header.merkleTreeRoot_;
-        ar & header.timestamp_;
-        ar & header.nonce_;
-        ar & header.difficulty_;
-    }
 }
 
 #endif //CHASM_HEADER_H
