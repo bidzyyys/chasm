@@ -6,7 +6,7 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_CXX_FLAGS "-pthread")
 endif()
 
-set(CMAKE_CXX_FLAGS "-Werror -pedantic -Wall")
+set(CMAKE_CXX_FLAGS "-Werror -pedantic")
 
 find_package(Boost 1.68 REQUIRED COMPONENTS unit_test_framework serialization)
 find_package(OpenSSL 1.0 REQUIRED COMPONENTS Crypto SSL)
