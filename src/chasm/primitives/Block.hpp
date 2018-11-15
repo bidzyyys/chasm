@@ -11,7 +11,6 @@
 
 #include "chasm/primitives/transaction/SignedTransaction.hpp"
 #include "chasm/types.hpp"
-#include "Header.hpp"
 
 namespace chasm::primitives {
 
@@ -48,8 +47,29 @@ namespace chasm::primitives {
 
     private:
 
+        /*!
+         * \brief Represents Block's header
+         *
+         * \b Note: Hash of the block is a hash of the header.
+         */
+        class Header {
+        public:
+
+        private:
+            hash_t prevTxHash_; //!< Pointer to the previous block
+
+            hash_t merkleTreeRoot_; //!< Merkle tree root of a tree made of included transactions
+
+            // TODO: must be higher than the timestamp of the previous block
+            timestamp_t timestamp_; //!< Timestamp of the current block
+
+            nonce_t nonce_; //!< Adjustable value. Used when mining new blocks
+
+            difficulty_t difficulty_; //!< Number of leading bits of hash that must be zeroed
+        };
+
         using signed_tx_t = chasm::primitives::transaction::SignedTransaction;
-        
+
         Header header_;
 
         std::list<uptr_t<signed_tx_t>> transactions_; //<! List of transactions included in the block
