@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <array>
 #include <list>
+#include <chasm/serialization/traits.hpp>
 
 #include "chasm/primitives/transaction/SignedTransaction.hpp"
 #include "chasm/types.hpp"
@@ -20,6 +21,7 @@ namespace chasm::primitives {
      */
     class Block {
     public:
+
 
         //! \brief adjusts nonce by adding 1 to the current value
 //        void adjustNonce();
@@ -41,9 +43,25 @@ namespace chasm::primitives {
          */
 //        std::optional<std::unique_ptr<Transaction>> tryAddTransaction(std::unique_ptr<Transaction> tx);
 
-        virtual ~Block() = default;
+        hash_t const &getPrevTxHash() const;
+
+        hash_t const &getMerkleTreeRoot() const;
+
+        timestamp_t getTimestamp() const;
+
+        nonce_t getNonce() const;
+
+        difficulty_t getDifficulty() const;
 
         bool operator==(const Block &rh) const;
+
+        virtual ~Block() = default;
+
+        using class_id_e = serialization::traits::classes::class_id;
+        using class_id_t = serialization::traits::classes::class_id_t<class_id_e::Block>;
+
+        using inheritance_t = serialization::traits::inheritance::is_root_t;
+
 
     private:
 
@@ -52,10 +70,7 @@ namespace chasm::primitives {
          *
          * \b Note: Hash of the block is a hash of the header.
          */
-        class Header {
-        public:
-
-        private:
+        struct Header {
             hash_t prevTxHash_; //!< Pointer to the previous block
 
             hash_t merkleTreeRoot_; //!< Merkle tree root of a tree made of included transactions

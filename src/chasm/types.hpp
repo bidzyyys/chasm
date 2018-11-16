@@ -33,7 +33,6 @@ namespace chasm::types {
     using in_idx_t = out_idx_t;
 
 
-
     using timestamp_t = uint64_t;
 
     template<typename T>

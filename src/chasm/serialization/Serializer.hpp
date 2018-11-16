@@ -9,82 +9,64 @@
 #include <type_traits>
 #include <vector>
 #include <iostream>
+#include "traits.hpp"
+#include "Archive.hpp"
 
 
 namespace chasm::serialization {
 
-    namespace classes {
-        enum class class_id : uint8_t {
-            Block,
-        };
-
-        template<class_id id>
-        struct class_id_t {
-            static const class_id value = id;
-        };
-
-        template <typename T>
-        struct class_id_trait{
-            using type = typename T::class_id_t;
-            static const class_id value = type::value;
-        };
-    }
-    namespace inheritance {
-        struct is_root_t {};
-
-        template<typename Base>
-        struct is_derived_t {};
-
-        template <typename T>
-        struct inheritance_trait{
-            using type = typename T::inheritance_t;
-        };
-
-        template <typename T>
-        using  inheritance_trait_t = typename inheritance_trait<T>::type;
-    }
+    using namespace chasm;
+    using namespace traits::classes;
+    using namespace traits::inheritance;
 
     class Serializer {
     public:
-        template <typename T>
-        std::vector<std::byte> serialize(T const& obj){
-            buffer_t buffer;
-            serialize(obj, buffer, inheritance::inheritance_trait_t<T>());
-            return buffer;
+        template<typename T>
+        std::vector<std::byte> serialize(T const &obj) {
+            OArchive a(*this);
+            serialize(a, obj, inheritance_trait_t<T>());
+            return a.getBuffer();
         }
 
     private:
-        using buffer_t = std::vector<std::byte>;
+        friend class Archive;
 
-        template <typename T>
-        void serialize(T const& obj, buffer_t& buffer, inheritance::is_root_t){
-            buffer.push_back(static_cast<std::byte>(classes::class_id_trait<T>::value));
-            serialize_fields(buffer, obj);
+        template<typename T>
+        void acceptReturn(Archive &archive, T const &obj) {
+            serialize(archive, obj, inheritance_trait_t<T>());
         }
 
-        template <typename T,
-                  typename B,
-                  typename = typename std::enable_if_t<
-                          std::is_base_of_v<B, T> && !std::is_same_v<B,T>
-                          >
-                  >
-        void serialize(T const& obj, buffer_t& buffer, inheritance::is_derived_t<B>){
-
-            buffer.push_back(static_cast<std::byte>(classes::class_id_trait<T>::value));
-            serialize(static_cast<B const&>(obj), buffer, inheritance::inheritance_trait_t<B>());
-            serialize_fields(buffer, obj);
-
+        template<typename Archive, typename T>
+        void serialize(Archive &a, T const &obj, is_root_t) {
+            a & static_cast<std::byte>(class_id_trait<T>::value);
+            serialize_fields(a, obj);
         }
 
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "NotImplementedFunctions"
-        template <typename T>
-        void serialize_fields(Serializer::buffer_t& buffer, T const& obj);
-#pragma clang diagnostic pop
+//        template<
+//                typename Archive,
+//                typename T,
+//                typename B,
+//                typename = typename std::enable_if_t<
+//                        std::is_base_of_v<B, T> && !std::is_same_v<B, T>
+//                >
+//        >
+//        void serialize(Archive &archive, T const &obj, buffer_t &buffer, is_derived_t<B>) {
+//
+//            archive & static_cast<std::byte>(classes::class_id_trait<T>::value)
+//            & static_cast<B const &>(obj), buffer, inheritance::inheritance_trait_t<B>();
+//
+//            serialize_fields(archive, obj);
+//
+//        }
+//
+        template<typename Archive, typename T>
+        void serialize_fields(Archive &archive, T const &obj);
 
+//
     };
 
 }
 
 #include "Serializer.tpp"
+
 #endif //CHASM_SERIALIZER_H
