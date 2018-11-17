@@ -35,11 +35,11 @@ BOOST_AUTO_TEST_SUITE(cryptography)
         BOOST_REQUIRE_EQUAL(crypto->bytesToHexString(array), hex);
     }
 
-    BOOST_AUTO_TEST_CASE(cryptoLibSHA256NoThrowTest){
+    BOOST_AUTO_TEST_CASE(sha256NoThrowTest){
         BOOST_CHECK_NO_THROW(crypto->sha256(std::vector<std::byte>(10)));
     }
 
-    BOOST_AUTO_TEST_CASE(SHA256VerificationOutput) {
+    BOOST_AUTO_TEST_CASE(sha256Test) {
 
         const std::unordered_map<std::string, std::string> test_hashes {
                 { "abc", "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad" },
@@ -48,16 +48,18 @@ BOOST_AUTO_TEST_SUITE(cryptography)
                 { "123456789", "15e2b0d3c33891ebb0f1ef609ec419420c20e320ce94c65fbc8c3312448eb225" }
         };
 
-        auto hash = crypto->sha256({(std::byte)'a', (std::byte)'b', (std::byte)'c'});
-        BOOST_REQUIRE_EQUAL(hash.size(), HASH256);
         for(auto it = test_hashes.begin(); it != test_hashes.end(); ++it) {
-            auto bytes = crypto->toBytes(it->first);
-            auto hash = crypto->sha256(bytes);
-            auto hex = crypto->bytesToHexString(hash);
-            BOOST_REQUIRE_EQUAL(hex, it->second);
+            auto data = crypto->toBytes(it->first);
+            auto hash_bytes = crypto->sha256(data);
+            auto hash_hex = crypto->bytesToHexString(hash_bytes);
+            BOOST_REQUIRE_EQUAL(hash_hex, it->second);
         }
-
     }
+
+    BOOST_AUTO_TEST_CASE(ECDHKeyGenNoThrowTest){
+        BOOST_CHECK_NO_THROW(crypto->generateECDHKeyPair());
+    }
+
 
 BOOST_AUTO_TEST_SUITE_END()
 

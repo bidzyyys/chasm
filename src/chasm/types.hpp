@@ -18,6 +18,7 @@ namespace chasm::types {
 
     using pub_key_t = std::array<std::byte, 33>;
     using priv_key_t = std::array<std::byte, 32>;
+    using key_pair_t = std::pair<chasm::types::priv_key_t, chasm::types::pub_key_t>;
 
     using signature_t = std::array<std::byte, 72>;
     using address_t = pub_key_t;
