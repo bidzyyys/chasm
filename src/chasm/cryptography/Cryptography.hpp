@@ -10,17 +10,27 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
+#include <openssl/bn.h>
 #include "chasm/types.hpp"
 
 namespace chasm::cryptography {
 
     const unsigned int HASH256 = 32;
+    const unsigned int PRIV_KEY = 32;
+    const unsigned int PUB_KEY_UNCOMPRESSED = 65;
+    const unsigned int PUB_KEY = 33;
 
     using evp_md_ctx_t = std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX *)>;
 
     using evp_pkey_ctx_t = std::unique_ptr<EVP_PKEY_CTX, void (*)(EVP_PKEY_CTX *)>;
 
     using evp_pkey_t = std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY *)>;
+
+    using ec_key_t = std::unique_ptr<EC_KEY, void(*)(EC_KEY *)>;
+
+    using bn_ctx_t = std::unique_ptr<BN_CTX, void(*)(BN_CTX *)>;
+
+    using pub_key_uncompressed_t = std::array<unsigned char, PUB_KEY_UNCOMPRESSED>;
 
     /*!
      * \brief Cryptography Library exception
@@ -82,9 +92,15 @@ namespace chasm::cryptography {
 
         static void freeEVP_PKEY(EVP_PKEY *evp_pkey);
 
+        static void freeEC_KEY(EC_KEY *ec_key);
+
+        static void freeBN_CTX(BN_CTX *bn_ctx);
+
+        bn_ctx_t getBN_CTX() const;
+
         evp_pkey_t generateECDHParams() const;
 
-        evp_pkey_t genPKey(evp_pkey_ctx_t &evp_pkey_ctx) const;
+        evp_pkey_t genEVP_PKEY(evp_pkey_ctx_t &evp_pkey_ctx) const;
 
         void initKeyGeneration(evp_pkey_ctx_t &evp_pkey_ctx) const;
 
@@ -105,6 +121,24 @@ namespace chasm::cryptography {
         void setECDHParamgenCurve(evp_pkey_ctx_t &evp_pkey_ctx, int nid) const;
 
         chasm::types::key_pair_t createECDHKey(evp_pkey_t &params) const;
+
+        chasm::types::key_pair_t extractECDHKeyPair(evp_pkey_t &pkey) const;
+
+        ec_key_t getECkeyfromEVP(evp_pkey_t &pkey) const;
+
+        chasm::types::priv_key_t getPrivateKey(ec_key_t &ec_key) const;
+
+        chasm::types::pub_key_t getPublicKey(ec_key_t &ec_key) const;
+
+        chasm::types::pub_key_t compressPublicKey(const pub_key_uncompressed_t &pub_key_uncompressed) const;
+
+        point_conversion_form_t getPointConversion(const EC_GROUP *ec_group) const;
+
+        const EC_GROUP * getEC_GROUP(ec_key_t &ec_key) const;
+
+        const EC_POINT * getEC_POINT(ec_key_t &ec_key) const;
+
+        const BIGNUM * getBIGNUM(ec_key_t &ec_key) const;
 
         template <typename T>
         void updateEVPDigest(evp_md_ctx_t &evp_ctx, T const &data) const {
