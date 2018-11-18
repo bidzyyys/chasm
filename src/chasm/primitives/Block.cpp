@@ -2,6 +2,7 @@
 // Created by Daniel Bigos on 11.11.18.
 //
 
+#include <ctime>
 #include "Block.hpp"
 
 using namespace chasm;
@@ -13,9 +14,8 @@ bool Block::operator==(const Block &rh) const {
     return true;
 }
 
-
 hash_t const &Block::getPrevTxHash() const {
-    return header_.prevTxHash_;
+    return header_.prevBlockHash;
 }
 
 hash_t const &Block::getMerkleTreeRoot() const {
@@ -33,3 +33,14 @@ nonce_t Block::getNonce() const {
 difficulty_t Block::getDifficulty() const {
     return header_.difficulty_;
 }
+
+
+Block::Block(chasm::hash_t prevBlock) {
+    header_.prevBlockHash = prevBlock;
+    header_.timestamp_ = static_cast<timestamp_t>(std::time(nullptr));
+    header_.nonce_ = 0;
+    header_.difficulty_ = 0;
+}
+
+Block::Block(hash_t prevBlock, hash_t merkleTreeRoot, timestamp_t timestamp, nonce_t nonce, difficulty_t difficulty)
+        : header_{prevBlock, merkleTreeRoot, timestamp, nonce, difficulty} {}

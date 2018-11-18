@@ -15,22 +15,61 @@ using namespace chasm::serialization;
 
 BOOST_AUTO_TEST_SUITE(block_serialization)
 
-    struct BlockFixture {
-        BlockFixture() : zeroedBlock() {
+    hash_t getSomeHash() {
+        hash_t someHash;
+        uint8_t i = 0x00;
+        for (auto &byte : someHash) byte = std::byte(++i);
+        return someHash;
+    }
+
+    struct EmptyBlockFixture {
+        EmptyBlockFixture() : block(getSomeHash(), getSomeHash(), timestamp, nonce, difficulty) {
+
+            serialized.push_back(std::byte(class_id::Block));
+
+            auto hash = getSomeHash();
+            serialized.insert(serialized.end(), hash.begin(), hash.end());
+            serialized.insert(serialized.end(), hash.begin(), hash.end());
+
+            serialized.push_back(std::byte(timestamp));
+            for(auto i = 1; i < sizeof(timestamp_t); ++i) serialized.push_back(std::byte(0x00));
+
+            serialized.push_back(std::byte(nonce));
+            for(auto i = 1; i < sizeof(nonce_t); ++i) serialized.push_back(std::byte(0x00));
+
+            serialized.push_back(std::byte(difficulty));
+            for(auto i = 1; i < sizeof(difficulty_t); ++i) serialized.push_back(std::byte(0x00));
 
         }
 
-        const Block zeroedBlock;
-        const bytes_t serializedZeroedBlock = std::vector<std::byte>(82, std::byte(0x00));
+        static const uint8_t timestamp = 1;
+        static const uint8_t nonce = 2;
+        static const uint8_t difficulty = 3;
+
+        Block block;
+        bytes_t serialized;
     };
 
 
-    BOOST_FIXTURE_TEST_CASE(empty_block_serialization, BlockFixture) {
-        BOOST_CHECK(serializedZeroedBlock == Serializer().serialize(zeroedBlock));
+    struct ZeroedBlockFixture {
+        const Block block = {hash_t{}, hash_t{}, 0, 0, 0};
+        const bytes_t serialized = std::vector<std::byte>(82, std::byte(0x00));
+    };
+
+
+    BOOST_FIXTURE_TEST_CASE(zeroed_block_serialization, ZeroedBlockFixture) {
+        Serializer s;
+        auto result = s.serialize(block);
+        BOOST_CHECK(serialized == result);
     }
 
+    BOOST_FIXTURE_TEST_CASE(empty_block_serialization, EmptyBlockFixture) {
+        Serializer s;
+        auto result = s.serialize(block);
+        BOOST_CHECK(serialized == result);
+    }
 
 
 BOOST_AUTO_TEST_SUITE_END()
 
-#endif //BOOST_TEST_DYN_LKINK
+#endif //BOOST_TEST_DYN_LINK

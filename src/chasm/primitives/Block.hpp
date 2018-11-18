@@ -22,6 +22,10 @@ namespace chasm::primitives {
     class Block {
     public:
 
+        explicit Block(hash_t prevBlock);
+
+        Block(hash_t prevBlock, hash_t merkleTreeRoot, timestamp_t timestamp, nonce_t nonce, difficulty_t difficulty);
+
 
         //! \brief adjusts nonce by adding 1 to the current value
 //        void adjustNonce();
@@ -71,7 +75,7 @@ namespace chasm::primitives {
          * \b Note: Hash of the block is a hash of the header.
          */
         struct Header {
-            hash_t prevTxHash_; //!< Pointer to the previous block
+            hash_t prevBlockHash; //!< Pointer to the previous block
 
             hash_t merkleTreeRoot_; //!< Merkle tree root of a tree made of included transactions
 
