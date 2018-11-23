@@ -15,7 +15,7 @@ namespace chasm::serialization{
     public:
         Archive() = default;
 
-        bool isBufferEmpty() {
+        bool isBufferEmpty() const {
             return !bytes_ || bytes_->empty();
         }
 

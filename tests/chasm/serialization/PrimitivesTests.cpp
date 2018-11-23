@@ -13,7 +13,7 @@
 using namespace chasm::serialization;
 
 struct SimpleSerializable{
-    SimpleSerializable(std::byte aByte) : aByte(aByte) {}
+    explicit SimpleSerializable(std::byte aByte) : aByte(aByte) {}
 
     std::byte aByte;
 
@@ -24,6 +24,7 @@ struct SimpleSerializable{
 };
 
 struct CompoundSerializable{
+
     SimpleSerializable simple;
     std::vector<SimpleSerializable> vect;
     std::vector<std::unique_ptr<SimpleSerializable>> ptr_vect;
@@ -35,6 +36,9 @@ struct CompoundSerializable{
 };
 
 struct DerivedSerializable: public SimpleSerializable{
+
+    explicit DerivedSerializable(std::byte aByte) : SimpleSerializable(aByte) {}
+
     using class_id_e = serialization::traits::classes::class_id;
     using class_id_t = serialization::traits::classes::class_id_t<class_id_e::Output>;
 
@@ -177,13 +181,13 @@ BOOST_AUTO_TEST_SUITE(serialization_of_primitives_and_compounds)
         std::vector<std::unique_ptr<SimpleSerializable>> ptr_vec;
         ptr_vec.emplace_back(std::make_unique<SimpleSerializable>(std::byte(0xfc)));
 
-        CompoundSerializable obj{std::byte(0xfa), {SimpleSerializable{std::byte(0xfb)}}, std::move(ptr_vec)};
+        CompoundSerializable obj{SimpleSerializable(std::byte(0xfa)), {SimpleSerializable{std::byte(0xfb)}}, std::move(ptr_vec)};
         std::vector<std::byte> expected {std::byte(0x02), std::byte(0x01), std::byte(0xfa),
                                          std::byte(0x01), std::byte(0x00), std::byte(0x01), std::byte(0xfb),
                                          std::byte(0x01), std::byte(0x00), std::byte(0x01), std::byte(0xfc)
                                          };
 
-        o & obj;
+        [[maybe_unused]] auto& _r = o & obj;
 
         auto result = o.getBuffer();
         BOOST_CHECK(expected == result);
@@ -191,11 +195,11 @@ BOOST_AUTO_TEST_SUITE(serialization_of_primitives_and_compounds)
     }
 
     BOOST_FIXTURE_TEST_CASE(serializes_a_derived_class, EnvFixture){
-        DerivedSerializable d = {std::byte(0x0f)};
+        DerivedSerializable d (std::byte(0x0f));
 
         std::vector<std::byte> expected {std::byte(0x03), std::byte(0x01), std::byte(0x0f)};
 
-        o & d;
+        [[maybe_unused]] auto& _r = o & d;
 
         auto result = o.getBuffer();
 
