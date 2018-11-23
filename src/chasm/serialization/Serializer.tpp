@@ -37,11 +37,13 @@ namespace chasm::serialization {
     struct Serializer::Worker<Ar, primitives::Block> {
         void serialize_fields(Ar &archive, primitives::Block const &obj) {
 
-            archive & obj.getPrevTxHash()
-            & obj.getMerkleTreeRoot()
-            & obj.getTimestamp()
-            & obj.getNonce()
-            & obj.getDifficulty();
+            archive & obj.header_.prevBlockHash
+            & obj.header_.merkleTreeRoot_
+            & obj.header_.timestamp_
+            & obj.header_.nonce_
+            & obj.header_.difficulty_;
+            //TODO
+//            & obj.transactions_;
         }
     };
 

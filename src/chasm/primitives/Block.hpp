@@ -68,7 +68,7 @@ namespace chasm::primitives {
 
 
     private:
-
+        friend class chasm::serialization::Serializer;
         /*!
          * \brief Represents Block's header
          *

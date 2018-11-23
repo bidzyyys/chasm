@@ -49,5 +49,9 @@ namespace chasm::serialization::traits {
 
 }
 
+namespace chasm::serialization{
+    class Serializer;
+}
+
 
 #endif //CHASM_TRAITS_HPP
