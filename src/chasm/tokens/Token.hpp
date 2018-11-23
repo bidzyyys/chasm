@@ -37,9 +37,10 @@ namespace chasm::tokens {
             virtual ~Address() = 0;
         };
 
-        virtual boost::optional<uptr_t<TransactionInclusionProof>> buildProof(types::bytes_t const&) const = 0; //TODO: strong types
+        virtual boost::optional<
+                uptr_t < TransactionInclusionProof>> buildProof(types::bytes_t const&) const = 0; //TODO: strong types
 
-        virtual boost::optional<uptr_t<Address>> buildAddress(types::bytes_t const &) const = 0;
+        virtual boost::optional<uptr_t < Address>> buildAddress(types::bytes_t const &) const = 0;
 
         virtual ~Token() = default;
     };

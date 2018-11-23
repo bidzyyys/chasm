@@ -36,8 +36,8 @@ namespace chasm::serialization {
         template<typename Ar, typename T>
         static void serialize(Ar &a, T const &obj, is_root_t);
 
-        template <typename Ar, typename T, typename B>
-        static void serialize(Ar& a, T const& obj, is_derived_t<B>);
+        template<typename Ar, typename T, typename B>
+        static void serialize(Ar &a, T const &obj, is_derived_t<B>);
 
         template<
                 typename Ar,

@@ -27,7 +27,7 @@ namespace chasm::serialization::traits {
             static const class_id value = type::value;
         };
 
-        template <typename T>
+        template<typename T>
         using class_id_trait_t = typename class_id_trait<T>::type;
     }
     namespace inheritance {
@@ -49,7 +49,7 @@ namespace chasm::serialization::traits {
 
 }
 
-namespace chasm::serialization{
+namespace chasm::serialization {
     class Serializer;
 }
 

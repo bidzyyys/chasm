@@ -10,7 +10,7 @@
 namespace chasm::tokens {
     class XpeerCoinToken : public Token {
     public:
-        boost::optional<uptr_t<TransactionInclusionProof>> buildProof(bytes_t const& vector) const override;
+        boost::optional<uptr_t<TransactionInclusionProof>> buildProof(bytes_t const &vector) const override;
 
         ~XpeerCoinToken() override = default;
 

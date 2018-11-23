@@ -8,7 +8,7 @@
 #include <memory>
 #include <chasm/types.hpp>
 
-namespace chasm::serialization{
+namespace chasm::serialization {
     class Serializer;
 
     class Archive {
@@ -54,7 +54,7 @@ namespace chasm::serialization{
     private:
         template<typename T, typename Enabled = void>
         struct Worker {
-            OArchive &operator()(OArchive & archive, T const &obj) const;
+            OArchive &operator()(OArchive &archive, T const &obj) const;
         };
 
     };

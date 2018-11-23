@@ -6,7 +6,7 @@
 #ifdef BOOST_TEST_DYN_LINK
 
 #include <boost/test/unit_test.hpp>
-#include <chasm/serialization/Serializer.hpp>
+#include <chasm/primitives/Transaction.hpp>
 
 using namespace chasm::primitives;
 using namespace chasm::types;
@@ -17,7 +17,7 @@ BOOST_AUTO_TEST_SUITE(transaction_serialization)
     struct EmptyTransactionFixture {
 
         Transaction transaction;
-        bytes_t serialized {std::byte(0x00),std::byte(0x00)};
+        bytes_t serialized{std::byte(0x00), std::byte(0x00)};
     };
 
 

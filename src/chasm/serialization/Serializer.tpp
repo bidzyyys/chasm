@@ -21,9 +21,9 @@ namespace chasm::serialization {
         Worker<Ar, T>().serialize_fields(a, obj);
     }
 
-    template <typename Ar, typename T, typename B>
-    void Serializer::serialize(Ar& a, T const& obj, is_derived_t<B>){
-        a & static_cast<std::byte>(class_id_trait<T>::value) & static_cast<B const&>(obj);
+    template<typename Ar, typename T, typename B>
+    void Serializer::serialize(Ar &a, T const &obj, is_derived_t <B>) {
+        a & static_cast<std::byte>(class_id_trait<T>::value) & static_cast<B const &>(obj);
         Worker<Ar, T>().serialize_fields(a, obj);
     }
 
