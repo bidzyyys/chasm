@@ -25,19 +25,19 @@ namespace chasm::serialization {
     public:
 
         template<typename T>
-        std::vector<std::byte> serialize(T const &obj);
+        static std::vector<std::byte> serialize(T const &obj);
 
     private:
         friend class OArchive;
 
         template<typename T>
-        void acceptReturn(OArchive &archive, T const &obj);
+        static void acceptReturn(OArchive &archive, T const &obj);
 
         template<typename Ar, typename T>
-        void serialize(Ar &a, T const &obj, is_root_t);
+        static void serialize(Ar &a, T const &obj, is_root_t);
 
         template <typename Ar, typename T, typename B>
-        void serialize(Ar& a, T const& obj, is_derived_t<B>);
+        static void serialize(Ar& a, T const& obj, is_derived_t<B>);
 
         template<
                 typename Ar,

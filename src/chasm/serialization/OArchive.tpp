@@ -10,7 +10,7 @@ namespace chasm::serialization {
 
     template<typename T, typename Enabled>
     OArchive &OArchive::Worker<T, Enabled>::operator()(OArchive &archive, T const &obj) const {
-        archive.serializer_.acceptReturn(archive, obj);
+        Serializer::acceptReturn(archive, obj);
         return archive;
     }
 

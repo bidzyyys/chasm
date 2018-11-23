@@ -10,7 +10,7 @@ namespace chasm::serialization {
 
     template<typename T>
     std::vector<std::byte> Serializer::serialize(T const &obj) {
-        OArchive a(*this);
+        OArchive a;
         serialize(a, obj, inheritance_trait_t<T>());
         return a.getBuffer();
     }

@@ -66,11 +66,8 @@ namespace chasm::serialization{
 BOOST_AUTO_TEST_SUITE(serialization_of_primitives_and_compounds)
 
     struct EnvFixture {
-        EnvFixture() : o(s) {}
-
-        Serializer s;
+        EnvFixture() {}
         OArchive o;
-
     };
 
     template <typename T>

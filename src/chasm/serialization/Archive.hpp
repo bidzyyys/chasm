@@ -13,7 +13,7 @@ namespace chasm::serialization{
 
     class Archive {
     public:
-        explicit Archive(Serializer &serializer) : serializer_(serializer) {}
+        Archive() = default;
 
         bool isBufferEmpty() {
             return !bytes_ || bytes_->empty();
@@ -28,12 +28,11 @@ namespace chasm::serialization{
 
     protected:
         std::unique_ptr<bytes_t> bytes_;
-        Serializer &serializer_;
     };
 
     class OArchive : public Archive {
     public:
-        explicit OArchive(Serializer &serializer) : Archive(serializer) {
+        explicit OArchive() : Archive() {
             bytes_ = std::make_unique<bytes_t>();
             bytes_->reserve(1024);
         }
