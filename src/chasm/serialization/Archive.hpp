@@ -5,12 +5,10 @@
 #ifndef CHASM_ARCHIVE_HPP
 #define CHASM_ARCHIVE_HPP
 
-#include <type_traits>
-#include <vector>
+#include <memory>
 #include <chasm/types.hpp>
 
-namespace chasm::serialization {
-
+namespace chasm::serialization{
     class Serializer;
 
     class Archive {
@@ -25,6 +23,8 @@ namespace chasm::serialization {
             bytes_->shrink_to_fit();
             return *bytes_;
         }
+
+        virtual ~Archive() = default;
 
     protected:
         std::unique_ptr<bytes_t> bytes_;
@@ -50,40 +50,15 @@ namespace chasm::serialization {
             return operator<<(obj);
         }
 
+        ~OArchive() override = default;
+
     private:
         template<typename T, typename Enabled = void>
         struct Worker {
-            OArchive &operator()(OArchive &, T const &obj) const;
+            OArchive &operator()(OArchive & archive, T const &obj) const;
         };
 
     };
-
-
-    class IArchive : Archive {
-    public:
-
-//        IArchive(bytes_t &&buffer);
-//
-//        IArchive(OArchive &&archive);
-//
-//        IArchive(IArchive &&archive);
-//
-//        template<typename T>
-//        void operator>>(T &);
-//
-//        template<typename T,
-//                typename = std::enable_if_t<std::is_class_v<T>>
-//        >
-//        void operator>>(T const &obj) {
-//            serializer_.serialize(obj);
-//        }
-//
-//        template<typename T>
-//        void operator&(T &obj) {
-//            operator>>(obj);
-//        }
-    };
-
 }
 
 #include "OArchive.tpp"

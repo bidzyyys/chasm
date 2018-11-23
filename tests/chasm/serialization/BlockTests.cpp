@@ -15,12 +15,19 @@ using namespace chasm::serialization;
 
 BOOST_AUTO_TEST_SUITE(block_serialization)
 
+
     hash_t getSomeHash() {
         hash_t someHash;
         uint8_t i = 0x00;
         for (auto &byte : someHash) byte = std::byte(++i);
         return someHash;
     }
+
+    struct ZeroedBlockFixture {
+        const Block block = {hash_t{}, hash_t{}, 0, 0, 0};
+        const bytes_t serialized = std::vector<std::byte>(82, std::byte(0x00));
+    };
+
 
     struct EmptyBlockFixture {
         EmptyBlockFixture() : block(getSomeHash(), getSomeHash(), timestamp, nonce, difficulty) {
@@ -49,13 +56,6 @@ BOOST_AUTO_TEST_SUITE(block_serialization)
         Block block;
         bytes_t serialized;
     };
-
-
-    struct ZeroedBlockFixture {
-        const Block block = {hash_t{}, hash_t{}, 0, 0, 0};
-        const bytes_t serialized = std::vector<std::byte>(82, std::byte(0x00));
-    };
-
 
     BOOST_FIXTURE_TEST_CASE(zeroed_block_serialization, ZeroedBlockFixture) {
         Serializer s;

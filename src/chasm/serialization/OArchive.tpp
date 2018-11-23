@@ -8,10 +8,26 @@
 namespace chasm::serialization {
 
 
-    template<>
-    struct OArchive::Worker<std::byte, void> {
-        OArchive &operator()(OArchive &archive, std::byte const &obj) const {
-            archive.bytes_->push_back(obj);
+    template<typename T, typename Enabled>
+    OArchive &OArchive::Worker<T, Enabled>::operator()(OArchive &archive, T const &obj) const {
+        archive.serializer_.acceptReturn(archive, obj);
+        return archive;
+    }
+
+    /// PARTIAL SPECIALIZATIONS
+    template<typename T>
+    struct OArchive::Worker<std::vector<T>, void> {
+        OArchive &operator()(OArchive &archive, std::vector<T> const &obj) const {
+            archive << static_cast<uint16_t >(obj.size());
+            for (T const &elem : obj) archive << elem;
+            return archive;
+        }
+    };
+
+    template<typename T>
+    struct OArchive::Worker<std::unique_ptr<T>, void> {
+        OArchive &operator()(OArchive &archive, std::unique_ptr<T> const &obj) const {
+            archive << *obj;
             return archive;
         }
     };
@@ -19,11 +35,18 @@ namespace chasm::serialization {
     template<typename T>
     struct OArchive::Worker<T, std::enable_if_t<std::numeric_limits<T>::is_integer>> {
         OArchive &operator()(OArchive &archive, T const &obj) const {
-            T integer = obj;
-            for (auto i = 0; i < sizeof(T); ++i) {
-                integer >>= (8 * i);
-                archive.bytes_->push_back(std::byte(integer & 0xff));
-            }
+            for (auto i = 0; i < sizeof(T); ++i)
+                archive.bytes_->push_back(std::byte((obj >> i * 8) & 0xff));
+
+            return archive;
+        }
+    };
+
+    /// SPECIALIZATIONS
+    template<>
+    struct OArchive::Worker<std::byte, void> {
+        OArchive &operator()(OArchive &archive, std::byte const &obj) const {
+            archive.bytes_->push_back(obj);
             return archive;
         }
     };
@@ -35,7 +58,6 @@ namespace chasm::serialization {
             return archive;
         }
     };
-
 
 }
 

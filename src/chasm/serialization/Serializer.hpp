@@ -9,11 +9,13 @@
 #include <type_traits>
 #include <vector>
 #include <iostream>
+#include <chasm/types.hpp>
 #include "traits.hpp"
-#include "Archive.hpp"
 
 
 namespace chasm::serialization {
+
+    class OArchive;
 
     using namespace chasm;
     using namespace traits::classes;
@@ -21,51 +23,35 @@ namespace chasm::serialization {
 
     class Serializer {
     public:
+
         template<typename T>
-        std::vector<std::byte> serialize(T const &obj) {
-            OArchive a(*this);
-            serialize(a, obj, inheritance_trait_t<T>());
-            return a.getBuffer();
-        }
+        std::vector<std::byte> serialize(T const &obj);
 
     private:
-        friend class Archive;
+        friend class OArchive;
 
         template<typename T>
-        void acceptReturn(Archive &archive, T const &obj) {
-            serialize(archive, obj, inheritance_trait_t<T>());
-        }
+        void acceptReturn(OArchive &archive, T const &obj);
 
-        template<typename Archive, typename T>
-        void serialize(Archive &a, T const &obj, is_root_t) {
-            a & static_cast<std::byte>(class_id_trait<T>::value);
-            serialize_fields(a, obj);
-        }
+        template<typename Ar, typename T>
+        void serialize(Ar &a, T const &obj, is_root_t);
 
-//        template<
-//                typename Archive,
-//                typename T,
-//                typename B,
-//                typename = typename std::enable_if_t<
-//                        std::is_base_of_v<B, T> && !std::is_same_v<B, T>
-//                >
-//        >
-//        void serialize(Archive &archive, T const &obj, buffer_t &buffer, is_derived_t<B>) {
-//
-//            archive & static_cast<std::byte>(classes::class_id_trait<T>::value)
-//            & static_cast<B const &>(obj), buffer, inheritance::inheritance_trait_t<B>();
-//
-//            serialize_fields(archive, obj);
-//
-//        }
-//
-        template<typename Archive, typename T>
-        void serialize_fields(Archive &archive, T const &obj);
+        template <typename Ar, typename T, typename B>
+        void serialize(Ar& a, T const& obj, is_derived_t<B>);
 
-//
+        template<
+                typename Ar,
+                typename T
+        >
+        struct Worker {
+            void serialize_fields(Ar &, T const &obj) const;
+        };
+
     };
 
 }
+
+#include "Archive.hpp"
 
 #include "Serializer.tpp"
 
