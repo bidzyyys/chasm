@@ -5,12 +5,11 @@
 #ifndef CHASM_OPENSSL_H
 #define CHASM_OPENSSL_H
 
-#include <iostream>
-#include <iomanip>
+#include <algorithm>
+#include <functional>
 #include <openssl/err.h>
 #include <openssl/evp.h>
 #include <openssl/ec.h>
-#include <openssl/bn.h>
 #include "chasm/types.hpp"
 
 namespace chasm::cryptography {
@@ -21,29 +20,29 @@ namespace chasm::cryptography {
 
     const unsigned int INVALID = 0;
 
-    const unsigned int HASH256 = 32;
+    const unsigned int HASH256_SIZE = 32;
 
-    const unsigned int PRIV_KEY = 32;
+    const unsigned int PRIV_KEY_SIZE = 32;
 
-    const unsigned int PUB_KEY = 33;
+    const unsigned int PUB_KEY_SIZE = 33;
 
-    using evp_md_ctx_t = std::unique_ptr<EVP_MD_CTX, void (*)(EVP_MD_CTX *)>;
+    using evp_md_ctx_t = std::unique_ptr<EVP_MD_CTX, std::function<void(EVP_MD_CTX *)>>;
 
-    using evp_pkey_ctx_t = std::unique_ptr<EVP_PKEY_CTX, void (*)(EVP_PKEY_CTX *)>;
+    using evp_pkey_ctx_t = std::unique_ptr<EVP_PKEY_CTX, std::function<void(EVP_PKEY_CTX *)>>;
 
-    using evp_pkey_t = std::unique_ptr<EVP_PKEY, void (*)(EVP_PKEY *)>;
+    using evp_pkey_t = std::unique_ptr<EVP_PKEY, std::function<void(EVP_PKEY *)>>;
 
-    using ec_key_t = std::unique_ptr<EC_KEY, void(*)(EC_KEY *)>;
+    using ec_key_t = std::unique_ptr<EC_KEY, std::function<void(EC_KEY *)>>;
 
-    using bn_ctx_t = std::unique_ptr<BN_CTX, void(*)(BN_CTX *)>;
+    using bn_ctx_t = std::unique_ptr<BN_CTX, std::function<void(BN_CTX *)>>;
 
-    using bignum_t = std::unique_ptr<BIGNUM, void(*)(BIGNUM *)>;
+    using bignum_t = std::unique_ptr<BIGNUM, std::function<void(BIGNUM *)>>;
 
-    using ec_group_t = std::unique_ptr<EC_GROUP, void(*)(EC_GROUP *)>;
+    using ec_group_t = std::unique_ptr<EC_GROUP, std::function<void(EC_GROUP *)>>;
 
-    using ec_point_t = std::unique_ptr<EC_POINT, void(*)(EC_POINT *)>;
+    using ec_point_t = std::unique_ptr<EC_POINT, std::function<void(EC_POINT *)>>;
 
-    using bn_ctx_t = std::unique_ptr<BN_CTX, void(*)(BN_CTX *)>;
+    using bn_ctx_t = std::unique_ptr<BN_CTX, std::function<void(BN_CTX *)>>;
 
     /*!
      * \brief Cryptography Library exception
@@ -67,8 +66,8 @@ namespace chasm::cryptography {
 
         chasm::types::key_pair_t generateECDHKeyPair() const;
 
-        signature_t createSignature(const priv_key_t &priv_key,
-                                    const bytes_t &data) const;
+        signature_t sign(const priv_key_t &priv_key,
+                         const bytes_t &data) const;
 
         bool isValidSignature(const pub_key_t &pub_key, const signature_t &signature,
                               const bytes_t &data) const;
@@ -78,23 +77,9 @@ namespace chasm::cryptography {
 
             bytes_t bytes(data.size());
 
-            for(std::size_t i = 0; i < data.size(); ++i){
-                bytes[i] = static_cast<std::byte>(data[i]);
-            }
+            std::transform(data.begin(), data.end(), bytes.begin(), [](const uint8_t &byte){return static_cast<std::byte>(byte);});
 
             return bytes;
-        }
-
-        template <typename T>
-        static std::string bytesToHexString(T const& data) {
-
-            std::stringstream ss;
-
-            for(size_t i = 0; i < data.size(); ++i) {
-                ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
-            }
-
-            return ss.str();
         }
 
     private:
@@ -201,32 +186,28 @@ namespace chasm::cryptography {
         }
 
         template<std::size_t SIZE>
-        static std::array<std::byte, SIZE> toByteArray(const std::array<unsigned char, SIZE>& collection) {
+        static std::array<std::byte, SIZE> toByteArray(const std::array<uint8_t, SIZE>& collection) {
 
             std::array<std::byte, SIZE> array;
 
-            for(std::size_t i = 0; i < SIZE; ++i) {
-                array[i] = static_cast<std::byte>(collection[i]);
-            }
+            std::transform(collection.begin(), collection.end(), array.begin(), [](const uint8_t &byte){return static_cast<std::byte>(byte);});
 
             return array;
         }
 
         template <typename T>
-        static std::vector<unsigned char> toUCharVector(T const& collection) {
+        static std::vector<uint8_t> toUInt8Vector(T const &collection) {
 
-            std::vector<unsigned char> bytes;
+            std::vector<uint8_t> bytes(collection.size());
 
-            for(std::size_t i = 0; i < collection.size(); ++i) {
-                bytes.emplace_back(static_cast<unsigned char>(collection[i]));
-            }
+            std::transform(collection.begin(), collection.end(), bytes.begin(), [](const std::byte &byte){return static_cast<uint8_t>(byte);});
 
             return bytes;
         }
 
 
-        bool validateSignature(const ec_key_t &pkey, const std::vector<unsigned char> &dgst,
-                               const std::vector<unsigned char> &sign) const;
+        bool validateSignature(const ec_key_t &pkey, const std::vector<uint8_t> &dgst,
+                               const std::vector<uint8_t> &sign) const;
 
         signature_t getSignature(const bytes_t &data, const ec_key_t &pkey) const;
     };

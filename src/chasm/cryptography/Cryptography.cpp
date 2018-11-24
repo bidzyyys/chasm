@@ -2,12 +2,8 @@
 // Created by Daniel Bigos on 13.11.18.
 //
 
-#include <iostream>
 #include <memory>
-#include <openssl/crypto.h>
-#include <openssl/ecdsa.h>
 #include "Cryptography.hpp"
-#include <utility>
 
 using namespace chasm::cryptography;
 using namespace chasm::types;
@@ -31,9 +27,9 @@ hash_t Cryptography::sha256(const bytes_t &data) const {
 
 chasm::types::hash_t Cryptography::getSHA256(evp_md_ctx_t &evp_md_ctx) const {
 
-    std::array<unsigned char, HASH256> output{};
+    std::array<uint8_t, HASH256_SIZE> output{};
 
-    if(finishEVPDigiest(evp_md_ctx, output) != HASH256) {
+    if(finishEVPDigiest(evp_md_ctx, output) != HASH256_SIZE) {
         throw CryptographyError("Unexpected length of hash");
     }
 
@@ -252,12 +248,12 @@ ec_key_t Cryptography::getEC_KEYfromEVP_PKEY(evp_pkey_t &pkey) const {
 
 pub_key_t Cryptography::getPublicKey(ec_key_t &ec_key) const {
 
-    std::array<unsigned char, PUB_KEY> pub_key{};
+    std::array<uint8_t, PUB_KEY_SIZE> pub_key{};
     auto bn_ctx = getBN_CTX();
     auto ec_group = getEC_GROUP(ec_key);
     auto ec_point = getEC_POINT(ec_key);
 
-    if (EC_POINT_point2oct(ec_group, ec_point, POINT_CONVERSION_COMPRESSED, pub_key.data(), pub_key.size(), bn_ctx.get()) != PUB_KEY) {
+    if (EC_POINT_point2oct(ec_group, ec_point, POINT_CONVERSION_COMPRESSED, pub_key.data(), pub_key.size(), bn_ctx.get()) != PUB_KEY_SIZE) {
         throw CryptographyError("Unexpected error while getting ECDH public key, " + getOpenSSLError());
     }
 
@@ -266,10 +262,10 @@ pub_key_t Cryptography::getPublicKey(ec_key_t &ec_key) const {
 
 priv_key_t Cryptography::getPrivateKey(ec_key_t &ec_key) const {
 
-    std::array<unsigned char, PRIV_KEY> priv_key{};
+    std::array<uint8_t, PRIV_KEY_SIZE> priv_key{};
     auto bignum = getBIGNUM(ec_key);
 
-    if (BN_bn2lebinpad(bignum, priv_key.data(), priv_key.size()) != PRIV_KEY) {
+    if (BN_bn2lebinpad(bignum, priv_key.data(), priv_key.size()) != PRIV_KEY_SIZE) {
         throw CryptographyError("Unexpected error while getting ECDH private key, " + getOpenSSLError());
     }
 
@@ -324,7 +320,7 @@ const BIGNUM * Cryptography::getBIGNUM(ec_key_t &ec_key) const {
     return bignum;
 }
 
-signature_t Cryptography::createSignature(const priv_key_t &priv_key, const bytes_t &data) const {
+signature_t Cryptography::sign(const priv_key_t &priv_key, const bytes_t &data) const {
 
     try {
 
@@ -343,9 +339,9 @@ signature_t Cryptography::getSignature(const bytes_t &data, const ec_key_t &pkey
 
     auto sig_len = static_cast<unsigned int>(ECDSA_size(pkey.get()));
 
-    std::vector<unsigned char> signature(sig_len);
+    std::vector<uint8_t> signature(sig_len);
 
-    std::vector<unsigned char> digest = toUCharVector(data);
+    std::vector<uint8_t> digest = toUInt8Vector(data);
 
     if (ECDSA_sign(0, digest.data(), static_cast<int>(digest.size()), signature.data(), &sig_len, pkey.get()) != SUCCSESS) {
         throw CryptographyError("");
@@ -364,9 +360,9 @@ bool Cryptography::isValidSignature(const pub_key_t &pub_key,
 
         auto pkey = getEC_KEYFromPublicKey(pub_key, NID_X9_62_prime256v1);
 
-        auto dgst = toUCharVector(data);
+        auto dgst = toUInt8Vector(data);
 
-        auto sign = toUCharVector(signature);
+        auto sign = toUInt8Vector(signature);
 
         return validateSignature(pkey, dgst, sign);
 
@@ -377,8 +373,8 @@ bool Cryptography::isValidSignature(const pub_key_t &pub_key,
 }
 
 bool Cryptography::validateSignature(const ec_key_t &pkey,
-                                     const std::vector<unsigned char> &dgst,
-                                     const std::vector<unsigned char> &sign) const {
+                                     const std::vector<uint8_t> &dgst,
+                                     const std::vector<uint8_t> &sign) const {
 
     auto ret =  ECDSA_verify(0, dgst.data(), static_cast<int>(dgst.size()), sign.data(), static_cast<int>(sign.size()), pkey.get());
 
@@ -391,7 +387,7 @@ bool Cryptography::validateSignature(const ec_key_t &pkey,
 
 bignum_t Cryptography::getBIGNUMFromPrivKey(const priv_key_t &priv_key) const {
 
-    auto private_key = toUCharVector(priv_key);
+    auto private_key = toUInt8Vector(priv_key);
 
     auto bignum = BN_lebin2bn(private_key.data(), static_cast<int>(private_key.size()), nullptr);
 
@@ -502,7 +498,7 @@ ec_point_t Cryptography::getEC_POINTFromPublicKey(const pub_key_t &pub_key, int 
 
     auto bn_ctx = createBN_CTX();
 
-    if (EC_POINT_oct2point(ec_group.get(), ec_point.get(), toUCharVector(pub_key).data(), pub_key.size(), bn_ctx.get()) != SUCCSESS) {
+    if (EC_POINT_oct2point(ec_group.get(), ec_point.get(), toUInt8Vector(pub_key).data(), pub_key.size(), bn_ctx.get()) != SUCCSESS) {
         throw CryptographyError("Unexpected error while setting EC_POINT to EC_KEY, " + getOpenSSLError());
     }
 
