@@ -11,32 +11,42 @@
 using namespace chasm::cryptography;
 using namespace chasm::types;
 
-BOOST_AUTO_TEST_SUITE(cryptography)
+struct TestData {
 
-    auto crypto = std::make_unique<Cryptography>();
+    TestData() {
+        crypto = std::make_unique<Cryptography>();
+    }
 
-    BOOST_AUTO_TEST_CASE(toBytesTest){
-        std::vector<std::byte> bytes = {(std::byte)'a', (std::byte)'b', (std::byte)'c'};
-        std::string str = "abc";
-        std::array<char, 3> array{'a', 'b', 'c'};
-        std::vector<char> vector{'a', 'b', 'c'};
+    ~TestData() = default;
+
+    std::unique_ptr<Cryptography> crypto;
+
+    std::vector<std::byte> bytes = {(std::byte)'a', (std::byte)'b', (std::byte)'c'};
+    std::string str = "abc";
+    std::array<char, 3> arr_char{'a', 'b', 'c'};
+    std::vector<char> vec_char{'a', 'b', 'c'};
+    std::array<std::byte, 3> arr_bytes{(std::byte)'a', (std::byte)'b', (std::byte)'c'};
+    const std::string hex{"616263"};
+};
+
+BOOST_FIXTURE_TEST_SUITE(cryptography, TestData)
+
+    BOOST_AUTO_TEST_CASE(toBytesTest) {
 
         BOOST_REQUIRE(bytes == crypto->toBytes(str));
-        BOOST_REQUIRE(bytes == crypto->toBytes(array));
-        BOOST_REQUIRE(bytes == crypto->toBytes(vector));
+        BOOST_REQUIRE(bytes == crypto->toBytes(arr_char));
+        BOOST_REQUIRE(bytes == crypto->toBytes(vec_char));
     }
 
-    BOOST_AUTO_TEST_CASE(bytesToHexStringTest){
-        const std::string hex{"616263"};
-        std::vector<std::byte> vector{(std::byte)'a', (std::byte)'b', (std::byte)'c'};
-        std::array<std::byte, 3> array{(std::byte)'a', (std::byte)'b', (std::byte)'c'};
+    BOOST_AUTO_TEST_CASE(bytesToHexStringTest) {
 
-        BOOST_REQUIRE_EQUAL(crypto->bytesToHexString(vector), hex);
-        BOOST_REQUIRE_EQUAL(crypto->bytesToHexString(array), hex);
+        BOOST_REQUIRE_EQUAL(crypto->bytesToHexString(bytes), hex);
+        BOOST_REQUIRE_EQUAL(crypto->bytesToHexString(arr_bytes), hex);
     }
 
-    BOOST_AUTO_TEST_CASE(sha256NoThrowTest){
-        BOOST_CHECK_NO_THROW(crypto->sha256(std::vector<std::byte>(10)));
+    BOOST_AUTO_TEST_CASE(sha256NoThrowTest) {
+
+        BOOST_CHECK_NO_THROW(crypto->sha256(bytes));
     }
 
     BOOST_AUTO_TEST_CASE(sha256Test) {
@@ -56,8 +66,12 @@ BOOST_AUTO_TEST_SUITE(cryptography)
         }
     }
 
-    BOOST_AUTO_TEST_CASE(ECDHKeyGenNoThrowTest){
-        BOOST_CHECK_NO_THROW(crypto->generateECDHKeyPair());
+    BOOST_AUTO_TEST_CASE(SignatureTests) {
+
+        key_pair_t key_pair;
+        BOOST_CHECK_NO_THROW(key_pair = crypto->generateECDHKeyPair());
+        auto signature = crypto->createSignature(key_pair.first, bytes);
+        BOOST_REQUIRE(crypto->isValidSignature(key_pair.second, signature, bytes));
     }
 
 
