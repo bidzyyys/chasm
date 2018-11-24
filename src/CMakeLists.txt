@@ -13,6 +13,10 @@ add_library(serialization ${SERIALIZATION_SOURCES})
 file(GLOB_RECURSE SUPPORTED_TOKENS_SOURCES "chasm/tokens/*.cpp")
 add_library(supported_tokens ${SUPPORTED_TOKENS_SOURCES})
 
+# database
+file(GLOB_RECURSE DATABASE_SOURCES "chasm/db/*.cpp")
+add_library(database ${DATABASE_SOURCES})
+target_link_libraries(database ${LevelDB_LIBRARY})
 
 ### EXECUTABLES
 add_executable(chasm main.cpp)
