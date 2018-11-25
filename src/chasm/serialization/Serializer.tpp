@@ -54,6 +54,26 @@ namespace chasm::serialization {
         }
     };
 
+    template<typename Ar>
+    struct Serializer::Worker<Ar, primitives::transaction::Input> {
+        void serialize_fields(Ar &archive, primitives::transaction::Input const &obj) {
+            archive & obj.getUTXO().getTxHash() & obj.getUTXO().getIndex();
+        }
+    };
+
+    template<typename Ar>
+    struct Serializer::Worker<Ar, primitives::transaction::Output> {
+        void serialize_fields(Ar &archive, primitives::transaction::Output const &obj) {
+            archive & obj.getValue();
+        }
+    };
+
+    template<typename Ar>
+    struct Serializer::Worker<Ar, primitives::transaction::SimpleOutput> {
+        void serialize_fields(Ar &archive, primitives::transaction::SimpleOutput const &obj) {
+            archive & obj.getReceiver();
+        }
+    };
 
 }
 

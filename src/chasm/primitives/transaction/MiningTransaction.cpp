@@ -5,7 +5,3 @@
 #include "MiningTransaction.hpp"
 
 using namespace chasm::primitives::transaction;
-
-bool MiningTransaction::operator==(const MiningTransaction &rh) const {
-    return Transaction::operator==(rh);
-}

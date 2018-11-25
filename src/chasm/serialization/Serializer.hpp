@@ -25,7 +25,7 @@ namespace chasm::serialization {
     public:
 
         template<typename T>
-        static std::vector<std::byte> serialize(T const &obj);
+        static bytes_t serialize(T const &obj);
 
     private:
         friend class OArchive;

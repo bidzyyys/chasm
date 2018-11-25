@@ -20,7 +20,6 @@ namespace chasm::primitives::transaction {
 
         ~MatchTransaction() override = default;
 
-        bool operator==(const MatchTransaction &rh) const;
 
     private:
 

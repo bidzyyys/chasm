@@ -24,8 +24,6 @@ namespace chasm::primitives::transaction {
     public:
         virtual ~SignedTransaction() = default;
 
-        bool operator==(const SignedTransaction &rh) const;
-
     private:
         std::unique_ptr<Transaction> transaction_;
 

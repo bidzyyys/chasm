@@ -6,6 +6,7 @@
 #define CHASM_OUTPUT_H
 
 #include <chasm/types.hpp>
+#include <chasm/serialization/traits.hpp>
 
 namespace chasm::primitives::transaction {
 
@@ -14,9 +15,16 @@ namespace chasm::primitives::transaction {
      */
     class Output {
     public:
+        explicit Output(value_t value);
+
+        value_t getValue() const;
+
         virtual ~Output() = 0;
 
-        bool operator==(const Output &rh) const;
+        using class_id_e = serialization::traits::classes::class_id;
+        using class_id_t = serialization::traits::classes::class_id_t<class_id_e::Output>;
+
+        using inheritance_t = serialization::traits::inheritance::is_root_t;
 
     protected:
         types::value_t value_;
@@ -29,10 +37,14 @@ namespace chasm::primitives::transaction {
      */
     class SimpleOutput : public Output {
     public:
+        SimpleOutput(value_t value, const address_t &receiver);
+
+        const address_t &getReceiver() const;
+
         ~SimpleOutput() override = default;
 
-        bool operator==(const SimpleOutput &rh) const;
-
+        using class_id_t = serialization::traits::classes::class_id_t<class_id_e::SimpleOutput>;
+        using inheritance_t = serialization::traits::inheritance::is_derived_t<Output>;
     private:
         types::address_t receiver_;
     };
@@ -50,8 +62,8 @@ namespace chasm::primitives::transaction {
 
         ~FeeOutput() override = default;
 
-        bool operator==(const FeeOutput &rh) const;
-
+        using class_id_t = serialization::traits::classes::class_id_t<class_id_e::FeeOutput>;
+        using inheritance_t = serialization::traits::inheritance::is_derived_t<Output>;
     private:
         types::hash_t offerHash_;
     };

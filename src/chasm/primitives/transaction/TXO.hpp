@@ -15,10 +15,16 @@ namespace chasm::primitives::transaction {
      */
     class TXO {
     public:
+        TXO(hash_t const& txHash, out_idx_t index);
+        TXO(hash_t&& txHash, out_idx_t index);
 
-//        ~TXO() override = default;
+        const hash_t &getTxHash() const;
+
+        out_idx_t getIndex() const;
 
         bool operator==(const TXO &rh) const;
+
+        virtual ~TXO() = default;
 
     private:
         hash_t txHash_; //!< Pointer to an existing transaction

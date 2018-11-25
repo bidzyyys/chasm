@@ -14,7 +14,6 @@
 #include "chasm/types.hpp"
 
 namespace chasm::primitives {
-
     /*!
      * \brief Set of transactions (aka. Block)
      *

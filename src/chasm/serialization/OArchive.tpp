@@ -18,7 +18,7 @@ namespace chasm::serialization {
     template<typename T>
     struct OArchive::Worker<std::vector<T>, void> {
         OArchive &operator()(OArchive &archive, std::vector<T> const &obj) const {
-            archive << static_cast<uint16_t >(obj.size());
+            archive << static_cast<x_size_t>(obj.size());
             for (T const &elem : obj) archive << elem;
             return archive;
         }

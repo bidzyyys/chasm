@@ -79,14 +79,14 @@ BOOST_AUTO_TEST_SUITE(serialization_of_primitives_and_compounds)
     void compare_vectors(std::vector<T> const &input, std::vector<std::byte> const &result,
                          std::function<std::byte(T const &)> converter = [](T const &obj) { return obj; }) {
 
-        uint16_t serializedSize = 0;
-        BOOST_REQUIRE_GE(result.size(), 4);
+        x_size_t serializedSize = 0;
+        BOOST_REQUIRE_GE(result.size(), sizeof(x_size_t));
 
         auto resultIt = result.begin();
-        for (auto i = 0; i < sizeof(uint16_t); ++i, ++resultIt)
-            serializedSize |= (static_cast<uint16_t>(*resultIt) << 8 * i);
+        for (auto i = 0; i < sizeof(x_size_t); ++i, ++resultIt)
+            serializedSize |= (static_cast<x_size_t>(*resultIt) << 8 * i);
 
-        BOOST_REQUIRE_EQUAL(serializedSize + sizeof(uint16_t), result.size());
+        BOOST_REQUIRE_EQUAL(serializedSize + sizeof(x_size_t), result.size());
         BOOST_REQUIRE_EQUAL(serializedSize, input.size());
 
         for (auto it = input.begin(); it != input.end(); ++resultIt, ++it)

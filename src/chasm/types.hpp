@@ -29,7 +29,9 @@ namespace chasm::types {
     using nonce_t = uint64_t;
     using difficulty_t = uint8_t;
 
-    using out_idx_t = uint16_t; // A transaction cannot have more outputs, as there is block size limitation
+    using x_size_t = uint16_t;
+
+    using out_idx_t = x_size_t; // A transaction cannot have more outputs, as there is block size limitation
     using in_idx_t = out_idx_t;
 
 

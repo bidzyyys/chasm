@@ -7,8 +7,27 @@
 using namespace chasm;
 using namespace chasm::primitives;
 
-bool Transaction::operator==(const Transaction &rh) const {
-//    return compare_list_of_ptrs(inputs_, rh.inputs_) &&
-//           compare_list_of_ptrs(outputs_, rh.outputs_);
-    return true;
+void Transaction::addInput(hash_t const &txHash, in_idx_t input) {
+    if (inputs_.size() > std::numeric_limits<x_size_t>::max()) throw std::length_error("Too many inputs");
+    inputs_.push_back(std::make_unique<transaction::Input>(txHash, input));
+}
+
+void Transaction::addInput(hash_t &&txHash, in_idx_t input) {
+    if (inputs_.size() > std::numeric_limits<x_size_t>::max()) throw std::length_error("Too many inputs");
+    inputs_.push_back(std::make_unique<transaction::Input>(txHash, input));
+}
+
+void Transaction::addOutput(value_t value, address_t const &receiver) {
+    if (outputs_.size() > std::numeric_limits<x_size_t>::max()) throw std::length_error("Too many outputs");
+    outputs_.push_back(std::make_unique<transaction::SimpleOutput>(value, receiver));;
+}
+
+
+
+const transaction::Input &Transaction::getInput(x_size_t index) const {
+    return *inputs_.at(index);
+}
+
+const transaction::Output &Transaction::getOutput(x_size_t index) const {
+    return *outputs_.at(index);
 }

@@ -7,17 +7,24 @@
 using namespace chasm;
 using namespace chasm::primitives::transaction;
 
-bool Output::operator==(const Output &rh) const {
-    return value_ == rh.value_;
+/// Output
+
+Output::Output(value_t value) : value_(value) {}
+
+value_t Output::getValue() const {
+    return value_;
 }
 
-bool FeeOutput::operator==(const FeeOutput &rh) const {
-    return Output::operator==(rh) &&
-           compare_collection(offerHash_, rh.offerHash_);
+Output::~Output() {
+
 }
 
-bool SimpleOutput::operator==(const SimpleOutput &rh) const {
-    return Output::operator==(rh) &&
-           compare_collection(receiver_, rh.receiver_);
+/// SimpleOutput
+
+SimpleOutput::SimpleOutput(value_t value, const address_t &receiver) : Output(value), receiver_(receiver) {}
+
+const address_t &SimpleOutput::getReceiver() const {
+    return receiver_;
 }
+
 

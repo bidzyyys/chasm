@@ -12,7 +12,7 @@ namespace chasm::serialization::traits {
         enum class class_id : uint8_t {
             Block,
             Transaction,
-            Input, Output,
+            Input, Output, SimpleOutput, FeeOutput
 
         };
 
