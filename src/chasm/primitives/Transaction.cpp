@@ -2,6 +2,7 @@
 // Created by Daniel Bigos on 11.11.18.
 //
 
+#include <chasm/serialization/Serializer.hpp>
 #include "Transaction.hpp"
 
 using namespace chasm;
@@ -31,3 +32,7 @@ const transaction::Input &Transaction::getInput(x_size_t index) const {
 const transaction::Output &Transaction::getOutput(x_size_t index) const {
     return *outputs_.at(index);
 }
+
+//void Transaction::accept(serialization::Serializer &serializer) {
+//    serializer.visit(*this);
+//}

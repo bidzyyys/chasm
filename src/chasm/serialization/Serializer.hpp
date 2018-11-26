@@ -1,58 +1,147 @@
 //
-// Created by Daniel Bigos on 12.11.18.
+// Created by Piotr Żelazko on 25/11/2018.
 //
 
-#ifndef CHASM_SERIALIZER_H
-#define CHASM_SERIALIZER_H
+#ifndef CHASM_ALT_SERIALIZER_HPP
+#define CHASM_ALT_SERIALIZER_HPP
 
-#include <cstdint>
-#include <type_traits>
-#include <vector>
-#include <iostream>
+#include <variant>
+#include <optional>
 #include <chasm/types.hpp>
+
 #include "traits.hpp"
 
 
 namespace chasm::serialization {
-
-    class OArchive;
-
     using namespace chasm;
     using namespace traits::classes;
     using namespace traits::inheritance;
 
     class Serializer {
     public:
+        template<typename T>
+        bytes_t serialize(T& obj) {
+            archive_.emplace<1>(*this);
+            std::get<1>(archive_) << obj;
+            return std::get<1>(archive_).resetBuffer();
+        }
 
         template<typename T>
-        static bytes_t serialize(T const &obj);
+        bytes_t serialize(T const& obj) {
+            return serialize(const_cast<T&>(obj));
+        }
+
+        template<typename T>
+        T deserialize(bytes_t const &buffer) {
+            archive_.emplace<2>(*this, buffer.cbegin());
+            T obj;
+            std::get<2>(archive_) >> obj;
+            return std::move(obj);
+        }
+
+        template<typename T>
+        void visit(T &obj) {
+            std::visit(overloaded{
+                    [& obj, this](IArchive &archive) {
+                        transform(archive, obj, inheritance_trait_t<T>());
+                    },
+                    [& obj, this](OArchive &archive) {
+                        transform(archive, obj, inheritance_trait_t<T>());
+                    },
+                    [](std::monostate&){
+                        throw std::runtime_error("Serializer must be initialised first. User either serialize or deserialize methods");
+                    }
+            }, archive_);
+        }
 
     private:
-        friend class OArchive;
 
-        template<typename T>
-        static void acceptReturn(OArchive &archive, T const &obj);
+        template<class... Ts>
+        struct overloaded : Ts ... {
+            using Ts::operator()...;
+        };
+        template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
-        template<typename Ar, typename T>
-        static void serialize(Ar &a, T const &obj, is_root_t);
+        class OArchive {
+        public:
 
-        template<typename Ar, typename T, typename B>
-        static void serialize(Ar &a, T const &obj, is_derived_t<B>);
+            OArchive(Serializer &serializer) : serializer_(serializer) {}
 
-        template<
-                typename Ar,
-                typename T
-        >
-        struct Worker {
-            void serialize_fields(Ar &, T const &obj) const;
+            template<typename T>
+            OArchive &operator&(T &obj) {
+                return operator<<(obj);
+            }
+
+            template<typename T>
+            OArchive &operator<<(T &obj) {
+                return Worker<T>()(*this, obj);
+            }
+
+            bytes_t resetBuffer() {
+                return buffer_;
+            }
+
+            virtual ~OArchive() = default;
+
+        private:
+            template<typename T, typename Enabled = void>
+            struct Worker {
+                OArchive &operator()(OArchive &archive, T &obj);
+            };
+
+            Serializer &serializer_;
+            bytes_t buffer_;
         };
 
-    };
+        class IArchive {
+        public:
+            IArchive(Serializer &serializer, const bytes_t::const_iterator begin) : serializer_(serializer),
+                                                                                    current_(begin) {}
 
+            template<typename T>
+            IArchive &operator&(T &obj) {
+                return operator>>(obj);
+            }
+
+            template<typename T>
+            IArchive &operator>>(T &obj) {
+                return Worker<T>()(*this, obj);
+            }
+
+            virtual ~IArchive() = default;
+
+        private:
+            template<typename T, typename Enabled = void>
+            struct Worker {
+                IArchive &operator()(IArchive &archive, T &obj);
+            };
+
+            Serializer &serializer_;
+            bytes_t::const_iterator current_;
+        };
+
+        template<typename Ar, typename T>
+        class Worker {
+            void transform_fields(Ar &archive, T &obj);
+        };
+
+        template <typename Ar, typename T>
+        void transform(Ar &archive, T &obj, is_root_t);
+
+//        template <typename Ar, typename T, typename B>
+//        void transform(Ar &archive, T &obj, is_derived_t<B>) {
+////            archive & class_id_trait<T>::value;
+//            Worker<Ar, B>().transform(archive, static_cast<B &>(obj, inheritance_trait_t<T>())); //TODO: make static
+//            Worker<Ar, T>().transform_fields(archive, obj); //TODO: make static
+//        }
+
+        std::variant<std::monostate, OArchive, IArchive> archive_;
+
+    };
 }
 
-#include "Archive.hpp"
-
 #include "Serializer.tpp"
+#include "IArchive.tpp"
+#include "OArchive.tpp"
 
-#endif //CHASM_SERIALIZER_H
+#endif //CHASM_ALT_SERIALIZER_HPP

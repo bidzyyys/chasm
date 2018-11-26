@@ -46,8 +46,11 @@ namespace chasm::primitives {
 
         virtual ~Transaction() = default;
 
-    private:
+    protected:
         friend class chasm::serialization::Serializer;
+//        virtual void accept(serialization::Serializer& serializer);
+
+    private:
 
         using input_t = transaction::Input;
         using output_t = transaction::Output;
