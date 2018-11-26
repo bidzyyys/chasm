@@ -12,14 +12,18 @@ using namespace chasm::db;
 
 struct TestsData {
 
+    const std::string db_name = "testdb";
+    Database db;
 };
 
 BOOST_FIXTURE_TEST_SUITE(DatabaseTests, TestsData)
 
-    BOOST_AUTO_TEST_CASE(SampleTest) {
+    BOOST_AUTO_TEST_CASE(OpenConnectionNoThrowTest) {
 
-        Database database;
-        BOOST_REQUIRE_EQUAL(1, 1);
+        BOOST_CHECK_NO_THROW(db.open(db_name));
+        //check whether connection is properly replaced
+        BOOST_CHECK_NO_THROW(db.open(db_name));
+        BOOST_CHECK_NO_THROW(db.close());
     }
 
 BOOST_AUTO_TEST_SUITE_END()
