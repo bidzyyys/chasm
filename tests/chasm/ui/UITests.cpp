@@ -4,7 +4,7 @@
 
 #include <boost/test/unit_test_suite.hpp>
 #include <boost/test/test_tools.hpp>
-#include "chasm/ui/UI.h"
+#include "chasm/ui/UI.hpp"
 
 using namespace chasm::ui;
 

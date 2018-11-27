@@ -7,7 +7,7 @@
 
 #include <boost/test/unit_test.hpp>
 #include "chasm/cryptography/Cryptography.hpp"
-#include "chasm/ui/UI.h"
+#include "chasm/ui/UI.hpp"
 
 using namespace chasm::cryptography;
 using namespace chasm::types;
