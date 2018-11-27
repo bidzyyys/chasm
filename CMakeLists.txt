@@ -9,7 +9,7 @@ endif()
 set(CMAKE_CXX_FLAGS "-Werror -pedantic")
 
 find_package(Boost 1.68 REQUIRED COMPONENTS unit_test_framework serialization)
-find_package(OpenSSL 1.0 REQUIRED COMPONENTS Crypto)
+find_package(OpenSSL 1.1.0 REQUIRED COMPONENTS Crypto SSL)
 find_library(LevelDB_LIBRARY leveldb)
 
 include_directories(src/)
