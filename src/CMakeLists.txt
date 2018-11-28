@@ -23,11 +23,11 @@ add_library(cryptography ${CRYPTOGRAPHY_SOURCES})
 target_link_libraries(cryptography ${OPENSSL_CRYPTO_LIBRARY})
 
 # database
-file(GLOB_RECURSE DATABASE_SOURCES "chasm/db/*.cpp")
-add_library(database ${DATABASE_SOURCES})
-target_link_libraries(database ${LevelDB_LIBRARY} ui)
+file(GLOB_RECURSE DB_SOURCES "chasm/db/*.cpp")
+add_library(db ${DB_SOURCES})
+target_link_libraries(db ${LevelDB_LIBRARY})
 
 ### EXECUTABLES
 add_executable(chasm main.cpp)
-target_link_libraries(chasm primitives serialization cryptography ui database)
+target_link_libraries(chasm primitives serialization cryptography ui db)
 

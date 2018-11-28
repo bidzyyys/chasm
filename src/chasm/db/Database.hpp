@@ -27,7 +27,8 @@ namespace chasm::db {
          * Default constructor
          * @param error_message
          */
-        explicit DatabaseError(const std::string &error_message);
+        explicit DatabaseError(const std::string &error_message)
+            : runtime_error(error_message) {}
     };
 
     /**
@@ -46,11 +47,11 @@ namespace chasm::db {
         /**
          * Default destructor
          */
-        virtual ~Database();
+        virtual ~Database() = default;
 
         /**
          * Open connection to the database
-         * Create database if not exist
+         * Create database if does not exist
          * @param database_name
          * @throws DatabaseError if an error occurs
          */
@@ -93,7 +94,7 @@ namespace chasm::db {
         /**
          * Replace current connection with uninitialized state(nullptr)
          */
-        void cleanConnection();
+        void disconnect();
 
         /**
          * Check whether database connection is open

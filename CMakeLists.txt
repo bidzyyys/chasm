@@ -15,7 +15,6 @@ find_library(LevelDB_LIBRARY leveldb)
 include_directories(src/)
 include_directories(${Boost_INCLUDE_DIRS})
 include_directories(${OPENSSL_INCLUDE_DIR})
-include_directories(${LEVELDB_INCLUDE})
 
 add_subdirectory(src/)
 

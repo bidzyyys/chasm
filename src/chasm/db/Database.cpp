@@ -7,14 +7,9 @@
 using namespace chasm::db;
 using namespace chasm::types;
 
-DatabaseError::DatabaseError(const std::string &error_message)
-        : runtime_error(error_message) {}
-
-Database::~Database() = default;
-
 void Database::open(const std::string &database_name) {
 
-    cleanConnection();
+    disconnect();
 
     leveldb::DB* db = nullptr;
     leveldb::Options options;
@@ -94,15 +89,15 @@ void Database::deleteRecord(const hash_t &key) const {
 
 Database::Database() {
 
-    cleanConnection();
+    database = nullptr;
 }
 
 void Database::close() {
 
-    cleanConnection();
+    disconnect();
 }
 
-void Database::cleanConnection() {
+void Database::disconnect() {
 
     database = nullptr;
 }

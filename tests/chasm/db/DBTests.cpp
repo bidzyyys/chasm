@@ -15,7 +15,7 @@ struct TestsData {
 
     TestsData() {
 
-        hash.at(0) = static_cast<std::byte>('a');
+        db.open(db_name);
     }
 
     const std::string db_name = "testdb";
@@ -24,47 +24,68 @@ struct TestsData {
     Database db;
 };
 
-BOOST_FIXTURE_TEST_SUITE(database, TestsData)
+struct UpdateData : public TestsData {
 
-    BOOST_AUTO_TEST_CASE(OpenConnectionNoThrowTest) {
+    UpdateData() = default;
 
-        BOOST_CHECK_NO_THROW(db.open(db_name));
-        //check whether connection is properly replaced
+    const bytes_t update_data{(std::byte)'a'};
+};
+
+BOOST_AUTO_TEST_SUITE(database)
+
+    BOOST_FIXTURE_TEST_CASE(HandleConnectionsNoThrowTest, TestsData) {
+
+        BOOST_CHECK_NO_THROW(db.close());
         BOOST_CHECK_NO_THROW(db.open(db_name));
         BOOST_CHECK_NO_THROW(db.close());
     }
 
-    BOOST_AUTO_TEST_CASE(DataStoragePipelineTest) {
+    BOOST_FIXTURE_TEST_CASE(ReplaceConnectionNoThrowTest, TestsData) {
 
-        //check if throw exception when connection is closed
+        BOOST_CHECK_NO_THROW(db.open(db_name));
+        BOOST_CHECK_NO_THROW(db.open(db_name));
+    }
+
+    BOOST_FIXTURE_TEST_CASE(DataOperationWhileDisconnectedThrowTest, TestsData) {
+
         db.close();
         BOOST_CHECK_THROW(db.insertRecord(hash, data), DatabaseError);
         BOOST_CHECK_THROW(db.selectRecord(hash), DatabaseError);
         BOOST_CHECK_THROW(db.deleteRecord(hash), DatabaseError);
-        db.open(db_name);
+    }
 
-        // delete record if exists
+    BOOST_FIXTURE_TEST_CASE(DeleteNonexistentRecordNoThrowTest, TestsData) {
+
+        BOOST_CHECK_NO_THROW(db.deleteRecord(hash));
+    }
+
+    BOOST_FIXTURE_TEST_CASE(SelectNonexistentRecordTest, TestsData) {
+
+        BOOST_REQUIRE(db.selectRecord(hash) == std::nullopt);
+    }
+
+    BOOST_FIXTURE_TEST_CASE(DataStorageTest, TestsData) {
+
+        BOOST_CHECK_NO_THROW(db.insertRecord(hash, data));
+        BOOST_REQUIRE(db.selectRecord(hash).value() == data);
         BOOST_CHECK_NO_THROW(db.deleteRecord(hash));
         BOOST_REQUIRE(db.selectRecord(hash) == std::nullopt);
+    }
 
-        // insert record and check if exists
-        BOOST_CHECK_NO_THROW(db.insertRecord(hash, data));
-        BOOST_REQUIRE(db.selectRecord(hash).value() == data);
+    BOOST_FIXTURE_TEST_CASE(UpdateTest, UpdateData) {
 
-        // replace inserted record and then check
-        BOOST_CHECK_NO_THROW(db.insertRecord(hash, data));
-        BOOST_REQUIRE(db.selectRecord(hash).value() == data);
+        db.insertRecord(hash, data);
+        BOOST_CHECK_NO_THROW(db.insertRecord(hash, update_data));
+        BOOST_REQUIRE(db.selectRecord(hash).value() == update_data);
+        BOOST_CHECK_NO_THROW(db.deleteRecord(hash));
+    }
 
-        // reopen connection
+    BOOST_FIXTURE_TEST_CASE(DataPersistenceTest, TestsData) {
+
+        db.insertRecord(hash, data);
         db.close();
         db.open(db_name);
-
-        // check if record still exists
         BOOST_REQUIRE(db.selectRecord(hash).value() == data);
-
-        //delete record
-        BOOST_CHECK_NO_THROW(db.deleteRecord(hash));
-        BOOST_REQUIRE(db.selectRecord(hash) == std::nullopt);
         BOOST_CHECK_NO_THROW(db.deleteRecord(hash));
     }
 
