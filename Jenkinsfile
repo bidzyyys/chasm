@@ -8,7 +8,7 @@ pipeline {
         timestamps()
     }
     environment {
-      PATH="/var/jenkins_home/miniconda3/bin/:$PATH"
+      PATH="/var/lib/jenkins/miniconda3/bin/:$PATH"
     }
 
     stages {
@@ -20,7 +20,8 @@ pipeline {
         stage('Build environment') {
             steps {
                 echo "Building virtualenv"
-                sh  ''' conda create --yes -n ${BUILD_TAG} python
+                sh  '''#!/bin/bash
+                        conda create --yes -n ${BUILD_TAG} python
                         source activate ${BUILD_TAG}
                         pip install --upgrade pip
                         pip install -r requirements/dev.txt
