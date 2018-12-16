@@ -1,6 +1,6 @@
 from typing import List
 
-from src.chasm.primitives import transaction
+from chasm.primitives import transaction
 
 
 class Block:
@@ -13,8 +13,8 @@ class Block:
             self.timestamp = timestamp
             self.nonce = 0
 
-    def __init__(self, previous_block_hash: bytes):
-        self.header = self.Header(previous_block_hash)
-        self.block_hash = bytes(32)
-        self.block_height = 0
-        self.transactions: List[transaction]
+        def __init__(self, previous_block_hash: bytes):
+            self.header = self.Header(previous_block_hash)
+            self.block_hash = bytes(32)
+            self.block_height = 0
+            self.transactions: List[transaction]

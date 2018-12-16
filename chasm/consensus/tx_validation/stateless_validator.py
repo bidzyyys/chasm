@@ -1,4 +1,4 @@
-from src.chasm.primitives.transaction import Transaction
+from chasm.primitives import Transaction
 
 
 class StatelessValidator:
