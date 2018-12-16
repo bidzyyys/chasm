@@ -30,7 +30,8 @@ pipeline {
         }
         stage('Tests') {
             steps {
-                sh  ''' source activate ${BUILD_TAG}
+                sh  '''#!/bin/bash
+                        source activate ${BUILD_TAG}
                         pytest --cov=chasm
                     '''
             }
@@ -38,7 +39,8 @@ pipeline {
         stage('Code style') {
             steps{
                 echo "Checking code style"
-                sh  ''' source activate ${BUILD_TAG}
+                sh  '''#!/bin/bash
+                        source activate ${BUILD_TAG}
                         pylint --disable=C,R -f parseable chasm/ tests/ > pylint.out
                     '''
             }
@@ -59,7 +61,8 @@ pipeline {
         stage('Code metrics') {
             steps {
                 echo "Test coverage"
-                sh  ''' source activate ${BUILD_TAG}
+                sh  '''#!/bin/bash
+                        source activate ${BUILD_TAG}
                         coverage run chasm/chasm.py
                         python -m coverage xml -o reports/coverage.xml
                     '''
