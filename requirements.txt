@@ -1,5 +1,1 @@
 -r requirements/prod.txt
-
-rlp==1.0.3
-leveldb==0.194
-ecdsa==0.13
