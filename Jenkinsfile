@@ -41,7 +41,7 @@ pipeline {
                 echo "Checking code style"
                 sh  '''#!/bin/bash
                         source activate ${BUILD_TAG}
-                        pylint --disable=C,R -f parseable chasm/ tests/ > pylint.out
+                        pylint --disable=C,R,W0621 -f parseable chasm/ tests/ > pylint.out
                     '''
             }
             post{

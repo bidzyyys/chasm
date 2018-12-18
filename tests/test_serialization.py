@@ -1,8 +1,8 @@
-from pytest import fixture
 import hashlib
 
-from ecdsa import ecdsa
 from ecdsa import SigningKey, SECP256k1
+from pytest import fixture
+
 from chasm.primitives.transaction.tx_input import TxInput
 from chasm.primitives.transaction.tx_output import TxTransferOutput, TxXpeerOutput
 from chasm.serialization.serializer import Serializer
@@ -26,13 +26,13 @@ def tx_input():
 
 @fixture
 def tx_transfer_output(alice):
-    (priv_key, pub_key) = alice
+    (_priv_key, pub_key) = alice
     return TxTransferOutput(value=100, receiver=pub_key)
 
 
 @fixture
 def tx_xpeer_output(alice, exchange):
-    (priv_key, pub_key) = alice
+    (_priv_key, pub_key) = alice
     return TxXpeerOutput(value=100, receiver=pub_key, exchange=exchange)
 
 
