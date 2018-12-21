@@ -1,5 +1,6 @@
 from rlp.sedes import big_endian_int, binary
 
+from chasm.serialization import type_register
 from chasm.serialization.serializable import Serializable
 
 
@@ -23,3 +24,7 @@ class TxXpeerOutput(Serializable):
         self.value = value
         self.receiver = receiver
         self.exchange = exchange
+
+
+type_register.append((TxTransferOutput, 1))
+type_register.append((TxXpeerOutput, 2))
