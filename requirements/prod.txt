@@ -1,5 +1,10 @@
+wheel
 ecdsa==0.13
 rlp==1.0.3
+Werkzeug==0.14.1
+requests==2.21.0
+json-rpc==1.11.1
+
 merkletools==1.0.3
 plyvel==1.0.5
 depq==1.5.5
