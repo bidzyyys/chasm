@@ -1,6 +1,4 @@
-import hashlib
 from functools import reduce
-from itertools import accumulate
 
 from ecdsa import SigningKey, VerifyingKey, BadSignatureError
 from rlp import sedes

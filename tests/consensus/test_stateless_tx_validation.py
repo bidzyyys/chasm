@@ -1,7 +1,5 @@
-import hashlib
-
 import pytest
-from ecdsa import ecdsa, VerifyingKey
+from ecdsa import VerifyingKey
 from pytest import fixture
 
 from chasm import consensus
@@ -71,4 +69,3 @@ def test_tries_to_spend_nonexistent_utxo(transfer_outputs, utxos):
     tx = Transaction([TxInput(1, 2), transfer_outputs])
     with pytest.raises(Exception):
         tx.verify_sums(utxos)
-
