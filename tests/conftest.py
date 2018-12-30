@@ -13,16 +13,16 @@ def __entity__():
     return Entity(key.to_string(), key.get_verifying_key().to_string())
 
 
-@fixture
+@fixture(scope="session")
 def alice():
     return __entity__()
 
 
-@fixture
+@fixture(scope="session")
 def bob():
     return __entity__()
 
 
-@fixture
+@fixture(scope="session")
 def carol():
     return __entity__()

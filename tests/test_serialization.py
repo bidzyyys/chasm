@@ -1,9 +1,10 @@
 from pytest import fixture
 
 from chasm import consensus
-from chasm.primitives.transaction import Transaction, SignedTransaction
-from chasm.primitives.tx_input import TxInput
-from chasm.primitives.tx_output import TxTransferOutput, TxXpeerOutput
+from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction, OfferTransaction
+from chasm.consensus.primitives.tx_input import TxInput
+from chasm.consensus.primitives.tx_output import TxTransferOutput, TxXpeerOutput
+from chasm.consensus.xpeer_validation.tokens import Tokens
 from chasm.serialization.serializer import Serializer
 
 
@@ -24,6 +25,11 @@ def tx_transfer_output(alice):
 
 
 @fixture
+def tx_transfer_outputs(tx_transfer_output):
+    return [tx_transfer_output] * 10
+
+
+@fixture
 def tx_xpeer_output(alice, exchange):
     (_priv_key, pub_key) = alice
     return TxXpeerOutput(value=100, receiver=pub_key, exchange=exchange)
@@ -37,8 +43,18 @@ def transfer_transaction(tx_input, tx_transfer_output):
 @fixture
 def signed_simple_transaction(alice, transfer_transaction):
     (priv_key, _pub) = alice
-    signatures = [transfer_transaction.sign(priv_key)]
-    return SignedTransaction(transfer_transaction, signatures)
+    return SignedTransaction.build_signed(transfer_transaction, [priv_key])
+
+
+@fixture
+def minting_transaction(tx_transfer_outputs):
+    return MintingTransaction(tx_transfer_outputs)
+
+
+@fixture
+def xpeer_offer_transaction(tx_input, tx_transfer_outputs, alice):
+    return OfferTransaction([tx_input], tx_transfer_outputs, Tokens.BITCOIN.value, Tokens.ETHEREUM.value, 10, 100,
+                            alice.pub, 0, 1, 0, 1000 )
 
 
 def test_encode_input(tx_input):
@@ -69,3 +85,15 @@ def test_encode_signed_transaction(signed_simple_transaction):
     encoded = Serializer.encode(signed_simple_transaction)
     decoded = Serializer.decode(encoded)
     assert decoded == signed_simple_transaction
+
+
+def test_encode_minting_transaction(minting_transaction):
+    encoded = Serializer.encode(minting_transaction)
+    decoded = Serializer.decode(encoded)
+    assert decoded == minting_transaction
+
+
+def test_encode_offer_transaction(xpeer_offer_transaction):
+    encoded = Serializer.encode(xpeer_offer_transaction)
+    decoded = Serializer.decode(encoded)
+    assert decoded == xpeer_offer_transaction
