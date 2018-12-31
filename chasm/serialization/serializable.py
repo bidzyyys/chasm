@@ -25,10 +25,10 @@ class Serializable(ABC):
 
     @classmethod
     def build(cls, values: [object]):
-        instance = cls()
+        params = {}
         for ((field, _), value) in zip(cls.__fields__(), values):
-            setattr(instance, field, value)
-        return instance
+            params[field] = value
+        return cls(**params)
 
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
