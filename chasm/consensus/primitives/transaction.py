@@ -73,7 +73,6 @@ class OfferTransaction(Transaction):
 
     def __init__(self, inputs, outputs, token_in, token_out, value_in, value_out, address_out, confirmation_fee_index,
                  deposit_index, nonce, timeout):
-
         self.token_in = token_in
         self.token_out = token_out
         self.value_in = value_in
@@ -97,7 +96,6 @@ class MatchTransaction(Transaction):
 
     def __init__(self, inputs=None, outputs=None, offer=None, address_in=None, confirmation_fee_index=0,
                  deposit_index=1):
-
         self.offer = offer
         self.address_in = address_in
         self.confirmation_fee_index = confirmation_fee_index
@@ -114,11 +112,25 @@ class ConfirmationTransaction(Transaction):
         return fields + super().__fields__()
 
     def __init__(self, inputs, outputs, offer, tx_in_proof, tx_out_proof):
-
         self.offer = offer
         self.tx_in_proof = tx_in_proof
         self.tx_out_proof = tx_out_proof
 
+        super().__init__(inputs, outputs)
+
+
+class UnlockingDepositTransaction(Transaction):
+    @classmethod
+    def __fields__(cls) -> [(str, object)]:
+        fields = [('offer', sedes.binary), ('proof_side', sedes.big_endian_int), ('tx_proof', sedes.binary),
+                  ('deposit_index', sedes.big_endian_int)]
+        return fields + super().__fields__()
+
+    def __init__(self, inputs, outputs, offer, proof_side, tx_proof, deposit_index=0):
+        self.offer = offer
+        self.proof_side = proof_side
+        self.tx_proof = tx_proof
+        self.deposit_index = deposit_index
         super().__init__(inputs, outputs)
 
 
@@ -146,3 +158,4 @@ type_register.append((MintingTransaction, 5))
 type_register.append((OfferTransaction, 6))
 type_register.append((MatchTransaction, 7))
 type_register.append((ConfirmationTransaction, 8))
+type_register.append((UnlockingDepositTransaction, 9))
