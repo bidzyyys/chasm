@@ -6,7 +6,7 @@ from chasm import consensus
 from chasm.consensus.exceptions import InputOutputSumsException
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
-from chasm.consensus.primitives.tx_output import TxTransferOutput
+from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.serialization.serializer import Serializer
 
 
@@ -17,12 +17,12 @@ def inputs():
 
 @fixture
 def utxos(inputs, alice, bob, carol):
-    return [TxTransferOutput(100, entity.pub) for entity in [alice, bob, carol]]
+    return [TransferOutput(100, entity.pub) for entity in [alice, bob, carol]]
 
 
 @fixture
 def transfer_outputs(alice, bob):
-    return [TxTransferOutput(100, alice.pub), TxTransferOutput(10, bob.pub)]
+    return [TransferOutput(100, alice.pub), TransferOutput(10, bob.pub)]
 
 
 @fixture

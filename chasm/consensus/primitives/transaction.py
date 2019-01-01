@@ -6,7 +6,7 @@ from rlp import sedes
 from chasm import consensus
 from chasm.consensus.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list
-from chasm.serialization import type_register
+from chasm.serialization import type_registry
 from chasm.serialization.serializable import Serializable
 from chasm.serialization.serializer import Serializer
 
@@ -89,14 +89,13 @@ class OfferTransaction(Transaction):
 class MatchTransaction(Transaction):
     @classmethod
     def __fields__(cls):
-        fields = [('offer', sedes.binary), ('confirmation_fee_index', sedes.big_endian_int),
+        fields = [('exchange', sedes.binary), ('confirmation_fee_index', sedes.big_endian_int),
                   ('deposit_index', sedes.big_endian_int), ('address_in', sedes.binary)]
 
         return fields + super().__fields__()
 
-    def __init__(self, inputs=None, outputs=None, offer=None, address_in=None, confirmation_fee_index=0,
-                 deposit_index=1):
-        self.offer = offer
+    def __init__(self, inputs, outputs, exchange, address_in, confirmation_fee_index=0, deposit_index=1):
+        self.exchange = exchange
         self.address_in = address_in
         self.confirmation_fee_index = confirmation_fee_index
         self.deposit_index = deposit_index
@@ -108,11 +107,11 @@ class ConfirmationTransaction(Transaction):
 
     @classmethod
     def __fields__(cls) -> [(str, object)]:
-        fields = [('offer', sedes.binary), ('tx_in_proof', sedes.binary), ('tx_out_proof', sedes.binary)]
+        fields = [('exchange', sedes.binary), ('tx_in_proof', sedes.binary), ('tx_out_proof', sedes.binary)]
         return fields + super().__fields__()
 
-    def __init__(self, inputs, outputs, offer, tx_in_proof, tx_out_proof):
-        self.offer = offer
+    def __init__(self, inputs, outputs, exchange, tx_in_proof, tx_out_proof):
+        self.exchange = exchange
         self.tx_in_proof = tx_in_proof
         self.tx_out_proof = tx_out_proof
 
@@ -122,12 +121,12 @@ class ConfirmationTransaction(Transaction):
 class UnlockingDepositTransaction(Transaction):
     @classmethod
     def __fields__(cls) -> [(str, object)]:
-        fields = [('offer', sedes.binary), ('proof_side', sedes.big_endian_int), ('tx_proof', sedes.binary),
+        fields = [('exchange', sedes.binary), ('proof_side', sedes.big_endian_int), ('tx_proof', sedes.binary),
                   ('deposit_index', sedes.big_endian_int)]
         return fields + super().__fields__()
 
-    def __init__(self, inputs, outputs, offer, proof_side, tx_proof, deposit_index=0):
-        self.offer = offer
+    def __init__(self, inputs, outputs, exchange, proof_side, tx_proof, deposit_index=0):
+        self.exchange = exchange
         self.proof_side = proof_side
         self.tx_proof = tx_proof
         self.deposit_index = deposit_index
@@ -152,10 +151,10 @@ class SignedTransaction(Serializable):
         self.signatures = signatures
 
 
-type_register.append((Transaction, 3))
-type_register.append((SignedTransaction, 4))
-type_register.append((MintingTransaction, 5))
-type_register.append((OfferTransaction, 6))
-type_register.append((MatchTransaction, 7))
-type_register.append((ConfirmationTransaction, 8))
-type_register.append((UnlockingDepositTransaction, 9))
+type_registry.append((Transaction, 4))
+type_registry.append((SignedTransaction, 5))
+type_registry.append((MintingTransaction, 6))
+type_registry.append((OfferTransaction, 7))
+type_registry.append((MatchTransaction, 8))
+type_registry.append((ConfirmationTransaction, 9))
+type_registry.append((UnlockingDepositTransaction, 10))

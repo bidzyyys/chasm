@@ -2,19 +2,19 @@ import rlp
 from rlp import sedes
 from rlp.sedes import big_endian_int
 
-from chasm.serialization import countable_list, type_register
+from chasm.serialization import countable_list, type_registry
 
 
 class Serializer:
     @classmethod
     def encode(cls, obj) -> bytes:
-        type_id = next(type_id for (type_name, type_id) in type_register if type_name == obj.__class__)
+        type_id = next(type_id for (type_name, type_id) in type_registry if type_name == obj.__class__)
         return rlp.encode([type_id, rlp.encode(obj.serialize())])
 
     @classmethod
     def decode(cls, encoded: bytes) -> [object]:
         [type_id, serialized] = rlp.decode(encoded, sedes.List([big_endian_int, sedes.raw]))
-        obj_type = next(type_name for (type_name, id) in type_register if id == type_id)
+        obj_type = next(type_name for (type_name, id) in type_registry if id == type_id)
 
         sedes_list = []
         for (_field, field_type) in obj_type.__fields__():

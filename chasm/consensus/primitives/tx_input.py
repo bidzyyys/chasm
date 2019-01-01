@@ -26,4 +26,4 @@ class TxInput(Serializable):
         return hash_obj.digest().__hash__()
 
 
-serialization.type_register.append((TxInput, 0))
+serialization.type_registry.append((TxInput, 0))

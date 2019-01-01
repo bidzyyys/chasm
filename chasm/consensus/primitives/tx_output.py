@@ -1,10 +1,10 @@
 from rlp.sedes import big_endian_int, binary
 
-from chasm.serialization import type_register
+from chasm.serialization import type_registry
 from chasm.serialization.serializable import Serializable
 
 
-class TxTransferOutput(Serializable):
+class TransferOutput(Serializable):
 
     @classmethod
     def __fields__(cls) -> [(str, object)]:
@@ -15,16 +15,26 @@ class TxTransferOutput(Serializable):
         self.receiver = receiver
 
 
-class TxXpeerOutput(Serializable):
+class XpeerOutput(Serializable):
     @classmethod
     def __fields__(cls) -> [(str, object)]:
         return [('value', big_endian_int), ('receiver', binary), ('exchange', binary)]
 
-    def __init__(self, value: int = 0, receiver: bytes = None, exchange: bytes = None):
+    def __init__(self, value: int, receiver: bytes, exchange: bytes):
         self.value = value
         self.receiver = receiver
         self.exchange = exchange
 
 
-type_register.append((TxTransferOutput, 1))
-type_register.append((TxXpeerOutput, 2))
+class XpeerFeeOutput(Serializable):
+    @classmethod
+    def __fields__(cls) -> [(str, object)]:
+        return [('value', big_endian_int)]
+
+    def __init__(self, value):
+        self.value = value
+
+
+type_registry.append((TransferOutput, 1))
+type_registry.append((XpeerOutput, 2))
+type_registry.append((XpeerFeeOutput, 3))

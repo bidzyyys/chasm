@@ -1,10 +1,11 @@
 from pytest import fixture
 
 from chasm import consensus
+from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction, OfferTransaction, \
     MatchTransaction, ConfirmationTransaction, UnlockingDepositTransaction
 from chasm.consensus.primitives.tx_input import TxInput
-from chasm.consensus.primitives.tx_output import TxTransferOutput, TxXpeerOutput
+from chasm.consensus.primitives.tx_output import TransferOutput, XpeerOutput, XpeerFeeOutput
 from chasm.consensus.xpeer_validation.tokens import Tokens
 from chasm.serialization.serializer import Serializer
 
@@ -22,7 +23,7 @@ def tx_input():
 @fixture
 def tx_transfer_output(alice):
     (_priv_key, pub_key) = alice
-    return TxTransferOutput(value=100, receiver=pub_key)
+    return TransferOutput(value=100, receiver=pub_key)
 
 
 @fixture
@@ -33,7 +34,12 @@ def tx_transfer_outputs(tx_transfer_output):
 @fixture
 def tx_xpeer_output(alice, exchange):
     (_priv_key, pub_key) = alice
-    return TxXpeerOutput(value=100, receiver=pub_key, exchange=exchange)
+    return XpeerOutput(value=100, receiver=pub_key, exchange=exchange)
+
+
+@fixture
+def tx_xpeer_fee_output(exchange):
+    return XpeerFeeOutput(100)
 
 
 @fixture
@@ -76,6 +82,15 @@ def xpeer_deposit_unlocking_transaction(xpeer_offer_transaction, tx_input, tx_tr
     return UnlockingDepositTransaction([tx_input], tx_transfer_outputs, offer_hash, 0, b'some proof')
 
 
+@fixture
+def block(transfer_transaction, xpeer_offer_transaction, xpeer_deposit_unlocking_transaction, xpeer_match_transaction,
+          xpeer_confirmation_transaction):
+    transactions = [transfer_transaction, xpeer_offer_transaction, xpeer_deposit_unlocking_transaction,
+                    xpeer_match_transaction, xpeer_confirmation_transaction]
+
+    return Block(b'', b'some merkle tree root hash', 0, transactions=transactions)
+
+
 def test_encode_input(tx_input):
     encoded = Serializer.encode(tx_input)
     decoded = Serializer.decode(encoded)
@@ -92,6 +107,12 @@ def test_encode_xpeer_output(tx_xpeer_output):
     encoded = Serializer.encode(tx_xpeer_output)
     decoded = Serializer.decode(encoded)
     assert decoded == tx_xpeer_output
+
+
+def test_encode_xpeer_fee_output(tx_xpeer_fee_output):
+    encoded = Serializer.encode(tx_xpeer_fee_output)
+    decoded = Serializer.decode(encoded)
+    assert decoded == tx_xpeer_fee_output
 
 
 def test_encode_transfer_transaction(transfer_transaction):
@@ -134,3 +155,9 @@ def test_encode_deposit_unlocking_transaction(xpeer_deposit_unlocking_transactio
     encoded = Serializer.encode(xpeer_deposit_unlocking_transaction)
     decoded = Serializer.decode(encoded)
     assert decoded == xpeer_deposit_unlocking_transaction
+
+
+def test_encode_block(block):
+    encoded = Serializer.encode(block)
+    decoded = Serializer.decode(encoded)
+    assert decoded == block
