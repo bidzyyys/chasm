@@ -1,3 +1,4 @@
+from merkletools import MerkleTools
 from pytest import fixture
 
 from chasm import consensus
@@ -88,7 +89,12 @@ def block(transfer_transaction, xpeer_offer_transaction, xpeer_deposit_unlocking
     transactions = [transfer_transaction, xpeer_offer_transaction, xpeer_deposit_unlocking_transaction,
                     xpeer_match_transaction, xpeer_confirmation_transaction]
 
-    return Block(b'', b'some merkle tree root hash', 0, transactions=transactions)
+    merkle_tree = MerkleTools(hash_type='sha256')
+    merkle_tree.add_leaf(values=[tx.hash().hex() for tx in transactions])
+    merkle_tree.make_tree()
+    merkle_root = bytes.fromhex(merkle_tree.get_merkle_root())
+
+    return Block(b'', merkle_root=merkle_root, difficulty=0, transactions=transactions)
 
 
 def test_encode_input(tx_input):
