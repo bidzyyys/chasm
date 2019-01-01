@@ -16,7 +16,7 @@ class TxInput(Serializable):
             ('output_no', big_endian_int)
         ]
 
-    def __init__(self, block_no=None, output_no=None):
+    def __init__(self, block_no, output_no):
         self.block_no = block_no
         self.output_no = output_no
 

@@ -1,3 +1,5 @@
 ecdsa==0.13
 rlp==1.0.3
 merkletools==1.0.3
+plyvel==1.0.5
+depq==1.5.5

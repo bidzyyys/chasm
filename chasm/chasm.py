@@ -2,16 +2,9 @@
 """
 
 
-def foo(some_bool):
-    if some_bool:
-        return 1
-    else:
-        return 2
-
-
 def cli():
     """Main method"""
-    foo(False)
+    pass
 
 
 if __name__ == "__main__":
