@@ -2,4 +2,6 @@
 
 from chasm.logger.logger import get_logger
 
-LOGGER = get_logger("chasm.rpc")
+# pylint: disable=invalid-name
+
+logger = get_logger("chasm.rpc")

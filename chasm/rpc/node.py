@@ -4,23 +4,48 @@ from jsonrpc import JSONRPCResponseManager, dispatcher
 from werkzeug.serving import run_simple
 from werkzeug.wrappers import Request, Response
 
-from . import LOGGER
+from . import logger
 
 
 @dispatcher.add_method
-def foobar(**kwargs):
-    return kwargs["foo"] + kwargs["bar"]
+def get_utxos(address):
+    pass
+
+
+@dispatcher.add_method
+def get_tx(tx_hash):
+    pass
+
+
+@dispatcher.add_method
+def transfer():
+    pass
+
+
+@dispatcher.add_method
+def create_offer():
+    pass
+
+
+@dispatcher.add_method
+def accept_offer():
+    pass
+
+
+@dispatcher.add_method
+def unlock_deposit():
+    pass
+
+
+@dispatcher.add_method
+def get_account_history(address):
+    pass
 
 
 @Request.application
 def application(request):
-    # Dispatcher is dictionary {<method_name>: callable}
-    dispatcher["echo"] = lambda s: s
-    dispatcher["add"] = lambda a, b: a + b
-
     response = JSONRPCResponseManager.handle(
         request.data, dispatcher)
-    LOGGER.info("Request: " + str(request.data))
     return Response(response.json, mimetype='application/json')
 
 
