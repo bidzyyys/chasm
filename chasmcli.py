@@ -1,6 +1,7 @@
 """Client for running commands on node"""
 
 import argparse
+
 from chasm.logger.logger import get_logger
 from chasm.rpc.client import show_transaction, get_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
@@ -42,49 +43,57 @@ def create_show_tx_parser(subparsers):
 
 def create_balance_parser(subparsers):
     parser = subparsers.add_parser('balance', help="show balance of the account")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=get_balance)
 
 
 def create_account_parser(subparsers):
     parser = subparsers.add_parser('account', help="generate new account")
-    parser.add_argument('keyfile', help="file for keys to be stored in")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file for keys to be stored in")
     parser.set_defaults(func=generate_account)
 
 
 def create_offer_parser(subparsers):
     parser = subparsers.add_parser('offer', help="create an exchange offer")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=create_offer)
 
 
 def create_match_parser(subparsers):
     parser = subparsers.add_parser('match', help="accept the offer")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=accept_offer)
 
 
 def create_unlock_parser(subparsers):
     parser = subparsers.add_parser('unlock', help="unlock the deposit")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=unlock_deposit)
 
 
 def create_transfer_parser(subparsers):
     parser = subparsers.add_parser('transfer', help="transfer funds")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=transfer)
 
 
 def create_history_parser(subparsers):
     parser = subparsers.add_parser('history', help="show account history")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=show_account_history)
 
 
 def create_address_parser(subparsers):
     parser = subparsers.add_parser('address', help="show address")
-    parser.add_argument('keyfile', help="file where keys are stored")
+    parser.add_argument('-k', '--keyfile', default="~/.chasm/account.json",
+                        help="file where keys are stored")
     parser.set_defaults(func=show_address)
 
 
@@ -98,11 +107,10 @@ def main():
 
     try:
         args.func(args)
-
+    except RuntimeError:
+        logger.exception("Unexpected error")
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt")
-    except BaseException:
-        logger.error("Unexpected exception:", exc_info=True)
 
 
 if __name__ == "__main__":
