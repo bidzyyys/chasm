@@ -2,6 +2,7 @@ import plyvel
 import rlp
 from rlp import sedes
 
+from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.serialization.serializer import Serializer
 
 
@@ -29,7 +30,7 @@ class DB:
         pass
 
     def put_pending_tx(self, tx, priority):
-        encoded = rlp.encode([priority, Serializer.encode(tx)])
+        encoded = rlp.encode([priority, RLPSerializer().encode(tx)])
         self.pending_txs_db.put(tx.hash(), encoded)
 
     def delete_pending(self, tx_hash):
@@ -44,4 +45,4 @@ class DB:
         """
         enc = [encoded for _key, encoded in self.pending_txs_db]
         pairs = [rlp.decode(encoded, sedes=sedes.List([sedes.big_endian_int, sedes.raw])) for encoded in enc]
-        return [(priority, Serializer.decode(tx_enc)) for priority, tx_enc in pairs]
+        return [(priority, RLPSerializer().decode(tx_enc)) for priority, tx_enc in pairs]

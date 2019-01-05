@@ -7,6 +7,7 @@ from chasm.consensus.exceptions import InputOutputSumsException
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
+from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.serialization.serializer import Serializer
 
 
@@ -42,7 +43,7 @@ def test_sign_transaction_and_manually_verify_signature(simple_transaction, alic
     for entity in entities:
         signature = simple_transaction.sign(entity.priv)
         vk = VerifyingKey.from_string(entity.pub, curve=consensus.CURVE)
-        encoded = Serializer.encode(simple_transaction)
+        encoded = RLPSerializer().encode(simple_transaction)
         assert vk.verify(signature, encoded, consensus.HASH_FUNC)
 
 

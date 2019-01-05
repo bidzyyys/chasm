@@ -3,7 +3,6 @@ from abc import ABC
 from rlp import sedes
 
 from chasm.serialization import countable_list
-from chasm.serialization.serializer import Serializer
 
 
 class Serializable(ABC):
@@ -12,15 +11,15 @@ class Serializable(ABC):
     def __fields__(cls) -> [(str, object)]:
         raise NotImplementedError
 
-    def serialize(self):
+    def serialize(self, serializer):
         values = []
         for (field, field_type) in self.__fields__():
             value = self.__getattribute__(field)
             if field_type == sedes.raw:
-                value = Serializer.encode(value)
+                value = serializer.encode(value)
             elif field_type == countable_list:
-                value = [Serializer.encode(v) for v in value]
-            values.append(value)
+                value = [serializer.encode(v) for v in value]
+            values.append((field, value))
         return values
 
     @classmethod

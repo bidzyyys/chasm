@@ -7,6 +7,7 @@ from chasm import consensus
 from chasm.consensus.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list
 from chasm.serialization import type_registry
+from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.serialization.serializable import Serializable
 from chasm.serialization.serializer import Serializer
 
@@ -26,15 +27,14 @@ class Transaction(Serializable):
         self.outputs = outputs
 
         self.utxos = []
-        self.encoded = Serializer.encode(self)
+        self.encoded = RLPSerializer().encode(self)
 
     def find_utxos(self):
         pass
 
     def sign(self, private_key: str):
-        encoded = Serializer.encode(self)
         key = SigningKey.from_string(private_key, curve=consensus.CURVE)
-        return key.sign(encoded, hashfunc=consensus.HASH_FUNC)
+        return key.sign(self.encoded, hashfunc=consensus.HASH_FUNC)
 
     def verify_signature(self, public_key, signature):
         key = VerifyingKey.from_string(public_key, curve=consensus.CURVE, hashfunc=consensus.HASH_FUNC)
