@@ -2,6 +2,9 @@
 
 import json
 import os
+import re
+import time
+from functools import reduce
 from getpass import getpass
 
 import requests
@@ -10,8 +13,11 @@ from ecdsa import SigningKey
 
 from chasm import consensus
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
-    InvalidAccountFile
+    KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
+    RPCError, BadResponse
 
+
+# pylint: disable=invalid-name
 
 def get_password(prompt="Type password: "):
     """
@@ -126,19 +132,15 @@ def decrypt_aes(password, nonce, encrypted_data):
     return cipher.decrypt(encrypted_data)
 
 
-# def read_priv_key():
-#     priv_der = decrypt_aes(password, nonce=bytes.fromhex(account['nonce']),
-#                            encrypted_data=bytes.fromhex(account['priv_key']))
-
-def save_account(priv_key, pub_key, password, filename):
+def save_account(priv_key, pub_key, password, datadir):
     """
     Save account properties into json file
     :param priv_key: private key
     :param pub_key: public key
     :param password: password to encrypt key
-    :param filename: file to be saved
+    :param datadir: current datadir
     :raise InvalidAccountFile: if account already exists
-    :return: None
+    :return: filename of the account data
     """
     encrypted_priv_key, nonce = encrypt_aes(password, priv_key)
 
@@ -148,11 +150,13 @@ def save_account(priv_key, pub_key, password, filename):
         "nonce": nonce.hex()
     }
 
-    filename = filename.replace("~", os.path.expanduser("~"))
-    if os.path.isfile(filename):
-        raise InvalidAccountFile("Account exists: %s" % filename)
+    keyfile = "{}_{}.json".format(time.strftime("%Y%m%d_%H%M%S"),
+                                  pub_key.hex()[-7:])
+    filename = os.path.join(datadir, KEYSTORE, keyfile)
 
     save_json(json.dumps(account), filename)
+
+    return filename
 
 
 def generate_account(args, pwd=None):
@@ -163,7 +167,7 @@ def generate_account(args, pwd=None):
     :param pwd:
     :param args: args given by user
     :raise RuntimeError: when any action goes wrong
-    :return: address(public key) in hex string format
+    :return: None
     """
 
     if pwd is None:
@@ -176,16 +180,149 @@ def generate_account(args, pwd=None):
         password = pwd
 
     priv_key, pub_key = generate_keys()
-
-    try:
-        save_account(priv_key, pub_key, password, args.keyfile)
-    except InvalidAccountFile:
-        logger.exception("Account file already exists!")
-        raise RuntimeError("Failed to generate new account")
-
+    keyfile = save_account(priv_key, pub_key, password, args.datadir)
     pub_key_hex = pub_key.hex()
-    logger.info("Account generated successfully, address: %s" % pub_key_hex)
-    return pub_key_hex
+
+    logger.info("Account generated successfully!")
+    print("Address: {}".format(pub_key_hex))
+    print("File: {}".format(keyfile))
+
+
+def get_address(keyfile):
+    """
+    Get address from given account file
+    :param keyfile: file with account configuration
+    :return: address(public key)
+    """
+    try:
+        account_info = read_json(keyfile)
+        pub_key_hex = account_info["address"]
+        return pub_key_hex
+    except FileNotFoundError:
+        logger.exception("Account does not exist!: %s", keyfile)
+        raise RuntimeError("Cannot get address from given file!")
+
+
+def get_addresses(datadir):
+    """
+    Get all addresses from given datadir
+    :param datadir: datadir
+    :return: list of tuples [address, keyfile]
+    """
+    datadir = datadir.replace("~", os.path.expanduser("~"))
+    keystore = os.path.join(datadir, KEYSTORE)
+    accounts = [os.path.join(keystore, f) \
+                for f in os.listdir(os.path.join(datadir, KEYSTORE))
+                if re.match(KEY_FILE_REGEX, f)]
+
+    addresses = [[get_address(f), f] for f in accounts]
+
+    return addresses
+
+
+def receive(args):
+    """
+    Display addresses from given datadir
+    :param args: args given by user
+    :return: None
+    """
+
+    addresses = get_addresses(args.datadir)
+
+    for address in addresses:
+        print("Keyfile: {}\nAddress: {}\n".format(address[1], address[0]))
+
+
+def run(host, port, payload):
+    """
+    Send json-rpc request
+    :param host: node hostname
+    :param port: node port
+    :param payload: request data
+    :raise RPCError: if gets response with error
+    :return: result of called method
+    """
+    url = "http://{}:{}/jsonrpc".format(host, port)
+    headers = {'content-type': 'application/json'}
+
+    response = requests.post(
+        url, data=json.dumps(payload), headers=headers).json()
+
+    if 'error' in response.keys():
+        raise RPCError("Unexpected RPC error: {}".
+                       format(response['error']['message']))
+
+    return response['result']
+
+
+def count_balance(datadir, node, port):
+    """
+    Count balance of an account
+    :param datadir: datadir of an account
+    :param node: node hostname
+    :param port: node port
+    :return: balance of each address (dict[address]=balance))
+    """
+    addresses = get_addresses(datadir)
+    balance = {}
+    for address in addresses:
+        try:
+            utxos = get_utxos(address[0], node, port)
+        except RPCError:
+            logger.exception("Cannot get UTXOs of: %s", address[0])
+            raise RuntimeError("Cannot count balance!")
+        funds = reduce((lambda utxo1, utxo2: utxo1.value + utxo2.value), utxos, 0.0)
+        balance[address[0]] = funds
+
+    return balance
+
+
+def show_balance(args):
+    """
+    Display balance of the account
+    :param args: args given by user
+    :return: None
+    """
+
+    balance = count_balance(args.datadir, args.node, args.port)
+    total_balance = 0.0
+    for address in balance:
+        print("Balance: {} xpc\nAddress: {}\n".format(balance[address], address))
+        total_balance += balance[address]
+
+    print("Total: {} xpc".format(total_balance))
+
+
+def get_utxos(address, host, port):
+    """
+    Get UTXOs of given address
+
+    Calls remote method through json-rpc
+
+    :param address: owner of UTXOs
+    :param host: node hostname
+    :param port: node port
+    :raise BadResponse: if any of UTXO has bad owner(address)
+    :return: list of UTXOs
+    """
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "get_utxos"
+    payload[PARAMS] = [address]
+
+    utxos = run(host=host, port=port, payload=payload)
+
+    for utxo in utxos:
+        if utxo.receiver != address:
+            raise BadResponse("UTXO of different address")
+    return utxos
+
+
+def show_account_history(args):
+    print(__name__ + str(args))
+
+
+def show_marketplace(args):
+    print(__name__ + str(args))
 
 
 def show_transaction(args):
@@ -193,6 +330,14 @@ def show_transaction(args):
 
 
 def transfer(args):
+    print(__name__ + str(args))
+
+
+def show_matchings(args):
+    print(__name__ + str(args))
+
+
+def show_offers(args):
     print(__name__ + str(args))
 
 
@@ -207,45 +352,6 @@ def accept_offer(args):
 def unlock_deposit(args):
     print(__name__ + str(args))
 
-
-def get_balance(args):
-    print(__name__ + str(args))
-
-
-def show_account_history(args):
-    print(__name__ + str(args))
-
-
-def show_address(args):
-    """
-    Show address from given account configuration file
-    :param args: args given by user
-    :return: address(public key) in hex string format
-    """
-    try:
-        account_info = read_json(args.keyfile)
-        pub_key_hex = account_info["address"]
-        logger.info("Your address: %s" % pub_key_hex)
-        return pub_key_hex
-    except FileNotFoundError:
-        logger.exception("Account does not exist!: %s" % args.keyfile)
-        raise RuntimeError("Cannot get address from given file!")
-
-
-def run(host, port, payload):
-    url = "http://{}:{}/jsonrpc".format(host, port)
-    headers = {'content-type': 'application/json'}
-
-    # Example echo method
-    # payload = {
-    #     "method": "dupa",
-    #     "params": ["echome!"],
-    #     "jsonrpc": "2.0",
-    #     "id": 0,
-    # }
-    response = requests.post(
-        url, data=json.dumps(payload), headers=headers).json()
-
-    logger.info("Response: " + str(response))
-
-    return response
+# def read_priv_key():
+#     priv_der = decrypt_aes(password, nonce=bytes.fromhex(account['nonce']),
+#                            encrypted_data=bytes.fromhex(account['priv_key']))

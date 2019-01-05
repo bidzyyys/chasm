@@ -5,14 +5,21 @@ import argparse
 from chasm.logger.logger import get_logger
 from chasm.rpc.node import run
 
-PARSER = argparse.ArgumentParser(description='Node app',
-                                 formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-PARSER.add_argument('-n', '--node', default="127.0.0.1",
-                    help="hostname")
+def get_parser():
+    parser = argparse.ArgumentParser(description='Node app',
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-PARSER.add_argument('-p', "--port", default=6969,
-                    help="port")
+    parser.add_argument('-n', '--node', default="127.0.0.1",
+                        help="hostname")
+
+    parser.add_argument('-p', "--port", default=6969,
+                        help="port")
+
+    parser.add_argument('-d', '--datadir', default="~/.chasm",
+                        help="datadir for chasm storage")
+
+    return parser
 
 
 def main():
@@ -20,7 +27,8 @@ def main():
     Main function, runs server side
     """
     logger = get_logger("chasmcli")
-    args = PARSER.parse_args()
+    parser = get_parser()
+    args = parser.parse_args()
 
     try:
         run(host=args.node,

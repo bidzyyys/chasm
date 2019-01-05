@@ -9,7 +9,14 @@ from . import logger
 
 @dispatcher.add_method
 def get_utxos(address):
-    pass
+    """
+    Returns UTXOs of given address
+    :param address: address
+    :return: list of UTXOs
+    """
+    # TODO
+    logger.info("Getting UTXOs of: %s", address)
+    return []
 
 
 @dispatcher.add_method
@@ -18,22 +25,7 @@ def get_tx(tx_hash):
 
 
 @dispatcher.add_method
-def transfer():
-    pass
-
-
-@dispatcher.add_method
-def create_offer():
-    pass
-
-
-@dispatcher.add_method
-def accept_offer():
-    pass
-
-
-@dispatcher.add_method
-def unlock_deposit():
+def add_transaction(tx):
     pass
 
 
