@@ -174,7 +174,8 @@ def generate_account(args, pwd=None):
         try:
             password = create_password()
         except IncorrectPassword:
-            logger.exception("Unexpected error while getting new password")
+            logger.exception("Unexpected error while getting new password",
+                             exc_info=False)
             raise RuntimeError("Failed to generate new account")
     else:
         password = pwd
@@ -199,7 +200,8 @@ def get_address(keyfile):
         pub_key_hex = account_info["address"]
         return pub_key_hex
     except FileNotFoundError:
-        logger.exception("Account does not exist!: %s", keyfile)
+        logger.exception("Account does not exist!: %s", keyfile,
+                         exc_info=False)
         raise RuntimeError("Cannot get address from given file!")
 
 
@@ -239,14 +241,18 @@ def run(host, port, payload):
     :param host: node hostname
     :param port: node port
     :param payload: request data
-    :raise RPCError: if gets response with error
+    :raise RPCError: if cannot establish connection or
+    get a response with error
     :return: result of called method
     """
     url = "http://{}:{}/jsonrpc".format(host, port)
     headers = {'content-type': 'application/json'}
 
-    response = requests.post(
-        url, data=json.dumps(payload), headers=headers).json()
+    try:
+        response = requests.post(
+            url, data=json.dumps(payload), headers=headers).json()
+    except requests.exceptions.ConnectionError:
+        raise RPCError("Cannot establish connection")
 
     if 'error' in response.keys():
         raise RPCError("Unexpected RPC error: {}".
@@ -269,7 +275,8 @@ def count_balance(datadir, node, port):
         try:
             utxos = get_utxos(address[0], node, port)
         except RPCError:
-            logger.exception("Cannot get UTXOs of: %s", address[0])
+            logger.exception("Cannot get UTXOs of: %s", address[0],
+                             exc_info=False)
             raise RuntimeError("Cannot count balance!")
         funds = reduce((lambda utxo1, utxo2: utxo1.value + utxo2.value), utxos, 0.0)
         balance[address[0]] = funds
@@ -317,11 +324,43 @@ def get_utxos(address, host, port):
     return utxos
 
 
-def show_account_history(args):
-    print(__name__ + str(args))
+def get_current_offers(host, port):
+    """
+    Get all current offers
+
+    Calls remote method through json-rpce
+    :param host: node hostname
+    :param port: node port
+    :return: list of current offers
+    """
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "get_current_offers"
+    payload[PARAMS] = []
+    try:
+        offers = run(host=host, port=port, payload=payload)
+    except RPCError:
+        raise RuntimeError("Cannot get current offers")
+
+    return offers
 
 
 def show_marketplace(args):
+    """
+    Display all current offers
+    :param args: args given by user
+    :return: None
+    """
+    offers = get_current_offers(args.node, args.port)
+    print("Current offers: {}".format(len(offers)))
+    for offer in offers:
+        print("Hash: {}".format(offer.hash))
+        print("Token: {}".format(offer.token_in))
+        print("Amount: {}".format(offer.value_in))
+        print("Expected token: {}".format(offer.token_out))
+        print("Price: {}".format(offer.value_out))
+
+
+def show_account_history(args):
     print(__name__ + str(args))
 
 

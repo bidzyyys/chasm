@@ -10,12 +10,23 @@ from . import logger
 @dispatcher.add_method
 def get_utxos(address):
     """
-    Returns UTXOs of given address
+    Return UTXOs of given address
     :param address: address
     :return: list of UTXOs
     """
     # TODO
     logger.info("Getting UTXOs of: %s", address)
+    return []
+
+
+@dispatcher.add_method
+def get_current_offers():
+    """
+    Return all current offers
+    :return:
+    """
+    # TODO
+    logger.info("Getting current offers")
     return []
 
 

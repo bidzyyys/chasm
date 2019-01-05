@@ -27,8 +27,8 @@ def get_parser():
 
 
 def create_subparsers(subparsers):
-    create_address_parser(subparsers)
     create_balance_parser(subparsers)
+    create_gen_address_parser(subparsers)
     create_history_parser(subparsers)
     create_marketplace_parser(subparsers)
     create_match_parser(subparsers)
@@ -47,7 +47,7 @@ def create_marketplace_parser(subparsers):
 
 
 def create_show_tx_parser(subparsers):
-    parser = subparsers.add_parser('tx', help="show transaction")
+    parser = subparsers.add_parser('show', help="show transaction")
     parser.add_argument('tx_hash', help="hash of the transaction")
     parser.set_defaults(func=show_transaction)
 
@@ -57,8 +57,8 @@ def create_balance_parser(subparsers):
     parser.set_defaults(func=show_balance)
 
 
-def create_address_parser(subparsers):
-    parser = subparsers.add_parser('address', help="generate new address")
+def create_gen_address_parser(subparsers):
+    parser = subparsers.add_parser('generate', help="generate new address")
     parser.set_defaults(func=generate_account)
 
 
