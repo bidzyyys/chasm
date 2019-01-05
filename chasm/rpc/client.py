@@ -14,7 +14,7 @@ from ecdsa import SigningKey
 from chasm import consensus
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
-    RPCError, BadResponse
+    RPCError, BadResponse, token_from_name, ALL_TOKENS
 
 
 # pylint: disable=invalid-name
@@ -261,7 +261,7 @@ def run(host, port, payload):
     return response['result']
 
 
-def count_balance(datadir, node, port):
+def count_balance(address, node, port):
     """
     Count balance of an account
     :param datadir: datadir of an account
@@ -269,17 +269,13 @@ def count_balance(datadir, node, port):
     :param port: node port
     :return: balance of each address (dict[address]=balance))
     """
-    addresses = get_addresses(datadir)
-    balance = {}
-    for address in addresses:
-        try:
-            utxos = get_utxos(address[0], node, port)
-        except RPCError:
-            logger.exception("Cannot get UTXOs of: %s", address[0],
-                             exc_info=False)
-            raise RuntimeError("Cannot count balance!")
-        funds = reduce((lambda utxo1, utxo2: utxo1.value + utxo2.value), utxos, 0.0)
-        balance[address[0]] = funds
+    try:
+        utxos = get_utxos(address[0], node, port)
+    except RPCError:
+        logger.exception("Cannot get UTXOs of: %s", address[0],
+                         exc_info=False)
+        raise RuntimeError("Cannot count balance!")
+    balance = reduce((lambda utxo1, utxo2: utxo1.value + utxo2.value), utxos, 0.0)
 
     return balance
 
@@ -290,12 +286,24 @@ def show_balance(args):
     :param args: args given by user
     :return: None
     """
+    balance = count_balance(args.address, args.node, args.port)
+    print("Balance: {} xpc".format(balance))
 
-    balance = count_balance(args.datadir, args.node, args.port)
+
+def show_all_funds(args):
+    """
+    Display balance of all accounts from datadir
+    :param args: args given by user
+    :return: None
+    """
+
+    addresses = get_addresses(args.datadir)
     total_balance = 0.0
-    for address in balance:
-        print("Balance: {} xpc\nAddress: {}\n".format(balance[address], address))
-        total_balance += balance[address]
+    for address in addresses:
+        balance = count_balance(address, args.node, args.port)
+        print("Balance: {} xpc".format(balance))
+        print("Address: {}\n".format(address[0]))
+        total_balance += balance
 
     print("Total: {} xpc".format(total_balance))
 
@@ -350,7 +358,17 @@ def show_marketplace(args):
     :param args: args given by user
     :return: None
     """
+    try:
+        token_in = token_from_name(args.token)
+        token_out = token_from_name(args.expected)
+    except ValueError:
+        raise RuntimeError("Cannot display current offers")
+
     offers = get_current_offers(args.node, args.port)
+    offers = list(filter(lambda o:
+                         token_in in (ALL_TOKENS, o.token_in) and
+                         token_out in (ALL_TOKENS, o.token_out),
+                         offers))
     print("Current offers: {}".format(len(offers)))
     for offer in offers:
         print("Hash: {}".format(offer.hash))

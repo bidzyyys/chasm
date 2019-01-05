@@ -1,5 +1,6 @@
 """RPC module"""
 
+from chasm.consensus.xpeer_validation.tokens import Tokens
 from chasm.logger.logger import get_logger
 
 # pylint: disable=invalid-name
@@ -18,6 +19,39 @@ PAYLOAD_TAGS = {
 
 METHOD = "method"
 PARAMS = "params"
+
+ALL_TOKENS = 0
+
+TOKENS_DICT = {
+    ALL_TOKENS: "all",
+    Tokens.XPEER: "xpc",
+    Tokens.BITCOIN: "btc",
+    Tokens.ETHEREUM: "eth"
+}
+
+
+def token_from_name(name):
+    for key in TOKENS_DICT:
+        if TOKENS_DICT[key] == name.lower():
+            return key
+
+    raise ValueError("Token not found: %s", name)
+
+
+def get_token_names():
+    tokens = []
+    for token in Tokens:
+        tokens.append(TOKENS_DICT[token])
+
+    return tokens
+
+
+def list_token_names():
+    tokens = str(get_token_names())
+    tokens = tokens.replace("[", "")
+    tokens = tokens.replace("]", "")
+
+    return tokens
 
 
 class IncorrectPassword(ValueError):

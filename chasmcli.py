@@ -3,9 +3,10 @@
 import argparse
 
 from chasm.logger.logger import get_logger
+from chasm.rpc import list_token_names
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
-    receive, show_marketplace, show_matchings, show_offers
+    receive, show_marketplace, show_matchings, show_offers, show_all_funds
 
 
 def get_parser():
@@ -28,6 +29,7 @@ def get_parser():
 
 def create_subparsers(subparsers):
     create_balance_parser(subparsers)
+    create_funds_parser(subparsers)
     create_gen_address_parser(subparsers)
     create_history_parser(subparsers)
     create_marketplace_parser(subparsers)
@@ -42,63 +44,87 @@ def create_subparsers(subparsers):
 
 
 def create_marketplace_parser(subparsers):
-    parser = subparsers.add_parser('marketplace', help="show all current offers")
+    parser = subparsers.add_parser('marketplace',
+                                   description="show all current offers, \
+                                    possible tokens: {}".format(list_token_names()))
+    parser.add_argument('--token', default="all",
+                        help="currency for sale")
+    parser.add_argument('--expected', default="all",
+                        help="payment currency")
     parser.set_defaults(func=show_marketplace)
 
 
 def create_show_tx_parser(subparsers):
-    parser = subparsers.add_parser('show', help="show transaction")
+    parser = subparsers.add_parser('show',
+                                   description="show transaction")
     parser.add_argument('tx_hash', help="hash of the transaction")
     parser.set_defaults(func=show_transaction)
 
 
 def create_balance_parser(subparsers):
-    parser = subparsers.add_parser('balance', help="show balance of the account")
+    parser = subparsers.add_parser('balance',
+                                   description="show balance of the account")
+    parser.add_argument('address', help="address")
     parser.set_defaults(func=show_balance)
 
 
+def create_funds_parser(subparsers):
+    parser = subparsers.add_parser('funds',
+                                   description="show balance of all accounts")
+    parser.set_defaults(func=show_all_funds)
+
+
 def create_gen_address_parser(subparsers):
-    parser = subparsers.add_parser('generate', help="generate new address")
+    parser = subparsers.add_parser('generate',
+                                   description="generate new address")
     parser.set_defaults(func=generate_account)
 
 
 def create_offer_parser(subparsers):
-    parser = subparsers.add_parser('offer', help="create an exchange offer")
+    parser = subparsers.add_parser('offer',
+                                   description="create an exchange offer")
     parser.set_defaults(func=create_offer)
 
 
 def create_offers_parser(subparsers):
-    parser = subparsers.add_parser('offers', help="show my offers")
+    parser = subparsers.add_parser('offers',
+                                   description="show my offers")
     parser.set_defaults(func=show_offers)
 
 
 def create_match_parser(subparsers):
-    parser = subparsers.add_parser('match', help="accept the offer")
+    parser = subparsers.add_parser('match',
+                                   description="accept the offer")
     parser.set_defaults(func=accept_offer)
 
 
 def create_matchings_parser(subparsers):
-    parser = subparsers.add_parser('matchings', help="show my accepted offers")
+    parser = subparsers.add_parser('matchings',
+                                   description="show my accepted offers")
     parser.set_defaults(func=show_matchings)
 
 
 def create_unlock_parser(subparsers):
-    parser = subparsers.add_parser('unlock', help="unlock the deposit")
+    parser = subparsers.add_parser('unlock',
+                                   description="unlock the deposit")
     parser.set_defaults(func=unlock_deposit)
 
 
 def create_transfer_parser(subparsers):
-    parser = subparsers.add_parser('transfer', help="transfer funds")
+    parser = subparsers.add_parser('transfer',
+                                   description="transfer funds")
     parser.set_defaults(func=transfer)
 
 
 def create_history_parser(subparsers):
-    parser = subparsers.add_parser('history', help="show account history")
+    parser = subparsers.add_parser('history',
+                                   description="show account history")
     parser.set_defaults(func=show_account_history)
 
 
 def create_receive_parser(subparsers):
-    parser = subparsers.add_parser('receive', help="show addresses")
+    parser = subparsers.add_parser('receive',
+                                   description="show all addresses from datadir")
     parser.set_defaults(func=receive)
 
 
@@ -113,7 +139,7 @@ def main():
     try:
         args.func(args)
     except RuntimeError:
-        logger.exception("Unexpected error")
+        logger.exception("An error occured!")
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt")
 
