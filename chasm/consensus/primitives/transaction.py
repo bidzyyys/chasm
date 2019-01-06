@@ -66,13 +66,13 @@ class OfferTransaction(Transaction):
     def fields(cls):
         fields = [('token_in', sedes.big_endian_int), ('token_out', sedes.big_endian_int),
                   ('value_in', sedes.big_endian_int), ('value_out', sedes.big_endian_int),
-                  ('address_out', sedes.binary), ('timeout', sedes.big_endian_int), ('nonce', sedes.big_endian_int),
+                  ('address_out', sedes.binary), ('timeout', sedes.big_endian_int),
                   ('confirmation_fee_index', sedes.big_endian_int), ('deposit_index', sedes.big_endian_int)]
 
         return fields + super().fields()
 
     def __init__(self, inputs, outputs, token_in, token_out, value_in, value_out, address_out, confirmation_fee_index,
-                 deposit_index, nonce, timeout):
+                 deposit_index, timeout):
         self.token_in = token_in
         self.token_out = token_out
         self.value_in = value_in
@@ -80,7 +80,6 @@ class OfferTransaction(Transaction):
         self.address_out = address_out
         self.confirmation_fee_index = confirmation_fee_index
         self.deposit_index = deposit_index
-        self.nonce = nonce
         self.timeout = timeout
 
         super().__init__(inputs=inputs, outputs=outputs)

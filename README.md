@@ -42,7 +42,7 @@ than simple transfers, so miners have more expensive computations. This is the w
 the more miners who want to catch it. It is worth mentioning that the offer becomes visible only when is included in xpeer's blockchain. The same with incentive for adding
 a confirmation block, which requires the most computations in our protocol. A deposit is a kind of protection for cheating. When the side of exchange plays the game, it is handed back. 
 There is also another vital information - timeout. Timeout says how much time an offer is valid and, in case of match, how much time sides have for an exchange then.
-The offer has one more additional field - nonce. Once the fields has been set, the offer is hashed and the hash becomes an id of the exchange. One cannot send an offer with an id of some other transaction - if your offer's id is a duplicate, please adjust the nonce field.
+Once the fields has been set, the offer is hashed and the hash becomes an id of the exchange. One cannot send an offer with an id of some other transaction.
 
 #### Taking an offer
 

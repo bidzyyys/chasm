@@ -65,7 +65,7 @@ def minting_transaction(tx_transfer_outputs):
 @fixture
 def xpeer_offer_transaction(tx_input, tx_transfer_outputs, alice):
     return OfferTransaction([tx_input], tx_transfer_outputs, Tokens.BITCOIN.value, Tokens.ETHEREUM.value, 10, 100,
-                            alice.pub, 0, 1, 0, 1000)
+                            alice.pub, 0, 1, 1000)
 
 
 @fixture
