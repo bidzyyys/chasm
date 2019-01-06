@@ -1,6 +1,6 @@
 import hashlib
 
-from rlp.sedes import big_endian_int
+from rlp.sedes import big_endian_int, binary
 
 from chasm import serialization
 from chasm.serialization.serializable import Serializable
@@ -12,12 +12,12 @@ class TxInput(Serializable):
     @classmethod
     def fields(cls):
         return [
-            ('block_no', big_endian_int),
+            ('tx_hash', binary),
             ('output_no', big_endian_int)
         ]
 
-    def __init__(self, block_no, output_no):
-        self.block_no = block_no
+    def __init__(self, tx_hash, output_no):
+        self.tx_hash = tx_hash
         self.output_no = output_no
 
     def __hash__(self):

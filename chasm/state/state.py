@@ -35,7 +35,7 @@ class State:
     def get_utxo(self, block_no: int, index: int):
         return self.utxos[(block_no, index)]
 
-    def get_balance(self, account):
+    def get_utxos_by_address(self, account):
         pass
 
     def get_transaction(self, tx_hash):

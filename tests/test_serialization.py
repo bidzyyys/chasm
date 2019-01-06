@@ -21,7 +21,7 @@ def exchange():
 
 @fixture
 def tx_input():
-    return TxInput(block_no=1, output_no=2)
+    return TxInput(tx_hash=consensus.HASH_FUNC(b'beef').digest(), output_no=2)
 
 
 @fixture
@@ -92,7 +92,7 @@ def block(transfer_transaction, xpeer_offer_transaction, xpeer_deposit_unlocking
     transactions = [transfer_transaction, xpeer_offer_transaction, xpeer_deposit_unlocking_transaction,
                     xpeer_match_transaction, xpeer_confirmation_transaction]
 
-    merkle_tree = MerkleTools(hash_type='sha256')
+    merkle_tree = MerkleTools(hash_type=consensus.HASH_FUNC_NAME)
     merkle_tree.add_leaf(values=[tx.hash().hex() for tx in transactions])
     merkle_tree.make_tree()
     merkle_root = bytes.fromhex(merkle_tree.get_merkle_root())

@@ -4,6 +4,7 @@ from queue import Empty
 import pytest
 from pytest import fixture
 
+from chasm import consensus
 from chasm.consensus.primitives.transaction import Transaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
@@ -22,7 +23,8 @@ def state():
 
 @fixture
 def transactions(alice):
-    return [Transaction([TxInput(i, i)], [TransferOutput(i, alice.pub)]) for i in range(5)]
+    tx_hash = consensus.HASH_FUNC(b'beef').digest()
+    return [Transaction([TxInput(tx_hash, i)], [TransferOutput(i, alice.pub)]) for i in range(5)]
 
 
 @fixture
