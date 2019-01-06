@@ -27,11 +27,11 @@ class State:
         self.db.delete_pending(index)
         return tx
 
-    def get_utxo(self, block_no: int, index: int):
-        return self.utxos[(block_no, index)]
-
-    def get_utxos_by_address(self, account):
+    def get_utxos(self):
         pass
+
+    def get_utxo(self, tx_hash: int, index: int):
+        return self.utxos[(tx_hash, index)]
 
     def get_transaction(self, tx_hash):
         pass
@@ -42,6 +42,15 @@ class State:
     def get_block_by_hash(self, block_hash):
         pass
 
+    def get_active_offers(self):
+        pass
+
+    def get_accepted_offers(self):
+        pass
+
+    def get_dutxos(self):
+        pass
+    
     def close(self):
         self.db.close()
 
@@ -84,5 +93,3 @@ class State:
 
         def is_empty(self):
             return self.priority_queue.is_empty()
-
-
