@@ -16,7 +16,13 @@ def get_utxos(address):
     """
     # TODO
     logger.info("Getting UTXOs of: %s", address)
-    return []
+    return [
+        {
+            "block_no": 6969,
+            "output_no": 69,
+            "value": 1000
+        }
+    ]
 
 
 @dispatcher.add_method

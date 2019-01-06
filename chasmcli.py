@@ -6,7 +6,8 @@ from chasm.logger.logger import get_logger
 from chasm.rpc import list_token_names
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
-    receive, show_marketplace, show_matchings, show_offers, show_all_funds
+    show_keys, show_marketplace, show_matchings, show_offers, show_all_funds, \
+    build_tx
 
 
 def get_parser():
@@ -29,15 +30,16 @@ def get_parser():
 
 def create_subparsers(subparsers):
     create_balance_parser(subparsers)
+    create_build_parser(subparsers)
     create_funds_parser(subparsers)
     create_gen_address_parser(subparsers)
     create_history_parser(subparsers)
+    create_keys_parser(subparsers)
     create_marketplace_parser(subparsers)
     create_match_parser(subparsers)
     create_matchings_parser(subparsers)
     create_offer_parser(subparsers)
     create_offers_parser(subparsers)
-    create_receive_parser(subparsers)
     create_show_tx_parser(subparsers)
     create_transfer_parser(subparsers)
     create_unlock_parser(subparsers)
@@ -57,15 +59,25 @@ def create_marketplace_parser(subparsers):
 def create_show_tx_parser(subparsers):
     parser = subparsers.add_parser('show',
                                    description="show transaction")
-    parser.add_argument('tx_hash', help="hash of the transaction")
+    parser.add_argument('--tx_hash', help="hash of the transaction",
+                        required=True)
     parser.set_defaults(func=show_transaction)
 
 
 def create_balance_parser(subparsers):
     parser = subparsers.add_parser('balance',
                                    description="show balance of the account")
-    parser.add_argument('address', help="address")
+    parser.add_argument('--address', required=True,
+                        help="address")
     parser.set_defaults(func=show_balance)
+
+
+def create_build_parser(subparsers):
+    parser = subparsers.add_parser('build',
+                                   description="build any transaction from json file")
+    parser.add_argument('--file', required=True,
+                        help="path to json file with transaction")
+    parser.set_defaults(func=build_tx)
 
 
 def create_funds_parser(subparsers):
@@ -113,6 +125,15 @@ def create_unlock_parser(subparsers):
 def create_transfer_parser(subparsers):
     parser = subparsers.add_parser('transfer',
                                    description="transfer funds")
+    parser.add_argument('--fee', required=True, type=int,
+                        help="transaction fee(in bdzys denomination)")
+    parser.add_argument('--owner', required=True,
+                        help="owner address")
+    parser.add_argument('--value', required=True, type=int,
+                        help="amount to be transferred(in bdzys denomination)")
+    parser.add_argument('--receiver', required=True,
+                        help="receiver address")
+
     parser.set_defaults(func=transfer)
 
 
@@ -122,10 +143,10 @@ def create_history_parser(subparsers):
     parser.set_defaults(func=show_account_history)
 
 
-def create_receive_parser(subparsers):
-    parser = subparsers.add_parser('receive',
+def create_keys_parser(subparsers):
+    parser = subparsers.add_parser('keys',
                                    description="show all addresses from datadir")
-    parser.set_defaults(func=receive)
+    parser.set_defaults(func=show_keys)
 
 
 def main():

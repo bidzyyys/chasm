@@ -35,7 +35,7 @@ def token_from_name(name):
         if TOKENS_DICT[key] == name.lower():
             return key
 
-    raise ValueError("Token not found: %s", name)
+    raise ValueError("Token not found: {}".format(name))
 
 
 def get_token_names():

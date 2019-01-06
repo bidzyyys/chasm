@@ -4,17 +4,20 @@ import json
 import os
 import re
 import time
-from functools import reduce
 from getpass import getpass
 
 import requests
 from Crypto.Cipher import AES
 from ecdsa import SigningKey
+from ecdsa.der import UnexpectedDER
 
 from chasm import consensus
+from chasm.consensus.primitives.transaction import Transaction
+from chasm.consensus.primitives.tx_input import TxInput
+from chasm.consensus.primitives.tx_output import TransferOutput
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
-    RPCError, BadResponse, token_from_name, ALL_TOKENS
+    RPCError, token_from_name, ALL_TOKENS
 
 
 # pylint: disable=invalid-name
@@ -71,16 +74,26 @@ def save_json(data, filename):
         json.dump(data, f)
 
 
-def read_json(filename):
+def read_json_file(filename):
     """
-    Read json data from filename
-    :param filename: file to be read
-    :return: data in json representation
+    Read json from given filename
+    :param filename: path to file
+    :return: JSON in string representation
     """
-    filename = filename.replace("~", os.path.expanduser("~"))
     with open(filename) as f:
         json_str = json.load(f)
-        return json.loads(json_str)
+        return json_str
+
+
+def load_json_from_file(filename):
+    """
+    Loads json data from filename
+    :param filename: file to be read
+    :return: json data in dict object
+    """
+    filename = filename.replace("~", os.path.expanduser("~"))
+    json_str = read_json_file(filename)
+    return json.loads(json_str)
 
 
 def generate_keys():
@@ -196,7 +209,7 @@ def get_address(keyfile):
     :return: address(public key)
     """
     try:
-        account_info = read_json(keyfile)
+        account_info = load_json_from_file(keyfile)
         pub_key_hex = account_info["address"]
         return pub_key_hex
     except FileNotFoundError:
@@ -205,24 +218,36 @@ def get_address(keyfile):
         raise RuntimeError("Cannot get address from given file!")
 
 
+def find_account_files(datadir, filename_regex=KEY_FILE_REGEX):
+    """
+    Find all files with account data matching given regex
+    :param datadir: directory to find for accounts
+    :param filename_regex: regex for filenames
+    :return: list of account files
+    """
+    datadir = datadir.replace("~", os.path.expanduser("~"))
+    keystore = os.path.join(datadir, KEYSTORE)
+    accounts = [os.path.join(keystore, f) \
+                for f in os.listdir(os.path.join(datadir, KEYSTORE))
+                if re.match(filename_regex, f)]
+
+    return accounts
+
+
 def get_addresses(datadir):
     """
     Get all addresses from given datadir
     :param datadir: datadir
     :return: list of tuples [address, keyfile]
     """
-    datadir = datadir.replace("~", os.path.expanduser("~"))
-    keystore = os.path.join(datadir, KEYSTORE)
-    accounts = [os.path.join(keystore, f) \
-                for f in os.listdir(os.path.join(datadir, KEYSTORE))
-                if re.match(KEY_FILE_REGEX, f)]
+    accounts = find_account_files(datadir)
 
     addresses = [[get_address(f), f] for f in accounts]
 
     return addresses
 
 
-def receive(args):
+def show_keys(args):
     """
     Display addresses from given datadir
     :param args: args given by user
@@ -264,7 +289,6 @@ def run(host, port, payload):
 def count_balance(address, node, port):
     """
     Count balance of an account
-    :param datadir: datadir of an account
     :param node: node hostname
     :param port: node port
     :return: balance of each address (dict[address]=balance))
@@ -275,8 +299,8 @@ def count_balance(address, node, port):
         logger.exception("Cannot get UTXOs of: %s", address[0],
                          exc_info=False)
         raise RuntimeError("Cannot count balance!")
-    balance = reduce((lambda utxo1, utxo2: utxo1.value + utxo2.value), utxos, 0.0)
 
+    balance = sum(utxo["value"] for utxo in utxos)
     return balance
 
 
@@ -287,7 +311,7 @@ def show_balance(args):
     :return: None
     """
     balance = count_balance(args.address, args.node, args.port)
-    print("Balance: {} xpc".format(balance))
+    print("Balance: {} bdzys".format(balance))
 
 
 def show_all_funds(args):
@@ -301,11 +325,11 @@ def show_all_funds(args):
     total_balance = 0.0
     for address in addresses:
         balance = count_balance(address, args.node, args.port)
-        print("Balance: {} xpc".format(balance))
+        print("Balance: {} bdzys".format(balance))
         print("Address: {}\n".format(address[0]))
         total_balance += balance
 
-    print("Total: {} xpc".format(total_balance))
+    print("Total: {} bdzys".format(total_balance))
 
 
 def get_utxos(address, host, port):
@@ -317,7 +341,6 @@ def get_utxos(address, host, port):
     :param address: owner of UTXOs
     :param host: node hostname
     :param port: node port
-    :raise BadResponse: if any of UTXO has bad owner(address)
     :return: list of UTXOs
     """
     payload = PAYLOAD_TAGS.copy()
@@ -326,9 +349,6 @@ def get_utxos(address, host, port):
 
     utxos = run(host=host, port=port, payload=payload)
 
-    for utxo in utxos:
-        if utxo.receiver != address:
-            raise BadResponse("UTXO of different address")
     return utxos
 
 
@@ -378,6 +398,23 @@ def show_marketplace(args):
         print("Price: {}".format(offer.value_out))
 
 
+def build_tx_from_json(tx_json):
+    return []
+
+
+def build_tx(args):
+    """
+    Build any transaction from json file
+
+    Display it for user(in json and hex format)
+    :param args: Args given by user
+    :return: None
+    """
+
+    transaction = build_tx_from_json(args.filename)
+    print(__name__ + str(args))
+
+
 def show_account_history(args):
     print(__name__ + str(args))
 
@@ -386,8 +423,137 @@ def show_transaction(args):
     print(__name__ + str(args))
 
 
+def get_priv_key(account):
+    """
+    Unlock decrypted key
+    :param account: account configuration
+    :raise RuntimeError: if get incorrect password
+    (failed to build SigningKey from der representation
+    :return: SigningKey
+    """
+    priv_key_der = decrypt_aes(password=get_password("Unlock private key: "),
+                               encrypted_data=bytes.fromhex(account['priv_key']),
+                               nonce=bytes.fromhex(account['nonce']))
+
+    try:
+        signing_key = SigningKey.from_der(priv_key_der)
+    except UnexpectedDER:
+        raise RuntimeError("Cannot unlock private key!")
+
+    return signing_key
+
+
+def get_utxos_for_tx(node, port, address, amount):
+    """
+    Get UTXOs that cover required amount
+    :param node: node hostname
+    :param port: node port
+    :param address: address of the owner
+    :param amount: amount to be covered
+    :raise ValueError: if owner has too little money
+    :raise RuntimeError: if an error occurs while getting UTXOs
+    :return: UTXOs to be used in a transaction and their amount
+    """
+    try:
+        utxos = get_utxos(address=address, host=node, port=port)
+    except RPCError:
+        raise RuntimeError("Cannot get UTXOs of: {}".format(address))
+
+    sorted_utxos = sorted(utxos, key=lambda utxo: utxo["value"])
+    funds = 0.0
+    for index, utxo in enumerate(sorted_utxos):
+        funds += utxo["value"]
+        if funds >= amount:
+            return sorted_utxos[:index + 1], funds
+
+    raise ValueError("Cannot collect required value")
+
+
+def sign(data, datadir, address):
+    """
+    Sign transaction with private key matching given address
+    :param data: binary data to be signed
+    :param datadir: directory with keystore
+    :param address: address (public key)
+    :return: signed transaction(bytes)
+    """
+
+    try:
+        account = get_account_data(datadir, address)
+    except FileNotFoundError:
+        raise RuntimeError("Cannot sign given data")
+
+    priv_key = get_priv_key(account)
+
+    return priv_key.sign(data)
+
+
+def build_inputs(node, port, amount, owner):
+    """
+    Build transaction inputs
+    :param node: node hostname
+    :param port: node port
+    :param amount: amount to be covered
+    :param owner: owner of UTXOs
+    :raise RuntimeError: if cannot build inputs
+    :return: list of inputs(TxInput) and own transfer(TransferOutput)
+    """
+    try:
+        utxos, collected_funds = get_utxos_for_tx(node=node, port=port,
+                                                  address=owner, amount=amount)
+    except (ValueError, RuntimeError):
+        raise RuntimeError("Cannot build inputs")
+
+    inputs = list(map(lambda utxo: TxInput(block_no=int(utxo["block_no"]),
+                                           output_no=int(utxo["output_no"])),
+                      utxos))
+
+    own_transfer = TransferOutput(value=int(collected_funds - amount), receiver=owner)
+
+    return inputs, own_transfer
+
+
+# pylint: disable=too-many-arguments
+def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
+    """
+    Build simple transfer transaction
+    :param port: node port
+    :param node: node hostname
+    :param amount: value to be transferred
+    :param receiver: receiver address
+    :param tx_fee: transaction fee
+    :param owner: owner address
+    :return: Transaction
+    """
+
+    inputs, own_transfer = build_inputs(node=node, port=port,
+                                        amount=amount + tx_fee, owner=owner)
+    reqested_transfer = TransferOutput(value=int(amount), receiver=receiver)
+
+    return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
+
+
 def transfer(args):
-    print(__name__ + str(args))
+    """
+    Transfer given amount of xpc to the receiver
+    with specified transaction fee
+
+    Gets all UTXOs of given owner, then chooses the smallest
+    to collect required value, difference between collected amount
+    and required is sent back to the owner
+    :param args: args given by user
+    :return: None
+    """
+
+    requested_transfer = build_transfer_tx(node=args.node,
+                                           port=args.port,
+                                           amount=args.value,
+                                           receiver=args.receiver,
+                                           owner=args.owner,
+                                           tx_fee=args.fee)
+
+    print(str(requested_transfer))
+    logger.info("Transfer tx created")
 
 
 def show_matchings(args):
@@ -409,6 +575,19 @@ def accept_offer(args):
 def unlock_deposit(args):
     print(__name__ + str(args))
 
-# def read_priv_key():
-#     priv_der = decrypt_aes(password, nonce=bytes.fromhex(account['nonce']),
-#                            encrypted_data=bytes.fromhex(account['priv_key']))
+
+def get_account_data(datadir, pub_key_hex):
+    """
+    Find an return account data
+    :param datadir: directory to look for keyfile
+    :param pub_key_hex: hex of public key
+    :raise FileNotFoundError: if cannot find account file
+    :return: account configuration
+    """
+    filename_regex = r'[0-9]{8}_[0-9]{6}_%s.json' % pub_key_hex[-7:]
+    account_files = find_account_files(datadir, filename_regex)
+    for file in account_files:
+        account = load_json_from_file(file)
+        if account["address"] == pub_key_hex:
+            return account
+    raise FileNotFoundError("Cannot find account file for given address")
