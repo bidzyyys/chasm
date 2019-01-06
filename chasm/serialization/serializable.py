@@ -8,26 +8,21 @@ from chasm.serialization import countable_list
 class Serializable(ABC):
 
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         raise NotImplementedError
 
-    def serialize(self, serializer):
-        values = []
-        for (field, field_type) in self.__fields__():
+    def serialize(self):
+        serialized = [self.__class__]
+
+        for (field, field_type) in self.fields():
             value = self.__getattribute__(field)
             if field_type == sedes.raw:
-                value = serializer.encode(value)
+                value = value.serialize()
             elif field_type == countable_list:
-                value = [serializer.encode(v) for v in value]
-            values.append((field, value))
-        return values
+                value = [v.serialize() for v in value]
+            serialized.append(value)
 
-    @classmethod
-    def build(cls, values: [object]):
-        params = {}
-        for ((field, _), value) in zip(cls.__fields__(), values):
-            params[field] = value
-        return cls(**params)
+        return serialized
 
     def __eq__(self, other):
         return self.__class__ == other.__class__ and self.__dict__ == other.__dict__

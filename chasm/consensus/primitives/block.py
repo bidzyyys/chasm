@@ -12,7 +12,7 @@ class Block(Serializable):
     MAX_BLOCK_SIZE = 2 ** 20  # 1MB
 
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         return [('previous_block_hash', sedes.binary), ('merkle_root', sedes.binary),
                 ('nonce', sedes.big_endian_int), ('difficulty', sedes.big_endian_int),
                 ('timestamp', sedes.big_endian_int), ('transactions', countable_list)]

@@ -5,7 +5,7 @@ from rlp import sedes
 
 from chasm import consensus
 from chasm.consensus.exceptions import InputOutputSumsException
-from chasm.serialization import countable_list
+from chasm.serialization import countable_list, countable_list_of_binaries
 from chasm.serialization import type_registry
 from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.serialization.serializable import Serializable
@@ -15,7 +15,7 @@ from chasm.serialization.serializer import Serializer
 class Transaction(Serializable):
 
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         return [('inputs', countable_list), ('outputs', countable_list)]
 
     def __init__(self, inputs=None, outputs=None):
@@ -54,7 +54,7 @@ class Transaction(Serializable):
 
 class MintingTransaction(Transaction):
     @classmethod
-    def __fields__(cls):
+    def fields(cls):
         return [('outputs', countable_list)]
 
     def __init__(self, outputs):
@@ -63,13 +63,13 @@ class MintingTransaction(Transaction):
 
 class OfferTransaction(Transaction):
     @classmethod
-    def __fields__(cls):
+    def fields(cls):
         fields = [('token_in', sedes.big_endian_int), ('token_out', sedes.big_endian_int),
                   ('value_in', sedes.big_endian_int), ('value_out', sedes.big_endian_int),
                   ('address_out', sedes.binary), ('timeout', sedes.big_endian_int), ('nonce', sedes.big_endian_int),
                   ('confirmation_fee_index', sedes.big_endian_int), ('deposit_index', sedes.big_endian_int)]
 
-        return fields + super().__fields__()
+        return fields + super().fields()
 
     def __init__(self, inputs, outputs, token_in, token_out, value_in, value_out, address_out, confirmation_fee_index,
                  deposit_index, nonce, timeout):
@@ -88,11 +88,11 @@ class OfferTransaction(Transaction):
 
 class MatchTransaction(Transaction):
     @classmethod
-    def __fields__(cls):
+    def fields(cls):
         fields = [('exchange', sedes.binary), ('confirmation_fee_index', sedes.big_endian_int),
                   ('deposit_index', sedes.big_endian_int), ('address_in', sedes.binary)]
 
-        return fields + super().__fields__()
+        return fields + super().fields()
 
     def __init__(self, inputs, outputs, exchange, address_in, confirmation_fee_index=0, deposit_index=1):
         self.exchange = exchange
@@ -106,9 +106,9 @@ class MatchTransaction(Transaction):
 class ConfirmationTransaction(Transaction):
 
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         fields = [('exchange', sedes.binary), ('tx_in_proof', sedes.binary), ('tx_out_proof', sedes.binary)]
-        return fields + super().__fields__()
+        return fields + super().fields()
 
     def __init__(self, inputs, outputs, exchange, tx_in_proof, tx_out_proof):
         self.exchange = exchange
@@ -120,10 +120,10 @@ class ConfirmationTransaction(Transaction):
 
 class UnlockingDepositTransaction(Transaction):
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         fields = [('exchange', sedes.binary), ('proof_side', sedes.big_endian_int), ('tx_proof', sedes.binary),
                   ('deposit_index', sedes.big_endian_int)]
-        return fields + super().__fields__()
+        return fields + super().fields()
 
     def __init__(self, inputs, outputs, exchange, proof_side, tx_proof, deposit_index=0):
         self.exchange = exchange
@@ -136,8 +136,8 @@ class UnlockingDepositTransaction(Transaction):
 class SignedTransaction(Serializable):
 
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
-        return [('transaction', sedes.raw), ('signatures', sedes.CountableList(sedes.binary))]
+    def fields(cls) -> [(str, object)]:
+        return [('transaction', sedes.raw), ('signatures', countable_list_of_binaries)]
 
     @classmethod
     def build_signed(cls, transaction, private_keys):

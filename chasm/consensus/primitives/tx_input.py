@@ -10,7 +10,7 @@ from chasm.serialization.serializer import Serializer
 class TxInput(Serializable):
 
     @classmethod
-    def __fields__(cls):
+    def fields(cls):
         return [
             ('block_no', big_endian_int),
             ('output_no', big_endian_int)

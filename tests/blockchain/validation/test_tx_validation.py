@@ -8,7 +8,6 @@ from chasm.consensus.primitives.transaction import Transaction, SignedTransactio
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.serialization.rlp_serializer import RLPSerializer
-from chasm.serialization.serializer import Serializer
 
 
 @fixture

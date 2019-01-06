@@ -7,7 +7,7 @@ from chasm.serialization.serializable import Serializable
 class TransferOutput(Serializable):
 
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         return [('value', big_endian_int), ('receiver', binary)]
 
     def __init__(self, value: int = 0, receiver: bytes = None):
@@ -17,7 +17,7 @@ class TransferOutput(Serializable):
 
 class XpeerOutput(Serializable):
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         return [('value', big_endian_int), ('receiver', binary), ('exchange', binary)]
 
     def __init__(self, value: int, receiver: bytes, exchange: bytes):
@@ -28,7 +28,7 @@ class XpeerOutput(Serializable):
 
 class XpeerFeeOutput(Serializable):
     @classmethod
-    def __fields__(cls) -> [(str, object)]:
+    def fields(cls) -> [(str, object)]:
         return [('value', big_endian_int)]
 
     def __init__(self, value):
