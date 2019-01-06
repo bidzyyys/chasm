@@ -34,6 +34,7 @@ TIMEOUT_FORMAT = "%Y-%m-%d::%H:%M:%S"
 OFFER_MAKER = 0
 OFFER_TAKER = 1
 
+
 def token_from_name(name):
     for key in TOKENS_DICT:
         if TOKENS_DICT[key] == name.lower():

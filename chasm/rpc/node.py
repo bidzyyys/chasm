@@ -4,7 +4,14 @@ from jsonrpc import JSONRPCResponseManager, dispatcher
 from werkzeug.serving import run_simple
 from werkzeug.wrappers import Request, Response
 
+from chasm.serialization.json_serializer import JSONSerializer
+from chasm.serialization.rlp_serializer import RLPSerializer
 from . import logger
+
+# pylint: disable=invalid-name
+
+json_serializer = JSONSerializer()
+rlp_serializer = RLPSerializer()
 
 
 @dispatcher.add_method
@@ -42,8 +49,13 @@ def get_tx(tx_hash):
 
 
 @dispatcher.add_method
-def add_transaction(tx):
-    pass
+def publish_transaction(tx_hex):
+    print(tx_hex)
+    signed_tx = json_serializer.decode(tx_hex)
+    # print("{} :{}".format(type(signed_tx).__name__,
+    #                       json_serializer.encode(signed_tx)))
+    # # TODO
+    return True
 
 
 @dispatcher.add_method

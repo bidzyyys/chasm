@@ -13,16 +13,22 @@ from ecdsa.der import UnexpectedDER
 
 from chasm.consensus import CURVE
 from chasm.consensus.primitives.transaction import Transaction, \
-    OfferTransaction, MatchTransaction, UnlockingDepositTransaction
+    OfferTransaction, MatchTransaction, UnlockingDepositTransaction, \
+    SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, \
     XpeerOutput, XpeerFeeOutput
+from chasm.serialization.json_serializer import JSONSerializer
+from chasm.serialization.rlp_serializer import RLPSerializer
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
     RPCError, token_from_name, ALL_TOKENS, TIMEOUT_FORMAT
 
-
 # pylint: disable=invalid-name
+
+json_serializer = JSONSerializer()
+rlp_serializer = RLPSerializer()
+
 
 def get_password(prompt="Type password: "):
     """
@@ -471,23 +477,23 @@ def get_utxos_for_tx(node, port, address, amount):
     raise ValueError("Cannot collect required value")
 
 
-def sign(data, datadir, address):
+def sign_transaction(transaction, pub_key, datadir):
     """
     Sign transaction with private key matching given address
-    :param data: binary data to be signed
+    :param transaction: transaction to be signed
     :param datadir: directory with keystore
-    :param address: address (public key)
+    :param pub_key: address (public key)
     :return: signed transaction(bytes)
     """
 
     try:
-        account = get_account_data(datadir, address)
+        account = get_account_data(datadir, pub_key)
     except FileNotFoundError:
         raise RuntimeError("Cannot sign given data")
 
     priv_key = get_priv_key(account)
 
-    return priv_key.sign(data)
+    return transaction.sign(priv_key.to_string())
 
 
 def build_inputs(node, port, amount, owner):
@@ -510,7 +516,8 @@ def build_inputs(node, port, amount, owner):
                                            output_no=int(utxo["output_no"])),
                       utxos))
 
-    own_transfer = TransferOutput(value=int(collected_funds - amount), receiver=owner)
+    own_transfer = TransferOutput(value=int(collected_funds - amount),
+                                  receiver=bytes.fromhex(owner))
 
     return inputs, own_transfer
 
@@ -530,7 +537,8 @@ def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
 
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         amount=amount + tx_fee, owner=owner)
-    reqested_transfer = TransferOutput(value=int(amount), receiver=receiver)
+    reqested_transfer = TransferOutput(value=int(amount),
+                                       receiver=bytes.fromhex(receiver))
 
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
 
@@ -547,15 +555,17 @@ def transfer(args):
     :return: None
     """
 
-    requested_transfer = build_transfer_tx(node=args.node,
-                                           port=args.port,
-                                           amount=args.value,
-                                           receiver=args.receiver,
-                                           owner=args.owner,
-                                           tx_fee=args.fee)
+    tx = build_transfer_tx(node=args.node,
+                           port=args.port,
+                           amount=args.value,
+                           receiver=args.receiver,
+                           owner=args.owner,
+                           tx_fee=args.fee)
 
-    print(str(requested_transfer))
-    logger.info("Transfer tx created")
+    logger.info("Transaction created successfully!")
+    if publish_transaction(args.host, args.port, tx,
+                           args.address, args.datadir):
+        logger.info("Transaction published successfully!")
 
 
 def show_matchings(args):
@@ -566,6 +576,7 @@ def show_offers(args):
     print(__name__ + str(args))
 
 
+# pylint: disable=too-many-locals
 def build_offer(node, port, address, token_in, token_out, value_in, value_out,
                 receive_address, confirmation_fee, deposit, timeout, tx_fee):
     """
@@ -587,7 +598,7 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + confirmation_fee + deposit)
-    deposit_output = TransferOutput(value=deposit, receiver=address)
+    deposit_output = TransferOutput(value=deposit, receiver=bytes.fromhex(address))
     confirmation_output = XpeerFeeOutput(value=confirmation_fee)
 
     return OfferTransaction(inputs=inputs,
@@ -615,16 +626,17 @@ def create_offer(args):
     except ValueError:
         raise RuntimeError("Invalid token given")
 
-    offer = build_offer(node=args.node, port=args.port, address=args.address,
-                        token_in=token_in, value_in=args.amount,
-                        token_out=token_out, value_out=args.price,
-                        receive_address=args.receive,
-                        confirmation_fee=args.confirmation, deposit=args.deposit,
-                        timeout=timeout, tx_fee=args.fee)
+    tx = build_offer(node=args.node, port=args.port, address=args.address,
+                     token_in=token_in, value_in=args.amount,
+                     token_out=token_out, value_out=args.price,
+                     receive_address=args.receive,
+                     confirmation_fee=args.confirmation, deposit=args.deposit,
+                     timeout=timeout, tx_fee=args.fee)
 
-    print(offer)
-
-    logger.info("Offer created successfully")
+    logger.info("OfferTransaction created successfully!")
+    if publish_transaction(args.node, args.port, tx,
+                           args.address, args.datadir):
+        logger.info("Transaction published successfully!")
 
 
 def build_match(node, port, address, offer_hash, receive, confirmation_fee, deposit, tx_fee):
@@ -643,7 +655,7 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         owner=address,
                                         amount=tx_fee + confirmation_fee + deposit)
-    deposit_output = TransferOutput(value=deposit, receiver=address)
+    deposit_output = TransferOutput(value=deposit, receiver=bytes.fromhex(address))
     confirmation_output = XpeerFeeOutput(value=confirmation_fee)
 
     return MatchTransaction(inputs=inputs,
@@ -659,14 +671,15 @@ def accept_offer(args):
     :param args: args given by user
     :return: None
     """
-    match = build_match(node=args.node, port=args.port,
-                        address=args.address, offer_hash=args.offer,
-                        receive=args.receive, tx_fee=args.fee,
-                        confirmation_fee=args.confirmation, deposit=args.deposit)
+    tx = build_match(node=args.node, port=args.port,
+                     address=args.address, offer_hash=args.offer,
+                     receive=args.receive, tx_fee=args.fee,
+                     confirmation_fee=args.confirmation, deposit=args.deposit)
 
-    print(match)
-
-    logger.info("Match created successfully")
+    logger.info("MatchTransaction created successfully!")
+    if publish_transaction(args.node, args.port, tx,
+                           args.address, args.datadir):
+        logger.info("Transaction published successfully!")
 
 
 def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
@@ -685,7 +698,7 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + deposit)
-    deposit_output = TransferOutput(value=deposit, receiver=address)
+    deposit_output = TransferOutput(value=deposit, receiver=bytes.fromhex(address))
 
     return UnlockingDepositTransaction(inputs=inputs,
                                        outputs=[deposit_output, own_transfer],
@@ -702,14 +715,15 @@ def unlock_deposit(args):
     :return: None
     """
 
-    unlock = build_unlock(node=args.node, port=args.port,
-                          address=args.address, offer_hash=args.offer,
-                          deposit=args.deposit, tx_fee=args.fee,
-                          side=args.side, proof=args.proof)
+    tx = build_unlock(node=args.node, port=args.port,
+                      address=args.address, offer_hash=args.offer,
+                      deposit=args.deposit, tx_fee=args.fee,
+                      side=args.side, proof=args.proof)
 
-    print(unlock)
-
-    logger.info("Unlock deposit transaction created successfully")
+    logger.info("UnlockingDepositTransaction created successfully!")
+    if publish_transaction(args.node, args.port, tx,
+                           args.address, args.datadir):
+        logger.info("Transaction published successfully!")
 
 
 def get_account_data(datadir, pub_key_hex):
@@ -744,7 +758,7 @@ def build_xpeer_transfer(node, port, amount, receiver, tx_fee, owner, offer_hash
 
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         amount=amount + tx_fee, owner=owner)
-    reqested_transfer = XpeerOutput(value=int(amount), receiver=receiver,
+    reqested_transfer = XpeerOutput(value=int(amount), receiver=bytes.fromhex(receiver),
                                     exchange=bytes.fromhex(offer_hash))
 
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
@@ -757,14 +771,74 @@ def xpeer_transfer(args):
     :return: None
     """
 
-    xpeer_transfer = build_xpeer_transfer(node=args.node,
-                                          port=args.port,
-                                          amount=args.value,
-                                          receiver=args.receiver,
-                                          owner=args.owner,
-                                          tx_fee=args.fee,
-                                          offer_hash=args.offer)
+    tx = build_xpeer_transfer(node=args.node,
+                              port=args.port,
+                              amount=args.value,
+                              receiver=args.receiver,
+                              owner=args.owner,
+                              tx_fee=args.fee,
+                              offer_hash=args.offer)
 
-    print(xpeer_transfer)
+    logger.info("XpeerTransaction created successfully!")
+    if publish_transaction(args.node, args.port, tx,
+                           args.address, args.datadir):
+        logger.info("Transaction published successfully!")
 
-    logger.info("xpeer transfer created successfully")
+
+def publish_transaction(host, port, transaction, pub_key, datadir):
+    """
+    Publish transaction
+    Signs and send transaction
+    :param host: node hostname
+    :param port: node portname
+    :param datadir: directory with keystore
+    :param transaction: transaction to be published
+    :param pub_key: sender public key
+    :return: True if transaction was sent
+    """
+    result = get_acceptance_from_user(transaction)
+    if result:
+        signature = sign_transaction(transaction=transaction,
+                                     pub_key=pub_key,
+                                     datadir=datadir)
+
+        result = send_transaction(host=host, port=port,
+                                  transaction=transaction,
+                                  signatures=[signature])
+
+    return result
+
+
+def get_acceptance_from_user(transaction, question="Send transaction?"):
+    """
+    Show transaction to the user and get acceptance
+    :param question: question to be displayed
+    :param transaction: transaction to be signed
+    :return: True if user accepts
+    """
+    print("\n{}: {}\n".format(type(transaction).__name__,
+                              json_serializer.encode(transaction)))
+    cont = input("{} yes/no > ".format(question))
+    while cont.lower() not in ("yes", "no"):
+        cont = input("{} yes/no >".format(question))
+    return cont.lower() == "yes"
+
+
+def send_transaction(host, port, transaction, signatures):
+    """
+    Send transaction with its signatures
+    :param host: node hostname
+    :param port: node port
+    :param transaction: transaction to be sent
+    :param signatures: list of signatures
+    :return: True if transaction was sent successfully
+    """
+
+    signed_transaction = SignedTransaction(transaction=transaction,
+                                           signatures=signatures)
+
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "publish_transaction"
+    payload[PARAMS] = [json_serializer.encode(transaction)]
+
+    return run(host=host, port=port, payload=payload)
