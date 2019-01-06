@@ -3,13 +3,14 @@
 import argparse
 
 from chasm.logger.logger import get_logger
-from chasm.rpc import list_token_names
+from chasm.rpc import list_token_names, TIMEOUT_FORMAT, OFFER_MAKER, OFFER_TAKER
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
     show_keys, show_marketplace, show_matchings, show_offers, show_all_funds, \
-    build_tx
+    build_tx, xpeer_transfer
 
 
+# pylint: disable=missing-docstring
 def get_parser():
     parser = argparse.ArgumentParser(description='Chasm client',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -43,6 +44,7 @@ def create_subparsers(subparsers):
     create_show_tx_parser(subparsers)
     create_transfer_parser(subparsers)
     create_unlock_parser(subparsers)
+    create_xpeer_parser(subparsers)
 
 
 def create_marketplace_parser(subparsers):
@@ -95,6 +97,31 @@ def create_gen_address_parser(subparsers):
 def create_offer_parser(subparsers):
     parser = subparsers.add_parser('offer',
                                    description="create an exchange offer")
+    parser.add_argument('--address', required=True,
+                        help='address of offer maker(xpc)')
+    parser.add_argument('--token', required=True,
+                        help="Currency being sold, \
+                                    possible tokens: {}"
+                        .format(list_token_names()))
+    parser.add_argument('--amount', required=True, type=int,
+                        help="amount of token being sold(smallest denomination")
+    parser.add_argument('--expected', required=True,
+                        help="expected incoming currency, \
+                                    possible tokens: {}"
+                        .format(list_token_names()))
+    parser.add_argument('--price', required=True, type=int,
+                        help='price of offered tokens')
+    parser.add_argument('--receive', required=True,
+                        help='receive payment address')
+    parser.add_argument('--confirmation', required=True, type=int,
+                        help='confirmation fee(bdzys)')
+    parser.add_argument('--deposit', required=True, type=int,
+                        help='deposit fee(bdzys)')
+    parser.add_argument('--timeout', required=True,
+                        help='offer timeout, format: {}'
+                        .format(TIMEOUT_FORMAT.replace("%", "")))
+    parser.add_argument('--fee', required=True, type=int,
+                        help="transaction fee(bdzys)")
     parser.set_defaults(func=create_offer)
 
 
@@ -107,6 +134,18 @@ def create_offers_parser(subparsers):
 def create_match_parser(subparsers):
     parser = subparsers.add_parser('match',
                                    description="accept the offer")
+    parser.add_argument('--offer', required=True,
+                        help="hash of the offer")
+    parser.add_argument('--address', required=True,
+                        help='address of offer taker(xpc)')
+    parser.add_argument('--receive', required=True,
+                        help='receive payment address')
+    parser.add_argument('--confirmation', required=True, type=int,
+                        help='confirmation fee(bdzys)')
+    parser.add_argument('--deposit', required=True, type=int,
+                        help='deposit fee(bdzys)')
+    parser.add_argument('--fee', required=True, type=int,
+                        help="transaction fee(bdzys)")
     parser.set_defaults(func=accept_offer)
 
 
@@ -119,6 +158,19 @@ def create_matchings_parser(subparsers):
 def create_unlock_parser(subparsers):
     parser = subparsers.add_parser('unlock',
                                    description="unlock the deposit")
+    parser.add_argument('--offer', required=True,
+                        help="hash of the offer")
+    parser.add_argument('--address', required=True,
+                        help='address of requestor(xpc)')
+    parser.add_argument('--deposit', required=True, type=int,
+                        help='deposit fee(bdzys)')
+    parser.add_argument('--fee', required=True, type=int,
+                        help="transaction fee(bdzys)")
+    parser.add_argument('--side', required=True, type=int,
+                        help="side of the exchange: maker({}), taker({})"
+                        .format(OFFER_MAKER, OFFER_TAKER))
+    parser.add_argument('--proof', required=True,
+                        help='proof of honesty(hex)')
     parser.set_defaults(func=unlock_deposit)
 
 
@@ -130,11 +182,28 @@ def create_transfer_parser(subparsers):
     parser.add_argument('--owner', required=True,
                         help="owner address")
     parser.add_argument('--value', required=True, type=int,
-                        help="amount to be transferred(in bdzys denomination)")
+                        help="amount to be transferred(bdzys)")
     parser.add_argument('--receiver', required=True,
                         help="receiver address")
 
     parser.set_defaults(func=transfer)
+
+
+def create_xpeer_parser(subparsers):
+    parser = subparsers.add_parser('xpeer',
+                                   description="transfer xpc as a part of an exchange")
+    parser.add_argument('--fee', required=True, type=int,
+                        help="transaction fee(in bdzys denomination)")
+    parser.add_argument('--owner', required=True,
+                        help="owner address")
+    parser.add_argument('--value', required=True, type=int,
+                        help="amount to be transferred(bdzys)")
+    parser.add_argument('--receiver', required=True,
+                        help="receiver address")
+    parser.add_argument('--offer', required=True,
+                        help="offer hash")
+
+    parser.set_defaults(func=xpeer_transfer)
 
 
 def create_history_parser(subparsers):

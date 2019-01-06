@@ -11,13 +11,15 @@ from Crypto.Cipher import AES
 from ecdsa import SigningKey
 from ecdsa.der import UnexpectedDER
 
-from chasm import consensus
-from chasm.consensus.primitives.transaction import Transaction
+from chasm.consensus import CURVE
+from chasm.consensus.primitives.transaction import Transaction, \
+    OfferTransaction, MatchTransaction, UnlockingDepositTransaction
 from chasm.consensus.primitives.tx_input import TxInput
-from chasm.consensus.primitives.tx_output import TransferOutput
+from chasm.consensus.primitives.tx_output import TransferOutput, \
+    XpeerOutput, XpeerFeeOutput
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
-    RPCError, token_from_name, ALL_TOKENS
+    RPCError, token_from_name, ALL_TOKENS, TIMEOUT_FORMAT
 
 
 # pylint: disable=invalid-name
@@ -101,7 +103,7 @@ def generate_keys():
     Generate new key pair
     :return: key pair in DER format
     """
-    priv_key = SigningKey.generate(consensus.CURVE)
+    priv_key = SigningKey.generate(CURVE)
     pub_key = priv_key.get_verifying_key()
 
     return priv_key.to_der(), pub_key.to_der()
@@ -382,7 +384,7 @@ def show_marketplace(args):
         token_in = token_from_name(args.token)
         token_out = token_from_name(args.expected)
     except ValueError:
-        raise RuntimeError("Cannot display current offers")
+        raise RuntimeError("Cannot display current offers, invalid token")
 
     offers = get_current_offers(args.node, args.port)
     offers = list(filter(lambda o:
@@ -564,16 +566,150 @@ def show_offers(args):
     print(__name__ + str(args))
 
 
+def build_offer(node, port, address, token_in, token_out, value_in, value_out,
+                receive_address, confirmation_fee, deposit, timeout, tx_fee):
+    """
+    Create offer
+    :param node: node hostname
+    :param port: node port
+    :param address: offer creator address
+    :param token_in: token to be sold
+    :param token_out: token to be accepted as a payment
+    :param value_in: amount of sold tokens
+    :param value_out: price of sold tokens
+    :param receive_address: address for income
+    :param confirmation_fee: fee for confirmation transaction
+    :param deposit: deposit
+    :param timeout: offer timeout(timestamp)
+    :param tx_fee: transaction fee
+    :return: OfferTransaction
+    """
+
+    inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
+                                        amount=tx_fee + confirmation_fee + deposit)
+    deposit_output = TransferOutput(value=deposit, receiver=address)
+    confirmation_output = XpeerFeeOutput(value=confirmation_fee)
+
+    return OfferTransaction(inputs=inputs,
+                            outputs=[deposit_output, confirmation_output, own_transfer],
+                            token_in=int(token_in.value), value_in=int(value_in),
+                            token_out=int(token_out.value), value_out=int(value_out),
+                            address_out=bytes.fromhex(receive_address),
+                            deposit_index=int(0), confirmation_fee_index=int(1),
+                            timeout=int(timeout), nonce=int(0))
+
+
 def create_offer(args):
-    print(__name__ + str(args))
+    """
+    Create an exchange offer
+    :param args: args given by user
+    :return: None
+    """
+    try:
+        timeout = time.mktime(time.strptime(args.timeout, TIMEOUT_FORMAT))
+    except ValueError:
+        raise RuntimeError("Invalid timeout format!")
+    try:
+        token_in = token_from_name(args.token)
+        token_out = token_from_name(args.expected)
+    except ValueError:
+        raise RuntimeError("Invalid token given")
+
+    offer = build_offer(node=args.node, port=args.port, address=args.address,
+                        token_in=token_in, value_in=args.amount,
+                        token_out=token_out, value_out=args.price,
+                        receive_address=args.receive,
+                        confirmation_fee=args.confirmation, deposit=args.deposit,
+                        timeout=timeout, tx_fee=args.fee)
+
+    print(offer)
+
+    logger.info("Offer created successfully")
+
+
+def build_match(node, port, address, offer_hash, receive, confirmation_fee, deposit, tx_fee):
+    """
+    Build match transaction
+    :param tx_fee: transaction fee
+    :param deposit: deposit fee
+    :param confirmation_fee: confirmation fee
+    :param receive: receive payment address
+    :param offer_hash: offer hash
+    :param node: node hostname
+    :param port: node portname
+    :param address: offer match creator
+    :return: MatchTransaction
+    """
+    inputs, own_transfer = build_inputs(node=node, port=port,
+                                        owner=address,
+                                        amount=tx_fee + confirmation_fee + deposit)
+    deposit_output = TransferOutput(value=deposit, receiver=address)
+    confirmation_output = XpeerFeeOutput(value=confirmation_fee)
+
+    return MatchTransaction(inputs=inputs,
+                            outputs=[deposit_output, confirmation_output, own_transfer],
+                            exchange=bytes.fromhex(offer_hash),
+                            address_in=bytes.fromhex(receive),
+                            confirmation_fee_index=int(0), deposit_index=int(1))
 
 
 def accept_offer(args):
-    print(__name__ + str(args))
+    """
+    Accept offer
+    :param args: args given by user
+    :return: None
+    """
+    match = build_match(node=args.node, port=args.port,
+                        address=args.address, offer_hash=args.offer,
+                        receive=args.receive, tx_fee=args.fee,
+                        confirmation_fee=args.confirmation, deposit=args.deposit)
+
+    print(match)
+
+    logger.info("Match created successfully")
+
+
+def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
+    """
+    Build unlock deposit transaction
+    :param node: node hostname
+    :param port: node port
+    :param address: requestor address
+    :param offer_hash: offer hash
+    :param deposit: deposit fee
+    :param tx_fee: transaction fee
+    :param side: side of the exchange
+    :param proof: proof of honesty
+    :return: UnlockDepositTransaction
+    """
+
+    inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
+                                        amount=tx_fee + deposit)
+    deposit_output = TransferOutput(value=deposit, receiver=address)
+
+    return UnlockingDepositTransaction(inputs=inputs,
+                                       outputs=[deposit_output, own_transfer],
+                                       exchange=bytes.fromhex(offer_hash),
+                                       proof_side=int(side),
+                                       tx_proof=bytes.fromhex(proof),
+                                       deposit_index=int(0))
 
 
 def unlock_deposit(args):
-    print(__name__ + str(args))
+    """
+    Unlock deposit
+    :param args: args given by user
+    :return: None
+    """
+
+    unlock = build_unlock(node=args.node, port=args.port,
+                          address=args.address, offer_hash=args.offer,
+                          deposit=args.deposit, tx_fee=args.fee,
+                          side=args.side, proof=args.proof)
+
+    print(unlock)
+
+    logger.info("Unlock deposit transaction created successfully")
 
 
 def get_account_data(datadir, pub_key_hex):
@@ -591,3 +727,44 @@ def get_account_data(datadir, pub_key_hex):
         if account["address"] == pub_key_hex:
             return account
     raise FileNotFoundError("Cannot find account file for given address")
+
+
+def build_xpeer_transfer(node, port, amount, receiver, tx_fee, owner, offer_hash):
+    """
+    Build transfer of xpc as a part of an exchange
+    :param offer_hash: hash of the offer
+    :param port: node port
+    :param node: node hostname
+    :param amount: value to be transferred
+    :param receiver: receiver address
+    :param tx_fee: transaction fee
+    :param owner: owner address
+    :return: Transaction
+    """
+
+    inputs, own_transfer = build_inputs(node=node, port=port,
+                                        amount=amount + tx_fee, owner=owner)
+    reqested_transfer = XpeerOutput(value=int(amount), receiver=receiver,
+                                    exchange=bytes.fromhex(offer_hash))
+
+    return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
+
+
+def xpeer_transfer(args):
+    """
+    Transfer xpc as a part of an exchange
+    :param args: args given by user
+    :return: None
+    """
+
+    xpeer_transfer = build_xpeer_transfer(node=args.node,
+                                          port=args.port,
+                                          amount=args.value,
+                                          receiver=args.receiver,
+                                          owner=args.owner,
+                                          tx_fee=args.fee,
+                                          offer_hash=args.offer)
+
+    print(xpeer_transfer)
+
+    logger.info("xpeer transfer created successfully")
