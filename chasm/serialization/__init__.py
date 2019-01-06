@@ -1,6 +1,8 @@
-import rlp
+from rlp.sedes import raw, binary, CountableList
 
-countable_list = rlp.sedes.CountableList(rlp.sedes.raw)
-countable_list_of_binaries = rlp.sedes.CountableList(rlp.sedes.binary)
+# pylint: disable=invalid-name
+
+countable_list = CountableList(raw)
+countable_list_of_binaries = CountableList(binary)
 
 type_registry = []

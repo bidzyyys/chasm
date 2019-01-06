@@ -6,10 +6,7 @@ from rlp import sedes
 from chasm import consensus
 from chasm.consensus.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list, countable_list_of_binaries
-from chasm.serialization import type_registry
-from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.serialization.serializable import Serializable
-from chasm.serialization.serializer import Serializer
 
 
 class Transaction(Serializable):
@@ -19,6 +16,8 @@ class Transaction(Serializable):
         return [('inputs', countable_list), ('outputs', countable_list)]
 
     def __init__(self, inputs=None, outputs=None):
+        from chasm.serialization.rlp_serializer import RLPSerializer
+
         if outputs is None:
             outputs = []
         if inputs is None:
@@ -148,12 +147,3 @@ class SignedTransaction(Serializable):
             signatures = []
         self.transaction = transaction
         self.signatures = signatures
-
-
-type_registry.append((Transaction, 4))
-type_registry.append((SignedTransaction, 5))
-type_registry.append((MintingTransaction, 6))
-type_registry.append((OfferTransaction, 7))
-type_registry.append((MatchTransaction, 8))
-type_registry.append((ConfirmationTransaction, 9))
-type_registry.append((UnlockingDepositTransaction, 10))

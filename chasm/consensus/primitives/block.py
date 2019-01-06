@@ -4,7 +4,7 @@ from merkletools import MerkleTools
 from rlp import sedes
 
 from chasm import consensus
-from chasm.serialization import countable_list, type_registry
+from chasm.serialization import countable_list
 from chasm.serialization.serializable import Serializable
 
 
@@ -72,6 +72,3 @@ class Block(Serializable):
     @property
     def nonce(self):
         return self.__header.nonce
-
-
-type_registry.append((Block, 11))

@@ -3,7 +3,8 @@ from json import JSONEncoder, JSONDecoder
 from rlp import sedes
 from rlp.sedes import binary
 
-from chasm.serialization import countable_list, type_registry, countable_list_of_binaries
+from chasm.serialization import countable_list, \
+    countable_list_of_binaries, type_registry
 from chasm.serialization.serializable import Serializable
 from chasm.serialization.serializer import Serializer
 

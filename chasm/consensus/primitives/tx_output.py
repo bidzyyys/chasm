@@ -1,6 +1,5 @@
 from rlp.sedes import big_endian_int, binary
 
-from chasm.serialization import type_registry
 from chasm.serialization.serializable import Serializable
 
 
@@ -33,8 +32,3 @@ class XpeerFeeOutput(Serializable):
 
     def __init__(self, value):
         self.value = value
-
-
-type_registry.append((TransferOutput, 1))
-type_registry.append((XpeerOutput, 2))
-type_registry.append((XpeerFeeOutput, 3))
