@@ -18,7 +18,7 @@ def get_utxos(address):
     logger.info("Getting UTXOs of: %s", address)
     return [
         {
-            "block_no": 6969,
+            "tx_hash": b'Tests'.hex(),
             "output_no": 69,
             "value": 1000
         }

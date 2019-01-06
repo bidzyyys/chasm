@@ -506,7 +506,7 @@ def build_inputs(node, port, amount, owner):
     except (ValueError, RuntimeError):
         raise RuntimeError("Cannot build inputs")
 
-    inputs = list(map(lambda utxo: TxInput(block_no=int(utxo["block_no"]),
+    inputs = list(map(lambda utxo: TxInput(tx_hash=bytes.fromhex(utxo["tx_hash"]),
                                            output_no=int(utxo["output_no"])),
                       utxos))
 
@@ -596,7 +596,7 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
                             token_out=int(token_out.value), value_out=int(value_out),
                             address_out=bytes.fromhex(receive_address),
                             deposit_index=int(0), confirmation_fee_index=int(1),
-                            timeout=int(timeout), nonce=int(0))
+                            timeout=int(timeout))
 
 
 def create_offer(args):
