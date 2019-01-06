@@ -7,7 +7,7 @@ from chasm.rpc import list_token_names, TIMEOUT_FORMAT, OFFER_MAKER, OFFER_TAKER
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
     show_keys, show_marketplace, show_matchings, show_offers, show_all_funds, \
-    build_tx, xpeer_transfer
+    build_tx, xpeer_transfer, sign, send
 
 
 # pylint: disable=missing-docstring
@@ -41,6 +41,8 @@ def create_subparsers(subparsers):
     create_matchings_parser(subparsers)
     create_offer_parser(subparsers)
     create_offers_parser(subparsers)
+    create_send_tx_parser(subparsers)
+    create_sign_parser(subparsers)
     create_show_tx_parser(subparsers)
     create_transfer_parser(subparsers)
     create_unlock_parser(subparsers)
@@ -61,9 +63,30 @@ def create_marketplace_parser(subparsers):
 def create_show_tx_parser(subparsers):
     parser = subparsers.add_parser('show',
                                    description="show transaction")
-    parser.add_argument('--tx_hash', help="hash of the transaction",
+    parser.add_argument('--tx', help="hash of the transaction",
                         required=True)
     parser.set_defaults(func=show_transaction)
+
+
+def create_send_tx_parser(subparsers):
+    parser = subparsers.add_parser('send',
+                                   description="show transaction")
+    parser.add_argument('--tx', help="hash of the transaction",
+                        required=True)
+    parser.add_argument('--signatures', default=[], nargs='*',
+                        help="list of signatures")
+
+    parser.set_defaults(func=send)
+
+
+def create_sign_parser(subparsers):
+    parser = subparsers.add_parser('sign',
+                                   description="sign transaction")
+    parser.add_argument('--tx', help="hash of the transaction",
+                        required=True)
+    parser.add_argument('--address', help="address of signer",
+                        required=True)
+    parser.set_defaults(func=sign)
 
 
 def create_balance_parser(subparsers):

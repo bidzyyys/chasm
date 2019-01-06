@@ -49,12 +49,11 @@ def get_tx(tx_hash):
 
 
 @dispatcher.add_method
-def publish_transaction(tx_hex):
-    print(tx_hex)
-    signed_tx = json_serializer.decode(tx_hex)
-    # print("{} :{}".format(type(signed_tx).__name__,
-    #                       json_serializer.encode(signed_tx)))
-    # # TODO
+def publish_transaction(signed_tx_json):
+    signed_tx = json_serializer.decode(signed_tx_json)
+    print("{}: {}".format(type(signed_tx).__name__,
+                          json_serializer.encode(signed_tx)))
+    # TODO
     return True
 
 

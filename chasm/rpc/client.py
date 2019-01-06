@@ -10,6 +10,7 @@ import requests
 from Crypto.Cipher import AES
 from ecdsa import SigningKey
 from ecdsa.der import UnexpectedDER
+from rlp.exceptions import RLPException
 
 from chasm.consensus import CURVE
 from chasm.consensus.primitives.transaction import Transaction, \
@@ -86,22 +87,22 @@ def read_json_file(filename):
     """
     Read json from given filename
     :param filename: path to file
-    :return: JSON in string representation
-    """
-    with open(filename) as f:
-        json_str = json.load(f)
-        return json_str
-
-
-def load_json_from_file(filename):
-    """
-    Loads json data from filename
-    :param filename: file to be read
     :return: json data in dict object
     """
     filename = filename.replace("~", os.path.expanduser("~"))
-    json_str = read_json_file(filename)
-    return json.loads(json_str)
+    with open(filename) as f:
+        return json.load(f)
+
+
+def read_data_file(filename):
+    """
+    Read data from given filename
+    :param filename: path to file
+    :return: data string
+    """
+    filename = filename.replace("~", os.path.expanduser("~"))
+    with open(filename) as f:
+        return f.read()
 
 
 def generate_keys():
@@ -175,7 +176,7 @@ def save_account(priv_key, pub_key, password, datadir):
                                   pub_key.hex()[-7:])
     filename = os.path.join(datadir, KEYSTORE, keyfile)
 
-    save_json(json.dumps(account), filename)
+    save_json(account, filename)
 
     return filename
 
@@ -217,7 +218,7 @@ def get_address(keyfile):
     :return: address(public key)
     """
     try:
-        account_info = load_json_from_file(keyfile)
+        account_info = read_json_file(keyfile)
         pub_key_hex = account_info["address"]
         return pub_key_hex
     except FileNotFoundError:
@@ -406,8 +407,20 @@ def show_marketplace(args):
         print("Price: {}".format(offer.value_out))
 
 
-def build_tx_from_json(tx_json):
-    return []
+def build_tx_from_json(filename):
+    """
+    Deserialize transaction from json file
+    :param filename: path to file
+    :return: deserialized transaction
+    """
+
+    try:
+        tx_json = read_data_file(filename)
+        transaction = json_serializer.decode(tx_json)
+    except (RLPException, FileNotFoundError):
+        raise RuntimeError("Cannot build transaction from file")
+
+    return transaction
 
 
 def build_tx(args):
@@ -419,8 +432,10 @@ def build_tx(args):
     :return: None
     """
 
-    transaction = build_tx_from_json(args.filename)
-    print(__name__ + str(args))
+    transaction = build_tx_from_json(args.file)
+    print("\n{}: {}".format(type(transaction).__name__,
+                            str(json_serializer.encode(transaction))))
+    print("\nHex: {}".format(rlp_serializer.encode(transaction).hex()))
 
 
 def show_account_history(args):
@@ -489,11 +504,28 @@ def sign_transaction(transaction, pub_key, datadir):
     try:
         account = get_account_data(datadir, pub_key)
     except FileNotFoundError:
-        raise RuntimeError("Cannot sign given data")
+        raise RuntimeError("Cannot get private key!")
 
     priv_key = get_priv_key(account)
 
     return transaction.sign(priv_key.to_string())
+
+
+def sign(args):
+    """
+    Sign transaction given by user(in hex format)
+    :param args: args given by user
+    :return: None
+    """
+    try:
+        transaction = rlp_serializer.decode(bytes.fromhex(args.tx))
+        if get_acceptance_from_user(transaction, question="Sign transaction?"):
+            signature = sign_transaction(transaction=transaction,
+                                         pub_key=args.address,
+                                         datadir=args.datadir)
+            print("\nSignature: {}".format(signature.hex()))
+    except (RLPException, RuntimeError):
+        raise RuntimeError("Cannot sign transaction!")
 
 
 def build_inputs(node, port, amount, owner):
@@ -563,9 +595,9 @@ def transfer(args):
                            tx_fee=args.fee)
 
     logger.info("Transaction created successfully!")
-    if publish_transaction(args.host, args.port, tx,
-                           args.address, args.datadir):
-        logger.info("Transaction published successfully!")
+    if publish_transaction(args.node, args.port, tx,
+                           args.owner, args.datadir):
+        logger.info("Transaction sent successfully!")
 
 
 def show_matchings(args):
@@ -636,7 +668,7 @@ def create_offer(args):
     logger.info("OfferTransaction created successfully!")
     if publish_transaction(args.node, args.port, tx,
                            args.address, args.datadir):
-        logger.info("Transaction published successfully!")
+        logger.info("Transaction sent successfully!")
 
 
 def build_match(node, port, address, offer_hash, receive, confirmation_fee, deposit, tx_fee):
@@ -679,7 +711,7 @@ def accept_offer(args):
     logger.info("MatchTransaction created successfully!")
     if publish_transaction(args.node, args.port, tx,
                            args.address, args.datadir):
-        logger.info("Transaction published successfully!")
+        logger.info("Transaction sent successfully!")
 
 
 def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
@@ -723,7 +755,7 @@ def unlock_deposit(args):
     logger.info("UnlockingDepositTransaction created successfully!")
     if publish_transaction(args.node, args.port, tx,
                            args.address, args.datadir):
-        logger.info("Transaction published successfully!")
+        logger.info("Transaction sent successfully!")
 
 
 def get_account_data(datadir, pub_key_hex):
@@ -737,7 +769,7 @@ def get_account_data(datadir, pub_key_hex):
     filename_regex = r'[0-9]{8}_[0-9]{6}_%s.json' % pub_key_hex[-7:]
     account_files = find_account_files(datadir, filename_regex)
     for file in account_files:
-        account = load_json_from_file(file)
+        account = read_json_file(file)
         if account["address"] == pub_key_hex:
             return account
     raise FileNotFoundError("Cannot find account file for given address")
@@ -781,8 +813,8 @@ def xpeer_transfer(args):
 
     logger.info("XpeerTransaction created successfully!")
     if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
-        logger.info("Transaction published successfully!")
+                           args.owner, args.datadir):
+        logger.info("Transaction sent successfully!")
 
 
 def publish_transaction(host, port, transaction, pub_key, datadir):
@@ -839,6 +871,25 @@ def send_transaction(host, port, transaction, signatures):
 
     payload = PAYLOAD_TAGS.copy()
     payload[METHOD] = "publish_transaction"
-    payload[PARAMS] = [json_serializer.encode(transaction)]
+    payload[PARAMS] = [json_serializer.encode(signed_transaction)]
 
     return run(host=host, port=port, payload=payload)
+
+
+def send(args):
+    """
+    Send transaction with its signatures
+    :param args: args given by user
+    :return: None
+    """
+
+    try:
+        tx = rlp_serializer.decode(bytes.fromhex(args.tx))
+        signatures = list(map(lambda hex: bytes.fromhex(hex), args.signatures))
+    except (RLPException, ValueError):
+        raise RuntimeError("Cannot send transaction")
+
+    if get_acceptance_from_user(tx):
+        if send_transaction(host=args.node, port=args.port,
+                            transaction=tx, signatures=signatures):
+            logger.info("Transaction sent successfully!")
