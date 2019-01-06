@@ -1,3 +1,4 @@
+import queue
 import shutil
 from queue import Empty
 
@@ -17,7 +18,7 @@ TEST_DB_PATH = '/tmp/xpeer'
 def state():
     state = State(TEST_DB_PATH)
     yield state
-    state.db.db.close()
+    state.close()
     shutil.rmtree(TEST_DB_PATH)
 
 
@@ -71,22 +72,35 @@ def test_removes_pending_txs_with_lowest_priority(state, transactions, transacti
 
 
 def test_persists_pending_txs(state, transactions):
-    for tx in transactions:
-        state.add_pending_tx(tx)
+    for tx, priority in zip(transactions, range(len(transactions), 0, -1)):
+        state.add_pending_tx(tx, priority)
 
-    state.db.db.close()
+    state.close()
     restored_state = State(TEST_DB_PATH)
 
-    # it is done in this way as we will not persist FIFO order of pending txs after shutdown
-    should_continue = True
-    while should_continue:
-        try:
-            popped = restored_state.pop_pending_tx()
-            assert popped in transactions
-            transactions.remove(popped)
-        except Empty:
-            should_continue = False
+    for tx in transactions:
+        assert tx == restored_state.pop_pending_tx()
 
-    assert not transactions
+    with pytest.raises(queue.Empty):
+        restored_state.pop_pending_tx()
 
-# def test_removes_pending_and_does_not_restore_them(state, transactions):
+    restored_state.close()
+
+
+def test_removes_pending_and_does_not_restore_them(state, transactions):
+    for tx, priority in zip(transactions, range(len(transactions), 0, -1)):
+        state.add_pending_tx(tx, priority)
+
+    tx = state.pop_pending_tx()
+    transactions.remove(tx)
+
+    state.close()
+    restored_state = State(TEST_DB_PATH)
+
+    for tx in transactions:
+        assert tx == restored_state.pop_pending_tx()
+
+    with pytest.raises(queue.Empty):
+        restored_state.pop_pending_tx()
+
+    restored_state.close()

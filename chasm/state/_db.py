@@ -3,7 +3,6 @@ import rlp
 from rlp import sedes
 
 from chasm.serialization.rlp_serializer import RLPSerializer
-from chasm.serialization.serializer import Serializer
 
 
 class DB:
@@ -29,12 +28,12 @@ class DB:
     def delete_utxos(self, utxos: [((int, int), bytes)]):
         pass
 
-    def put_pending_tx(self, tx, priority):
+    def put_pending_tx(self, index, tx, priority):
         encoded = rlp.encode([priority, RLPSerializer().encode(tx)])
-        self.pending_txs_db.put(tx.hash(), encoded)
+        self.pending_txs_db.put(self._int_to_bytes(index), encoded)
 
-    def delete_pending(self, tx_hash):
-        self.pending_txs_db.delete(tx_hash)
+    def delete_pending(self, index):
+        self.pending_txs_db.delete(self._int_to_bytes(index))
 
     def get_pending_txs(self):
         """
@@ -43,6 +42,19 @@ class DB:
         NOTE: It does not restore FIFO order
         :return: list of pairs (priority, tx)
         """
-        enc = [encoded for _key, encoded in self.pending_txs_db]
-        pairs = [rlp.decode(encoded, sedes=sedes.List([sedes.big_endian_int, sedes.raw])) for encoded in enc]
-        return [(priority, RLPSerializer().decode(tx_enc)) for priority, tx_enc in pairs]
+        enc = [(self._bytes_to_int(key), encoded) for key, encoded in self.pending_txs_db]
+        pairs = [(key, rlp.decode(encoded, sedes=sedes.List([sedes.big_endian_int, sedes.raw])))
+                 for key, encoded in enc]
+
+        return [(index, priority, RLPSerializer().decode(tx_enc)) for index, (priority, tx_enc) in pairs]
+
+    def close(self):
+        self.db.close()
+
+    @staticmethod
+    def _int_to_bytes(i: int):
+        return i.to_bytes(i.bit_length() + 7 // 8, byteorder='big', signed=False)
+
+    @staticmethod
+    def _bytes_to_int(i):
+        return int.from_bytes(i, byteorder='big', signed=False)
