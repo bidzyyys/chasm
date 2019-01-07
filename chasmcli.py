@@ -5,8 +5,8 @@ import argparse
 from chasm.logger.logger import get_logger
 from chasm.rpc import list_token_names, TIMEOUT_FORMAT, OFFER_MAKER, OFFER_TAKER
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
-    create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
-    show_keys, show_marketplace, show_matchings, show_offers, show_all_funds, \
+    create_offer, accept_offer, unlock_deposit, transfer, \
+    show_keys, show_marketplace, show_matches, show_accepted_offers, show_all_funds, \
     build_tx, xpeer_transfer, sign, send, show_dutxos, show_utxos
 
 
@@ -35,11 +35,10 @@ def create_subparsers(subparsers):
     create_dutxo_parser(subparsers)
     create_funds_parser(subparsers)
     create_gen_address_parser(subparsers)
-    create_history_parser(subparsers)
     create_keys_parser(subparsers)
     create_marketplace_parser(subparsers)
     create_match_parser(subparsers)
-    create_matchings_parser(subparsers)
+    create_matches_parser(subparsers)
     create_offer_parser(subparsers)
     create_offers_parser(subparsers)
     create_send_tx_parser(subparsers)
@@ -168,8 +167,10 @@ def create_offer_parser(subparsers):
 
 def create_offers_parser(subparsers):
     parser = subparsers.add_parser('offers',
-                                   description="show my offers")
-    parser.set_defaults(func=show_offers)
+                                   description="show accepted offers")
+    parser.add_argument('--address', required=True,
+                        help="address for income")
+    parser.set_defaults(func=show_accepted_offers)
 
 
 def create_match_parser(subparsers):
@@ -190,10 +191,10 @@ def create_match_parser(subparsers):
     parser.set_defaults(func=accept_offer)
 
 
-def create_matchings_parser(subparsers):
-    parser = subparsers.add_parser('matchings',
-                                   description="show my accepted offers")
-    parser.set_defaults(func=show_matchings)
+def create_matches_parser(subparsers):
+    parser = subparsers.add_parser('matches',
+                                   description="show offer matches")
+    parser.set_defaults(func=show_matches)
 
 
 def create_unlock_parser(subparsers):
@@ -245,12 +246,6 @@ def create_xpeer_parser(subparsers):
                         help="offer hash")
 
     parser.set_defaults(func=xpeer_transfer)
-
-
-def create_history_parser(subparsers):
-    parser = subparsers.add_parser('history',
-                                   description="show account history")
-    parser.set_defaults(func=show_account_history)
 
 
 def create_keys_parser(subparsers):

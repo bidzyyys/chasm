@@ -2,6 +2,7 @@
 from queue import Full
 
 from jsonrpc import JSONRPCResponseManager, dispatcher
+from rlp.exceptions import RLPException
 from werkzeug.serving import run_simple
 from werkzeug.wrappers import Request, Response
 
@@ -119,21 +120,33 @@ def publish_transaction(signed_tx_json):
     :param signed_tx_json: serialized SignedTransaction
     :return: True if transaction is added
     """
-    signed_tx = json_serializer.decode(signed_tx_json)
-    print("{}: {}".format(type(signed_tx).__name__,
-                          json_serializer.encode(signed_tx)))
 
+    logger.info("Publishing tx: %s",
+                json_serializer.encode(signed_tx_json))
+
+    result = True
     try:
+        signed_tx = json_serializer.decode(signed_tx_json)
         state.add_pending_tx(signed_tx)
+    except RLPException:
+        logger.exception("Cannot deserialize transaction")
+        result = False
     except Full:
         logger.exception("Cannot add transaction")
-        return False
+        result = False
 
-    return True
+    return result
 
 
 @dispatcher.add_method
-def get_account_history(address):
+def get_matches(offer_addr, match_addr):
+    logger.info("Getting matches, offer_addr: %s, match_addr: %s",
+                offer_addr, match_addr)
+    return []
+
+
+@dispatcher.add_method
+def get_accepted_offers(address):
     pass
 
 

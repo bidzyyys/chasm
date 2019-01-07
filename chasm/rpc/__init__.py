@@ -21,6 +21,7 @@ METHOD = "method"
 PARAMS = "params"
 
 ALL = 0
+ALL_ADDRESSES = "0"
 
 TOKENS_DICT = {
     ALL: "all",

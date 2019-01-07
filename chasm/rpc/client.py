@@ -24,7 +24,8 @@ from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
-    RPCError, token_from_name, TIMEOUT_FORMAT, get_token_name
+    RPCError, token_from_name, TIMEOUT_FORMAT, get_token_name, \
+    ALL_ADDRESSES
 
 # pylint: disable=invalid-name
 
@@ -453,7 +454,7 @@ def display_txo(txo):
     print("Transaction(hex): {}\n".format(txo["tx"]))
 
 
-def get_current_offers(host, port, token_in, token_out):
+def fetch_current_offers(host, port, token_in, token_out):
     """
     Get all current offers
 
@@ -509,8 +510,8 @@ def show_marketplace(args):
     except ValueError:
         raise RuntimeError("Cannot display current offers, invalid token")
 
-    offers = get_current_offers(args.node, args.port,
-                                token_in, token_out)
+    offers = fetch_current_offers(args.node, args.port,
+                                  token_in, token_out)
 
     print("Current offers: {}".format(len(offers)))
     for offer in offers:
@@ -546,10 +547,6 @@ def build_tx(args):
     print("\n{}: {}".format(type(transaction).__name__,
                             str(json_serializer.encode(transaction))))
     print("\nHex: {}".format(rlp_serializer.encode(transaction).hex()))
-
-
-def show_account_history(args):
-    print(__name__ + str(args))
 
 
 def get_transaction(node, port, transaction):
@@ -746,12 +743,41 @@ def transfer(args):
         logger.info("Transaction sent successfully!")
 
 
-def show_matchings(args):
+def show_matches(args):
     print(__name__ + str(args))
 
 
-def show_offers(args):
-    print(__name__ + str(args))
+def show_accepted_offers(args):
+    matches = fetch_matches(host=args.node, port=args.port,
+                            offer_addr=args.address,
+                            match_addr=ALL_ADDRESSES)
+
+
+def fetch_matches(host, port, offer_addr, match_addr):
+    """
+    Fetch matches
+    :param host: node hostname
+    :param port: node port
+    :param offer_addr: offer side income address(filter)
+    :param match_addr: match side income address(filter)
+    :return: list of tuples(OfferTransaction, MatchTransaction)
+    """
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "get_matches"
+    payload[PARAMS] = [offer_addr, match_addr]
+    try:
+        matches_json = run(host=host, port=port, payload=payload)
+    except RPCError:
+        raise RuntimeError("Cannot get matches")
+
+    try:
+        matches = list(map(lambda match: (json_serializer.decode(match[0]),
+                                          json_serializer.decode(match[1])),
+                           matches_json))
+    except RLPException:
+        raise RuntimeError("Cannot deserialize matches")
+
+    return matches
 
 
 # pylint: disable=too-many-locals
