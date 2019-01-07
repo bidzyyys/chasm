@@ -1,5 +1,6 @@
 """RPC Client"""
 
+import datetime
 import json
 import os
 import re
@@ -23,7 +24,7 @@ from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
 from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
-    RPCError, token_from_name, ALL_TOKENS, TIMEOUT_FORMAT
+    RPCError, token_from_name, TIMEOUT_FORMAT, get_token_name
 
 # pylint: disable=invalid-name
 
@@ -35,7 +36,7 @@ def get_password(prompt="Type password: "):
     """
     Get password from user input without echoing
     :param prompt: prompt for user
-    :return: 16 characters password
+    :return: password
     """
     password = getpass(prompt=prompt)
     while len(password) < PWD_LEN:
@@ -298,19 +299,30 @@ def run(host, port, payload):
 def count_balance(address, node, port):
     """
     Count balance of an account
+    :param address: owner of UTXOs
     :param node: node hostname
     :param port: node port
     :return: balance of each address (dict[address]=balance))
     """
-    try:
-        utxos = get_utxos(address[0], node, port)
-    except RPCError:
-        logger.exception("Cannot get UTXOs of: %s", address[0],
-                         exc_info=False)
-        raise RuntimeError("Cannot count balance!")
-
+    utxos = get_utxos(address=address, node=node, port=port)
     balance = sum(utxo["value"] for utxo in utxos)
     return balance
+
+
+def get_utxos(address, node, port):
+    """
+    Get all UTXOs of the address
+    :param address: owner of UTXOs
+    :param node: node hostname
+    :param port: node port
+    :return: list of UTXOs
+    """
+    try:
+        utxos = fetch_utxos(address, node, port)
+    except RPCError:
+        raise RuntimeError("Cannot get UTXOs of: {}".format(address))
+
+    return utxos
 
 
 def show_balance(args):
@@ -323,6 +335,54 @@ def show_balance(args):
     print("Balance: {} bdzys".format(balance))
 
 
+def get_dutxos(address, node, port):
+    """
+    Get all DUTXOs of given address
+    :param address: owner of DUTXOs
+    :param node: node hostname
+    :param port: node port
+    :return: list of DUTXOs
+    """
+    try:
+        dutxos = fetch_dutxos(address, node, port)
+    except (RPCError, RuntimeError):
+        raise RuntimeError("Cannot get DUTXOs of: {}".format(address))
+
+    return dutxos
+
+
+def show_dutxos(args):
+    """
+    Show all DUTXOs of the account
+    :param args: args given by user
+    :return: None
+    """
+    dutxos = get_dutxos(address=args.address, node=args.node,
+                        port=args.port)
+    balance = 0.0
+    for dutxo in dutxos:
+        display_txo(dutxo)
+        balance += dutxo["value"]
+
+    print("Total: {} bdzys".format(balance))
+
+
+def show_utxos(args):
+    """
+    Show all UTXOs of the account
+    :param args: args given by user
+    :return: None
+    """
+    utxos = get_utxos(address=args.address, node=args.node,
+                      port=args.port)
+    balance = 0.0
+    for utxo in utxos:
+        display_txo(utxo)
+        balance += utxo["value"]
+
+    print("Total: {} bdzys".format(balance))
+
+
 def show_all_funds(args):
     """
     Display balance of all accounts from datadir
@@ -333,7 +393,7 @@ def show_all_funds(args):
     addresses = get_addresses(args.datadir)
     total_balance = 0.0
     for address in addresses:
-        balance = count_balance(address, args.node, args.port)
+        balance = count_balance(address[0], args.node, args.port)
         print("Balance: {} bdzys".format(balance))
         print("Address: {}\n".format(address[0]))
         total_balance += balance
@@ -341,7 +401,7 @@ def show_all_funds(args):
     print("Total: {} bdzys".format(total_balance))
 
 
-def get_utxos(address, host, port):
+def fetch_utxos(address, host, port):
     """
     Get UTXOs of given address
 
@@ -350,7 +410,7 @@ def get_utxos(address, host, port):
     :param address: owner of UTXOs
     :param host: node hostname
     :param port: node port
-    :return: list of UTXOs
+    :return: list of UTXOs dict
     """
     payload = PAYLOAD_TAGS.copy()
     payload[METHOD] = "get_utxos"
@@ -361,24 +421,80 @@ def get_utxos(address, host, port):
     return utxos
 
 
-def get_current_offers(host, port):
+def fetch_dutxos(address, host, port):
+    """
+    Get DUTXOs of given address
+
+    Calls remote method through json-rpc
+
+    :param address: owner of DUTXOs
+    :param host: node hostname
+    :param port: node port
+    :return: list of DUTXOs dict
+    """
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "get_dutxos"
+    payload[PARAMS] = [address]
+
+    dutxos = run(host=host, port=port, payload=payload)
+
+    return dutxos
+
+
+def display_txo(txo):
+    """
+    Display given txo
+    :param txo: UTXO/DUTXO to be displayed
+    :return: None
+    """
+    print("Hex: {}".format(txo["hex"]))
+    print("Value: {} bdzys".format(txo["value"]))
+    print("Output number: {}".format(txo["output_no"]))
+    print("Transaction(hex): {}\n".format(txo["tx"]))
+
+
+def get_current_offers(host, port, token_in, token_out):
     """
     Get all current offers
 
     Calls remote method through json-rpce
     :param host: node hostname
     :param port: node port
+    :param token_in: Filter on token being sold
+    :param token_out: Filter on expected payment token
+    :raise RuntimeError: if an error occurs
     :return: list of current offers
     """
     payload = PAYLOAD_TAGS.copy()
     payload[METHOD] = "get_current_offers"
-    payload[PARAMS] = []
+    payload[PARAMS] = [token_in, token_out]
     try:
-        offers = run(host=host, port=port, payload=payload)
+        offers_json = run(host=host, port=port, payload=payload)
     except RPCError:
         raise RuntimeError("Cannot get current offers")
 
+    try:
+        offers = list(map(lambda offer: json_serializer.decode(offer),
+                          offers_json))
+    except RLPException:
+        raise RuntimeError("Cannot deserialize offers")
+
     return offers
+
+
+def display_offer(offer: OfferTransaction):
+    """
+    Display offer info
+    :param offer: offer to be displayed
+    :return: None
+    """
+    print("Hash: {}".format(rlp_serializer.encode(offer).hex()))
+    print("Token: {}".format(get_token_name(offer.token_in)))
+    print("Amount: {}".format(offer.value_in))
+    print("Expected token: {}".format(get_token_name(offer.token_out)))
+    print("Price: {}".format(offer.value_out))
+    print("Timeout: {}".format(datetime.datetime.fromtimestamp(offer.timeout)))
+    print("Payment address: {}\n".format(offer.address_out.hex()))
 
 
 def show_marketplace(args):
@@ -393,18 +509,12 @@ def show_marketplace(args):
     except ValueError:
         raise RuntimeError("Cannot display current offers, invalid token")
 
-    offers = get_current_offers(args.node, args.port)
-    offers = list(filter(lambda o:
-                         token_in in (ALL_TOKENS, o.token_in) and
-                         token_out in (ALL_TOKENS, o.token_out),
-                         offers))
+    offers = get_current_offers(args.node, args.port,
+                                token_in, token_out)
+
     print("Current offers: {}".format(len(offers)))
     for offer in offers:
-        print("Hash: {}".format(offer.hash))
-        print("Token: {}".format(offer.token_in))
-        print("Amount: {}".format(offer.value_in))
-        print("Expected token: {}".format(offer.token_out))
-        print("Price: {}".format(offer.value_out))
+        display_offer(offer)
 
 
 def build_tx_from_json(filename):
@@ -442,8 +552,44 @@ def show_account_history(args):
     print(__name__ + str(args))
 
 
+def get_transaction(node, port, transaction):
+    """
+    Get transaction
+    :param node: node hostname
+    :param port: node port
+    :param transaction: hash of the transaction(hex)
+    :raise ValueError: if given transaction does not exist
+    :raise RuntimeError: if rpc error occurs
+    :return: transaction
+    """
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "get_tx"
+    payload[PARAMS] = [transaction]
+
+    try:
+        tx_json = run(host=node, port=port, payload=payload)
+        if tx_json is None:
+            raise ValueError("Given transaction does not exist!")
+
+        tx = json_serializer.decode(tx_json)
+    except (RPCError, RLPException):
+        raise RuntimeError("Cannot get transaction from node!")
+
+    return tx
+
+
 def show_transaction(args):
-    print(__name__ + str(args))
+    """
+    Show transaction to the user
+    :param args: args given by user
+    :return: None
+    """
+    try:
+        transaction = get_transaction(node=args.node, port=args.port,
+                                      transaction=args.tx)
+        display_transaction(transaction)
+    except ValueError:
+        print("Transaction does not exist!")
 
 
 def get_priv_key(account):
@@ -478,7 +624,7 @@ def get_utxos_for_tx(node, port, address, amount):
     :return: UTXOs to be used in a transaction and their amount
     """
     try:
-        utxos = get_utxos(address=address, host=node, port=port)
+        utxos = fetch_utxos(address=address, host=node, port=port)
     except RPCError:
         raise RuntimeError("Cannot get UTXOs of: {}".format(address))
 
@@ -544,7 +690,7 @@ def build_inputs(node, port, amount, owner):
     except (ValueError, RuntimeError):
         raise RuntimeError("Cannot build inputs")
 
-    inputs = list(map(lambda utxo: TxInput(tx_hash=bytes.fromhex(utxo["tx_hash"]),
+    inputs = list(map(lambda utxo: TxInput(tx_hash=bytes.fromhex(utxo["tx"]),
                                            output_no=int(utxo["output_no"])),
                       utxos))
 
@@ -841,6 +987,20 @@ def publish_transaction(host, port, transaction, pub_key, datadir):
     return result
 
 
+def display_transaction(transaction):
+    """
+    Display transaction to the user
+    :param transaction: transaction to be displayed
+    :return: None
+    """
+
+    try:
+        print("\n{}: {}\n".format(type(transaction).__name__,
+                                  json_serializer.encode(transaction)))
+    except RLPException:
+        print("Unknown type: {}".format(type(transaction).__name__))
+
+
 def get_acceptance_from_user(transaction, question="Send transaction?"):
     """
     Show transaction to the user and get acceptance
@@ -848,8 +1008,7 @@ def get_acceptance_from_user(transaction, question="Send transaction?"):
     :param transaction: transaction to be signed
     :return: True if user accepts
     """
-    print("\n{}: {}\n".format(type(transaction).__name__,
-                              json_serializer.encode(transaction)))
+    display_transaction(transaction)
     cont = input("{} yes/no > ".format(question))
     while cont.lower() not in ("yes", "no"):
         cont = input("{} yes/no >".format(question))

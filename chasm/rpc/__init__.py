@@ -20,10 +20,10 @@ PAYLOAD_TAGS = {
 METHOD = "method"
 PARAMS = "params"
 
-ALL_TOKENS = 0
+ALL = 0
 
 TOKENS_DICT = {
-    ALL_TOKENS: "all",
+    ALL: "all",
     Tokens.XPEER: "xpc",
     Tokens.BITCOIN: "btc",
     Tokens.ETHEREUM: "eth"
@@ -33,6 +33,10 @@ TIMEOUT_FORMAT = "%Y-%m-%d::%H:%M:%S"
 
 OFFER_MAKER = 0
 OFFER_TAKER = 1
+
+
+def get_token_name(token):
+    return TOKENS_DICT.get(token, "Unknown: {}".format(token))
 
 
 def token_from_name(name):

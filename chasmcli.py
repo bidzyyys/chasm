@@ -7,7 +7,7 @@ from chasm.rpc import list_token_names, TIMEOUT_FORMAT, OFFER_MAKER, OFFER_TAKER
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, show_account_history, \
     show_keys, show_marketplace, show_matchings, show_offers, show_all_funds, \
-    build_tx, xpeer_transfer, sign, send
+    build_tx, xpeer_transfer, sign, send, show_dutxos, show_utxos
 
 
 # pylint: disable=missing-docstring
@@ -32,6 +32,7 @@ def get_parser():
 def create_subparsers(subparsers):
     create_balance_parser(subparsers)
     create_build_parser(subparsers)
+    create_dutxo_parser(subparsers)
     create_funds_parser(subparsers)
     create_gen_address_parser(subparsers)
     create_history_parser(subparsers)
@@ -46,6 +47,7 @@ def create_subparsers(subparsers):
     create_show_tx_parser(subparsers)
     create_transfer_parser(subparsers)
     create_unlock_parser(subparsers)
+    create_utxo_parser(subparsers)
     create_xpeer_parser(subparsers)
 
 
@@ -95,6 +97,22 @@ def create_balance_parser(subparsers):
     parser.add_argument('--address', required=True,
                         help="address")
     parser.set_defaults(func=show_balance)
+
+
+def create_dutxo_parser(subparsers):
+    parser = subparsers.add_parser('dutxo',
+                                   description="show DUTXOs of the account")
+    parser.add_argument('--address', required=True,
+                        help="address")
+    parser.set_defaults(func=show_dutxos)
+
+
+def create_utxo_parser(subparsers):
+    parser = subparsers.add_parser('utxo',
+                                   description="show UTXOs of the account")
+    parser.add_argument('--address', required=True,
+                        help="address")
+    parser.set_defaults(func=show_utxos)
 
 
 def create_build_parser(subparsers):
