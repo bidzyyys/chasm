@@ -1,5 +1,6 @@
 import time
 
+import rlp
 from merkletools import MerkleTools
 from rlp import sedes
 
@@ -28,47 +29,58 @@ class Block(Serializable):
         def __eq__(self, other):
             return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
+        def hash(self):
+            encoded = rlp.encode(
+                [self.previous_block_hash, self.merkle_root, self.timestamp, self.nonce, self.difficulty])
+            return consensus.HASH_FUNC(encoded).digest()
+
     def __init__(self, previous_block_hash, difficulty, merkle_root=None, timestamp=None, nonce=0, transactions=None):
         if timestamp is None:
             timestamp = int(time.time())
-        self.__header = Block.Header(previous_block_hash, merkle_root, difficulty, nonce, timestamp)
+        self._header = Block.Header(previous_block_hash, merkle_root, difficulty, nonce, timestamp)
 
         self.transactions = transactions if transactions is not None else []
 
-        self.__block_height = None
+        self._block_height = None
 
     def update_merkle_root(self):
         merkle_tree = MerkleTools(consensus.HASH_FUNC_NAME)
-        txs = [tx.hash() for tx in self.transactions]
+        txs = [tx.hash().hex() for tx in self.transactions]
+
         merkle_tree.add_leaf(values=txs)
+        merkle_tree.make_tree()
+
         root = bytes.fromhex(merkle_tree.get_merkle_root())  # the library returns hex encoded hash, but we use bytes
-        self.__header.merkle_root = root
+        self._header.merkle_root = root
 
     def adjust_timestamp(self):
-        self.__header.timestamp = int(time.time())
+        self._header.timestamp = int(time.time())
 
     def adjust_nonce(self):
-        self.__header.nonce += 1
+        self._header.nonce += 1
 
     def add_transaction(self, tx):
         self.transactions.append(tx)
 
     @property
     def previous_block_hash(self):
-        return self.__header.previous_block_hash
+        return self._header.previous_block_hash
 
     @property
     def merkle_root(self):
-        return self.__header.merkle_root
+        return self._header.merkle_root
 
     @property
     def difficulty(self):
-        return self.__header.difficulty
+        return self._header.difficulty
 
     @property
     def timestamp(self):
-        return self.__header.timestamp
+        return self._header.timestamp
 
     @property
     def nonce(self):
-        return self.__header.nonce
+        return self._header.nonce
+
+    def hash(self):
+        return self._header.hash()
