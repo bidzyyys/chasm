@@ -8,7 +8,7 @@ from chasm.state._db import DB
 
 
 class State:
-    def __init__(self, db_dir="~/.xpeer/db", max_pending_txs=10):
+    def __init__(self, db_dir="~/.chasm/db", max_pending_txs=10):
         self.db = DB(db_dir)
 
         self.utxos = {}

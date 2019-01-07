@@ -1,3 +1,5 @@
+import os
+
 import plyvel
 import rlp
 from rlp import sedes
@@ -7,6 +9,7 @@ from chasm.serialization.rlp_serializer import RLPSerializer
 
 class DB:
     def __init__(self, db_dir):
+        db_dir = os.path.expanduser(db_dir)
         self.db = plyvel.DB(db_dir, create_if_missing=True)
         self.utxos_db = self.db.prefixed_db(b'u')
         self.transactions_db = self.db.prefixed_db(b't')
