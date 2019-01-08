@@ -233,3 +233,10 @@ def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, empty_block,
         assert init_utxos == state.get_utxos()
         with pytest.raises(KeyError):
             state.get_block_by_no(2)
+
+
+def test_can_get_transaction_by_hash(filled_state):
+
+    tx = filled_state.get_block_by_no(1).transactions[0]
+
+    assert tx ==filled_state.get_transaction(tx.hash())

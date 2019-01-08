@@ -1,10 +1,12 @@
 import time
+from typing import Union
 
 import rlp
 from merkletools import MerkleTools
 from rlp import sedes
 
 from chasm import consensus
+from chasm.consensus.primitives.transaction import MintingTransaction, SignedTransaction
 from chasm.serialization import countable_list
 from chasm.serialization.serializable import Serializable
 
@@ -34,7 +36,8 @@ class Block(Serializable):
                 [self.previous_block_hash, self.merkle_root, self.timestamp, self.nonce, self.difficulty])
             return consensus.HASH_FUNC(encoded).digest()
 
-    def __init__(self, previous_block_hash, difficulty, merkle_root=None, timestamp=None, nonce=0, transactions=None):
+    def __init__(self, previous_block_hash, difficulty, merkle_root=None, timestamp=None, nonce=0,
+                 transactions: [Union[SignedTransaction, MintingTransaction]] = None):
         if timestamp is None:
             timestamp = int(time.time())
         self._header = Block.Header(previous_block_hash, merkle_root, difficulty, nonce, timestamp)

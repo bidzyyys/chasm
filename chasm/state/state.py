@@ -15,6 +15,7 @@ from chasm.state._db import DB
 class State:
     def __init__(self, db_dir="~/.chasm/db", maxlen=10):
         self.blocks = {}
+        self.tx_indices = {}
         self.utxos = {}
         self.dutxos = {}
         self.blocks_by_height = {}
@@ -38,6 +39,9 @@ class State:
             self.blocks[block_hash] = block
             self.blocks_by_height[current_block_height] = block_hash
 
+            for tx, i in zip(block.transactions, range(len(block.transactions))):
+                self.tx_indices[tx.hash()] = (block_hash, i)
+
             used_utxos = self._extract_inputs_from_block(block)
             new_utxos = self._extract_outputs_from_block(block)
 
@@ -56,7 +60,7 @@ class State:
         index = self.pending_txs.push(tx, priority)
         self.db.put_pending_tx(index, tx, priority)
 
-    def pop_pending_tx(self) -> Transaction:
+    def pop_pending_tx(self) -> Union[SignedTransaction, MintingTransaction]:
         index, tx = self.pending_txs.pop()
         self.db.delete_pending(index)
         return tx
@@ -68,8 +72,11 @@ class State:
         utxo = self.utxos[(tx_hash, index)]
         return copy.deepcopy(utxo)
 
-    def get_transaction(self, tx_hash) -> Transaction:
-        pass
+    def get_transaction(self, tx_hash) -> Union[SignedTransaction, MintingTransaction]:
+        block, index = self.tx_indices[tx_hash]
+        block = self.get_block_by_hash(block)
+
+        return block.transactions[index]
 
     def get_block_by_no(self, block_no) -> Block:
         block_hash = self.blocks_by_height[block_no]
@@ -155,20 +162,26 @@ class State:
 
     @staticmethod
     def _build_blocks_from_db_data(db_blocks):
-        indexes = {}
+        block_indices = {}
+        tx_indices = {}
         blocks = {}
+
         for (height, block) in db_blocks:
             block_hash = block.hash()
             blocks[block_hash] = block
-            indexes[height] = block_hash
+            block_indices[height] = block_hash
+            for tx, i in zip(block.transactions, range(len(block.transactions))):
+                tx_indices[tx.hash()] = (block_hash, i)
 
-        return blocks, indexes
+        return blocks, block_indices, tx_indices
 
     def reload(self):
-        blocks, blocks_height_indexes = self._build_blocks_from_db_data(self.db.get_blocks())
+        blocks, blocks_height_indexes, tx_indices = self._build_blocks_from_db_data(self.db.get_blocks())
 
         self.blocks = blocks
         self.blocks_by_height = blocks_height_indexes
+
+        self.tx_indices = tx_indices
 
         self.utxos = dict(self.db.get_utxos())
 
