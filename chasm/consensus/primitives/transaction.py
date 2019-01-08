@@ -143,7 +143,17 @@ class SignedTransaction(Serializable):
         return SignedTransaction(transaction, signatures)
 
     def __init__(self, transaction, signatures):
-        if signatures is None:
-            signatures = []
         self.transaction = transaction
         self.signatures = signatures
+
+    def hash(self):
+        from chasm.serialization.rlp_serializer import RLPSerializer
+        return consensus.HASH_FUNC(RLPSerializer().encode(self)).digest()
+
+    @property
+    def inputs(self):
+        return self.transaction.inputs
+
+    @property
+    def outputs(self):
+        return self.transaction.outputs

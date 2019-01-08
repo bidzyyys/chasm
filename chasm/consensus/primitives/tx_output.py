@@ -9,7 +9,7 @@ class TransferOutput(Serializable):
     def fields(cls) -> [(str, object)]:
         return [('value', big_endian_int), ('receiver', binary)]
 
-    def __init__(self, value: int = 0, receiver: bytes = None):
+    def __init__(self, value: int, receiver: bytes):
         self.value = value
         self.receiver = receiver
 

@@ -1,5 +1,6 @@
 import copy
 import queue
+from typing import Union
 
 import plyvel
 import rlp
@@ -7,39 +8,49 @@ from depq import DEPQ
 
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
-from chasm.consensus.primitives.transaction import Transaction
+from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
 from chasm.state._db import DB
 
 
 class State:
-    def __init__(self, db_dir="~/.chasm/db", max_pending_txs=10):
+    def __init__(self, db_dir="~/.chasm/db", maxlen=10):
+        self.blocks = {}
+        self.utxos = {}
+        self.dutxos = {}
+        self.blocks_by_height = {}
+        self.pending_txs = None
+        self.current_height = 0
+        self.buffer_len = maxlen
+
         try:
             self.db = DB(db_dir)
         except plyvel.Error:
             self.db = DB(db_dir, create_if_missing=True)
             self._init_database()
 
-        self.utxos = {}
-
-        blocks, blocks_height_indexes = self._build_blocks_from_db_data(self.db.get_blocks())
-        self.blocks = blocks
-        self.blocks_by_height = blocks_height_indexes
-
-        self.dutxos = {}
-
-        self.pending_txs = self._PendingTxsQueue(maxlen=max_pending_txs, elements=self.db.get_pending_txs())
-
-        self.current_height = self._read_current_height()
+        self.reload()
 
     def apply_block(self, block: Block):
         current_block_height = self._read_current_height() + 1
         block_hash = block.hash()
 
-        self.blocks[block_hash] = block
-        self.blocks_by_height[current_block_height] = block_hash
+        with self._Transaction(self):
+            self.blocks[block_hash] = block
+            self.blocks_by_height[current_block_height] = block_hash
 
-        self.db.put_block(block, current_block_height)
-        self._set_current_height(current_block_height)
+            used_utxos = self._extract_inputs_from_block(block)
+            new_utxos = self._extract_outputs_from_block(block)
+
+            for utxo in used_utxos:
+                self.utxos.pop(utxo)
+                self.db.delete_utxo(*utxo)
+
+            for (tx_hash, index, output) in new_utxos:
+                self.utxos[(tx_hash, index)] = output
+                self.db.put_utxo(tx_hash, index, output)
+
+            self.db.put_block(block, current_block_height)
+            self._set_current_height(current_block_height)
 
     def add_pending_tx(self, tx: Transaction, priority=0):
         index = self.pending_txs.push(tx, priority)
@@ -50,17 +61,17 @@ class State:
         self.db.delete_pending(index)
         return tx
 
-    def get_utxos(self):
+    def get_utxos(self) -> dict:
         return copy.deepcopy(self.utxos)
 
-    def get_utxo(self, tx_hash: int, index: int):
+    def get_utxo(self, tx_hash: int, index: int) -> Union[SignedTransaction, MintingTransaction]:
         utxo = self.utxos[(tx_hash, index)]
         return copy.deepcopy(utxo)
 
-    def get_transaction(self, tx_hash):
+    def get_transaction(self, tx_hash) -> Transaction:
         pass
 
-    def get_block_by_no(self, block_no):
+    def get_block_by_no(self, block_no) -> Block:
         block_hash = self.blocks_by_height[block_no]
         return self.get_block_by_hash(block_hash)
 
@@ -77,13 +88,13 @@ class State:
         return copy.deepcopy(self.dutxos)
 
     def _read_current_height(self):
-        encoded = self.db.get_value(b'highest_block')
+        encoded = self.db.get(b'highest_block')
         return rlp.decode(encoded, rlp.sedes.big_endian_int)
 
     def _set_current_height(self, height):
         self.current_height = height
         encoded = rlp.encode(height)
-        self.db.put_value(b'highest_block', encoded)
+        self.db.put(b'highest_block', encoded)
 
     def close(self):
         self.db.close()
@@ -128,6 +139,20 @@ class State:
         def is_empty(self):
             return self.priority_queue.is_empty()
 
+    class _Transaction:
+        def __init__(self, state):
+            self.associated_state = state
+
+        def __enter__(self):
+            self.associated_state.db.start_transaction()
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            if exc_type is not None:
+                self.associated_state.db.dismiss_transaction()
+                self.associated_state.reload()
+            else:
+                self.associated_state.db.execute_transaction()
+
     @staticmethod
     def _build_blocks_from_db_data(db_blocks):
         indexes = {}
@@ -139,6 +164,37 @@ class State:
 
         return blocks, indexes
 
+    def reload(self):
+        blocks, blocks_height_indexes = self._build_blocks_from_db_data(self.db.get_blocks())
+
+        self.blocks = blocks
+        self.blocks_by_height = blocks_height_indexes
+
+        self.utxos = dict(self.db.get_utxos())
+
+        self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
+        self.current_height = self._read_current_height()
+
     def _init_database(self):
         self.db.put_block(GENESIS_BLOCK, 0)
         self._set_current_height(0)
+
+    @staticmethod
+    def _extract_inputs_from_block(block):
+        inputs = []
+
+        for tx in block.transactions:
+            for tx_input in tx.inputs:
+                inputs.append((tx_input.tx_hash, tx_input.output_no))
+
+        return inputs
+
+    @staticmethod
+    def _extract_outputs_from_block(block):
+        outputs = []
+
+        for tx in block.transactions:
+            for output, i in zip(tx.outputs, range(tx.outputs.__len__())):
+                outputs.append((tx.hash(), i, output))
+
+        return outputs

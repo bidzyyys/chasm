@@ -1,5 +1,8 @@
 from abc import ABC
 
+import rlp
+from rlp import sedes
+
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, \
     SignedTransaction, UnlockingDepositTransaction, MatchTransaction, \
@@ -25,6 +28,14 @@ type_registry.append((Block, 11))
 
 
 class Serializer(ABC):
+
+    @classmethod
+    def int_to_bytes(cls, i: int):
+        return rlp.encode(i)
+
+    @classmethod
+    def bytes_to_int(cls, b: bytes):
+        return rlp.decode(b, sedes.big_endian_int)
 
     def decode(self, encoded) -> object:
         raise NotImplementedError

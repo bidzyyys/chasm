@@ -1,31 +1,85 @@
 import os
+from enum import Enum
+from typing import Union
 
 import plyvel
 import rlp
+from plyvel._plyvel import WriteBatch
 from rlp import sedes
 
 from chasm.consensus import Block
 from chasm.serialization.rlp_serializer import RLPSerializer
+from chasm.serialization.serializer import Serializer
 
 
 class DB:
+    class _KeyPrefixes(Enum):
+        BLOCK = b'b'
+        TRANSACTION = b't'
+        UTXO = b'u'
+        PENDING_TRANSACTION = b'p'
+
     _rlp_serializer = RLPSerializer()
 
     def __init__(self, db_dir, create_if_missing=False):
         db_dir = os.path.expanduser(db_dir)
-
         self.db = plyvel.DB(db_dir, create_if_missing=create_if_missing)
 
-        self.utxos_db = self.db.prefixed_db(b'u')
-        self.transactions_db = self.db.prefixed_db(b't')
-        self.blocks_db = self.db.prefixed_db(b'b')
-        self.pending_txs_db = self.db.prefixed_db(b'p')
+        self.write_obj = self.db
 
-    def get_value(self, key):
+    def start_transaction(self):
+        """
+        Starts a transaction, writes and deletions from now on will not be executed
+        until :func: `execute_transaction` method is invoked.
+        """
+
+        if self.write_obj == self.db:
+            self.write_obj = self.db.write_batch()
+        else:
+            raise RuntimeError("Transaction has already been started")
+
+    def execute_transaction(self):
+        """
+        Executes all the puts and deletions since last `start_transaction`, unless `dismiss_transaction` was invoked.
+        """
+
+        if isinstance(self.write_obj, WriteBatch):
+            self.write_obj.write()
+            self.write_obj = self.db
+        else:
+            raise RuntimeError("No transaction has been started")
+
+    def dismiss_transaction(self):
+        """
+        Clears the current transactions and sets to non-transactional mode.
+        """
+        if isinstance(self.write_obj, WriteBatch):
+            self.write_obj.clear()
+        self.write_obj = self.db
+
+    def get(self, key, prefix: Union[bytes, _KeyPrefixes] = None):
+        if prefix is not None:
+            if isinstance(prefix, DB._KeyPrefixes):
+                prefix = prefix.value
+            key = prefix + key
+
         return self.db.get(key)
 
-    def put_value(self, key, value):
-        self.db.put(key, value)
+    def put(self, key: bytes, value: bytes, prefix: Union[bytes, _KeyPrefixes] = None):
+        if prefix is not None:
+            if isinstance(prefix, DB._KeyPrefixes):
+                prefix = prefix.value
+            key = prefix + key
+
+        self.write_obj.put(key, value)
+
+    def delete(self, key: bytes, prefix: Union[bytes, _KeyPrefixes] = None):
+        if prefix is not None:
+            if isinstance(prefix, DB._KeyPrefixes):
+                prefix = prefix.value
+            key = prefix + key
+
+        self.write_obj.delete(key)
 
     def put_block(self, block: Block, height: int):
         """
@@ -37,7 +91,7 @@ class DB:
         """
         encoded = rlp.encode([height, DB._rlp_serializer.encode(block)],
                              sedes=sedes.List([sedes.big_endian_int, sedes.raw]))
-        self.blocks_db.put(block.hash(), encoded)
+        self.put(block.hash(), encoded, prefix=DB._KeyPrefixes.BLOCK)
 
     def get_blocks(self):
         """
@@ -45,36 +99,44 @@ class DB:
 
         :return: list of (height, block) tuples
         """
-        enc = [rlp.decode(value, sedes=sedes.List([sedes.big_endian_int, sedes.raw])) for _, value in self.blocks_db]
+        blocks_db = self.db.prefixed_db(DB._KeyPrefixes.BLOCK.value)
+        enc = [rlp.decode(value, sedes=sedes.List([sedes.big_endian_int, sedes.raw])) for _, value in blocks_db]
         return [(height, DB._rlp_serializer.decode(encoded)) for height, encoded in enc]
 
-    def delete_utxo(self, block_no, index):
-        pass
+    def delete_utxo(self, tx_hash, index):
+        key = rlp.encode([tx_hash, index])
+        self.delete(key, prefix=DB._KeyPrefixes.UTXO)
 
-    def get_utxo(self, block_no, index):
-        pass
+    def put_utxo(self, tx_hash, index, output):
+        key = rlp.encode([tx_hash, index])
+        self.put(key, DB._rlp_serializer.encode(output), prefix=DB._KeyPrefixes.UTXO)
 
     def get_utxos(self):
-        pass
+        """
+        Reads db and returns map list of utxos
+
+        :return: list of a ((tx_hash, index), utxo) tuple
+        """
+        utxos_db = self.db.prefixed_db(DB._KeyPrefixes.UTXO.value)
+        return [(rlp.decode(k, sedes.List([sedes.binary, sedes.big_endian_int])), DB._rlp_serializer.decode(v)) for
+                k, v in utxos_db]
 
     def delete_pending(self, index):
-        self.pending_txs_db.delete(self._int_to_bytes(index))
-
-    def delete_utxos(self, utxos: [((int, int), bytes)]):
-        pass
+        self.delete(Serializer.int_to_bytes(index), prefix=DB._KeyPrefixes.PENDING_TRANSACTION)
 
     def put_pending_tx(self, index, tx, priority):
         encoded = rlp.encode([priority, DB._rlp_serializer.encode(tx)])
-        self.pending_txs_db.put(self._int_to_bytes(index), encoded)
+        self.put(Serializer.int_to_bytes(index), encoded, prefix=DB._KeyPrefixes.PENDING_TRANSACTION)
 
     def get_pending_txs(self):
         """
         Gets pending transactions from the database
 
         NOTE: It does not restore FIFO order
-        :return: list of pairs (index, priority, tx)
+        :return: list of a (index, priority, tx) tuple
         """
-        enc = [(self._bytes_to_int(key), encoded) for key, encoded in self.pending_txs_db]
+        pending_txs = self.db.prefixed_db(DB._KeyPrefixes.PENDING_TRANSACTION.value)
+        enc = [(Serializer.bytes_to_int(key), encoded) for key, encoded in pending_txs]
         pairs = [(key, rlp.decode(encoded, sedes=sedes.List([sedes.big_endian_int, sedes.raw])))
                  for key, encoded in enc]
 
@@ -82,11 +144,3 @@ class DB:
 
     def close(self):
         self.db.close()
-
-    @staticmethod
-    def _bytes_to_int(i):
-        return rlp.decode(i, sedes.big_endian_int)
-
-    @staticmethod
-    def _int_to_bytes(i):
-        return rlp.encode(i)
