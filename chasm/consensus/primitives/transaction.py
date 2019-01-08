@@ -4,7 +4,7 @@ from ecdsa import SigningKey, VerifyingKey
 from rlp import sedes
 
 from chasm import consensus
-from chasm.consensus.exceptions import InputOutputSumsException
+from chasm.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list, countable_list_of_binaries
 from chasm.serialization.serializable import Serializable
 
@@ -54,9 +54,10 @@ class Transaction(Serializable):
 class MintingTransaction(Transaction):
     @classmethod
     def fields(cls):
-        return [('outputs', countable_list)]
+        return [('outputs', countable_list), ('height', sedes.big_endian_int)]
 
-    def __init__(self, outputs):
+    def __init__(self, outputs, height):
+        self.height = height
         super().__init__(outputs=outputs)
 
 

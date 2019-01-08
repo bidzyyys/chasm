@@ -56,7 +56,7 @@ def signed_simple_transaction(alice, transfer_transaction):
 
 @fixture
 def minting_transaction(tx_transfer_outputs):
-    return MintingTransaction(tx_transfer_outputs)
+    return MintingTransaction(tx_transfer_outputs, height=100)
 
 
 @fixture

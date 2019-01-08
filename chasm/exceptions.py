@@ -6,3 +6,8 @@ class TransactionValidationException(Exception):
 class InputOutputSumsException(TransactionValidationException):
     def __init__(self, tx_hash, input_sum, output_sum):
         super().__init__(tx_hash, f"inputs are of greater value than outputs ({input_sum, output_sum})")
+
+
+class TxOverwriteError(Exception):
+    def __init__(self, tx_hash):
+        super().__init__(f"Tried to overwrite transaction with hash: {tx_hash}")

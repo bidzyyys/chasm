@@ -9,6 +9,7 @@ from depq import DEPQ
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
+from chasm.exceptions import TxOverwriteError
 from chasm.state._db import DB
 
 
@@ -40,10 +41,12 @@ class State:
             self.blocks_by_height[current_block_height] = block_hash
 
             for tx, i in zip(block.transactions, range(len(block.transactions))):
-                self.tx_indices[tx.hash()] = (block_hash, i)
+                if tx.hash() in self.tx_indices:
+                    raise TxOverwriteError(tx.hash())
+            self.tx_indices[tx.hash()] = (block_hash, i)
 
             used_utxos = self._extract_inputs_from_block(block)
-            new_utxos = self._extract_outputs_from_block(block)
+            new_utxos, new_dutxos = self._extract_outputs_from_block(block)
 
             for utxo in used_utxos:
                 self.utxos.pop(utxo)
@@ -205,9 +208,14 @@ class State:
     @staticmethod
     def _extract_outputs_from_block(block):
         outputs = []
+        deposits = []
 
         for tx in block.transactions:
             for output, i in zip(tx.outputs, range(tx.outputs.__len__())):
                 outputs.append((tx.hash(), i, output))
+            if isinstance(tx, SignedTransaction):
+                if hasattr(tx, 'deposit_index'):
+                    index = tx.deposit_index
+                    deposits.append(outputs.pop(-len(tx.outputs) + index))
 
-        return outputs
+        return outputs, deposits

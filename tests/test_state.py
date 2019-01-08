@@ -10,6 +10,7 @@ from chasm.consensus import GENESIS_BLOCK, Block
 from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
+from chasm.exceptions import TxOverwriteError
 from chasm.state.state import State
 
 TEST_DB_PATH = '/tmp/xpeer'
@@ -53,11 +54,11 @@ def pending_transaction(pending_transactions):
 @fixture
 def minting_transaction(alice, bob):
     outputs = [TransferOutput(100, alice.pub), TransferOutput(100, bob.pub)]
-    return MintingTransaction(outputs)
+    return MintingTransaction(outputs, height=100)
 
 
 @fixture
-def empty_block(empty_state, minting_transaction):
+def block_with_minting_tx(empty_state, minting_transaction):
     previous = empty_state.get_block_by_no(0)
 
     block = Block(previous.hash(), 0)
@@ -70,17 +71,25 @@ def empty_block(empty_state, minting_transaction):
 
 @fixture
 def filled_state(empty_state, alice):
-    prev_hash = empty_state.get_block_by_no(0).hash()
     output = TransferOutput(100, alice.pub)
 
     for i in range(100):
-        block = Block(prev_hash, 0)
-        block.add_transaction(MintingTransaction(outputs=[output]))
+        block = next_empty_block(empty_state)
+        block.add_transaction(MintingTransaction(outputs=[output], height=empty_state.current_height+1))
         block.update_merkle_root()
         empty_state.apply_block(block)
-        prev_hash = block.hash()
 
     return empty_state
+
+
+@fixture
+def utxo(filled_state):
+    return list(filled_state.get_utxos().keys())[0]
+
+
+def next_empty_block(state):
+    prev_hash = state.get_block_by_no(state.current_height).hash()
+    return Block(prev_hash, 0)
 
 
 def test_saves_pending_tx(empty_state, pending_transaction):
@@ -158,27 +167,27 @@ def test_empty_state_stores_initial_block_and_is_empty(empty_state):
     assert empty_state.get_dutxos() == {}
 
 
-def test_applies_an_empty_block_and_it_is_persisted(empty_state, empty_block):
-    empty_state.apply_block(empty_block)
+def test_applies_an_empty_block_and_it_is_persisted(empty_state, block_with_minting_tx):
+    empty_state.apply_block(block_with_minting_tx)
 
-    assert empty_block == empty_state.get_block_by_no(1)
-    assert empty_block == empty_state.get_block_by_hash(empty_block.hash())
+    assert block_with_minting_tx == empty_state.get_block_by_no(1)
+    assert block_with_minting_tx == empty_state.get_block_by_hash(block_with_minting_tx.hash())
 
     with RestoredState(empty_state) as state:
-        assert empty_block == state.get_block_by_no(1)
-        assert empty_block == state.get_block_by_hash(empty_block.hash())
+        assert block_with_minting_tx == state.get_block_by_no(1)
+        assert block_with_minting_tx == state.get_block_by_hash(block_with_minting_tx.hash())
 
 
-def test_applies_a_block_and_utxos_are_seen(empty_state, empty_block, minting_transaction):
-    empty_state.apply_block(empty_block)
+def test_applies_a_block_and_utxos_are_seen(empty_state, block_with_minting_tx, minting_transaction):
+    empty_state.apply_block(block_with_minting_tx)
 
     assert minting_transaction.outputs.__len__() == empty_state.get_utxos().__len__()
     for i in range(minting_transaction.outputs.__len__()):
         assert empty_state.get_utxo(minting_transaction.hash(), i) == minting_transaction.outputs[i]
 
 
-def test_persists_new_utxos(empty_state, empty_block, minting_transaction):
-    empty_state.apply_block(empty_block)
+def test_persists_new_utxos(empty_state, block_with_minting_tx, minting_transaction):
+    empty_state.apply_block(block_with_minting_tx)
 
     with RestoredState(empty_state) as state:
         assert minting_transaction.outputs.__len__() == state.get_utxos().__len__()
@@ -207,17 +216,15 @@ def test_can_use_an_already_existing_utxo(filled_state, alice, bob):
     assert signed.outputs[0] == filled_state.get_utxo(*new_utxo)
 
 
-def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, empty_block, pending_transaction, alice):
-    empty_state.apply_block(empty_block)
+def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, block_with_minting_tx, pending_transaction, alice):
+    empty_state.apply_block(block_with_minting_tx)
 
     init_utxos = empty_state.get_utxos()
-
-    prev_block = empty_state.get_block_by_no(1)
 
     valid_input = list(init_utxos.keys())[0]
     valid_transaction = SignedTransaction(Transaction(inputs=[TxInput(*valid_input)], outputs=[]), signatures=[b'beef'])
 
-    invalid_block = Block(prev_block.hash(), 0)
+    invalid_block = next_empty_block(empty_state)
     invalid_block.add_transaction(valid_transaction)
     invalid_block.add_transaction(pending_transaction)
     invalid_block.update_merkle_root()
@@ -236,7 +243,27 @@ def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, empty_block,
 
 
 def test_can_get_transaction_by_hash(filled_state):
-
     tx = filled_state.get_block_by_no(1).transactions[0]
 
-    assert tx ==filled_state.get_transaction(tx.hash())
+    assert tx == filled_state.get_transaction(tx.hash())
+
+
+def test_cannot_apply_transaction_with_the_same_hash_twice(filled_state, utxo, alice, minting_transaction):
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(minting_transaction)
+    next_block.update_merkle_root()
+
+    filled_state.apply_block(next_block)
+
+    another_block = next_empty_block(filled_state)
+    another_block.add_transaction(minting_transaction)
+    another_block.update_merkle_root()
+
+    with pytest.raises(TxOverwriteError):
+        filled_state.apply_block(another_block)
+
+
+def test_transaction_with_deposit(filled_state):
+    pass
+
+
