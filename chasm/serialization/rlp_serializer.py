@@ -48,4 +48,3 @@ class RLPSerializer(Serializer):
         type_id = next(type_id for (type_name, type_id) in type_registry if type_name == obj_class)
 
         return rlp.encode([type_id, rlp.encode(values)])
-

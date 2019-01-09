@@ -4,12 +4,9 @@ from ecdsa import SigningKey, VerifyingKey
 from rlp import sedes
 
 from chasm import consensus
-from chasm.consensus.exceptions import InputOutputSumsException
+from chasm.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list, countable_list_of_binaries
-from chasm.serialization import type_registry
-from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.serialization.serializable import Serializable
-from chasm.serialization.serializer import Serializer
 
 
 class Transaction(Serializable):
@@ -19,6 +16,8 @@ class Transaction(Serializable):
         return [('inputs', countable_list), ('outputs', countable_list)]
 
     def __init__(self, inputs=None, outputs=None):
+        from chasm.serialization.rlp_serializer import RLPSerializer
+
         if outputs is None:
             outputs = []
         if inputs is None:
@@ -55,9 +54,10 @@ class Transaction(Serializable):
 class MintingTransaction(Transaction):
     @classmethod
     def fields(cls):
-        return [('outputs', countable_list)]
+        return [('outputs', countable_list), ('height', sedes.big_endian_int)]
 
-    def __init__(self, outputs):
+    def __init__(self, outputs, height):
+        self.height = height
         super().__init__(outputs=outputs)
 
 
@@ -144,16 +144,17 @@ class SignedTransaction(Serializable):
         return SignedTransaction(transaction, signatures)
 
     def __init__(self, transaction, signatures):
-        if signatures is None:
-            signatures = []
         self.transaction = transaction
         self.signatures = signatures
 
+    def hash(self):
+        from chasm.serialization.rlp_serializer import RLPSerializer
+        return consensus.HASH_FUNC(RLPSerializer().encode(self)).digest()
 
-type_registry.append((Transaction, 4))
-type_registry.append((SignedTransaction, 5))
-type_registry.append((MintingTransaction, 6))
-type_registry.append((OfferTransaction, 7))
-type_registry.append((MatchTransaction, 8))
-type_registry.append((ConfirmationTransaction, 9))
-type_registry.append((UnlockingDepositTransaction, 10))
+    @property
+    def inputs(self):
+        return self.transaction.inputs
+
+    @property
+    def outputs(self):
+        return self.transaction.outputs

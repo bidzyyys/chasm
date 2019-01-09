@@ -1,5 +1,3 @@
-import json
-
 from merkletools import MerkleTools
 from pytest import fixture, mark
 
@@ -26,8 +24,7 @@ def tx_input():
 
 @fixture
 def tx_transfer_output(alice):
-    (_priv_key, pub_key) = alice
-    return TransferOutput(value=100, receiver=pub_key)
+    return TransferOutput(value=100, receiver=alice.pub)
 
 
 @fixture
@@ -59,7 +56,7 @@ def signed_simple_transaction(alice, transfer_transaction):
 
 @fixture
 def minting_transaction(tx_transfer_outputs):
-    return MintingTransaction(tx_transfer_outputs)
+    return MintingTransaction(tx_transfer_outputs, height=100)
 
 
 @fixture
