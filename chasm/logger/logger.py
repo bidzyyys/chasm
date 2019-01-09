@@ -11,6 +11,7 @@ def get_logger(name, level=logging.DEBUG):
     """
     handler = logging.StreamHandler()
     formatter = logging.Formatter('[%(asctime)s]:[%(levelname)s]:[%(name)s]: %(message)s')
+    formatter.datefmt = '%Y-%m-%d %H:%M:%S'
     handler.setFormatter(formatter)
     logger = logging.getLogger(name=name)
     logger.addHandler(handler)
