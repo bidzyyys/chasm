@@ -21,6 +21,8 @@ class State:
         self.dutxos = {}
         self.blocks_by_height = {}
         self.pending_txs = None
+        self.active_offers = {}
+        self.accepted_offers = {}
         self.current_height = 0
         self.buffer_len = maxlen
 
@@ -93,10 +95,10 @@ class State:
         return copy.deepcopy(self.blocks[block_hash])
 
     def get_active_offers(self):
-        pass
+        return copy.deepcopy(self.active_offers)
 
     def get_accepted_offers(self):
-        pass
+        return copy.deepcopy(self.accepted_offers)
 
     def get_dutxos(self):
         return copy.deepcopy(self.dutxos)
