@@ -183,17 +183,29 @@ def save_account(priv_key, pub_key, password, datadir):
     return filename
 
 
-def generate_account(args, pwd=None):
+def generate_account(args):
+    """
+    Create new account
+    :param args: args given by user
+    :return: None
+    """
+    pub_key, keyfile = create_account(args.datadir)
+
+    logger.info("Account generated successfully!")
+    print("Address: {}".format(pub_key.hex()))
+    print("File: {}".format(keyfile))
+
+
+def create_account(datadir, pwd=None):
     """
     Generates new account with encrypted private key
     Keys are stored in a file given by user
     When path does not exist, it gets created
-    :param pwd:
-    :param args: args given by user
+    :param datadir: datadir with keystore
+    :param pwd: private key password
     :raise RuntimeError: when any action goes wrong
-    :return: None
+    :return: tuple(pub_key, keyfile)
     """
-
     if pwd is None:
         try:
             password = create_password()
@@ -205,12 +217,9 @@ def generate_account(args, pwd=None):
         password = pwd
 
     priv_key, pub_key = generate_keys()
-    keyfile = save_account(priv_key, pub_key, password, args.datadir)
-    pub_key_hex = pub_key.hex()
+    keyfile = save_account(priv_key, pub_key, password, datadir)
 
-    logger.info("Account generated successfully!")
-    print("Address: {}".format(pub_key_hex))
-    print("File: {}".format(keyfile))
+    return pub_key, keyfile
 
 
 def get_address(keyfile):
@@ -600,15 +609,21 @@ def show_transaction(args):
         print("Transaction does not exist!")
 
 
-def get_priv_key(account):
+def get_priv_key(account, pwd=None):
     """
     Unlock decrypted key
+    :param pwd: password to private key
     :param account: account configuration
     :raise RuntimeError: if get incorrect password
     (failed to build SigningKey from der representation
     :return: SigningKey
     """
-    priv_key_der = decrypt_aes(password=get_password("Unlock private key: "),
+    if pwd is None:
+        password = get_password("Unlock private key: ")
+    else:
+        password = pwd
+
+    priv_key_der = decrypt_aes(password=password,
                                encrypted_data=bytes.fromhex(account['priv_key']),
                                nonce=bytes.fromhex(account['nonce']))
 
