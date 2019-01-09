@@ -20,11 +20,12 @@ from chasm.consensus.primitives.transaction import Transaction, \
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, \
     XpeerOutput, XpeerFeeOutput
+from chasm.exceptions import IncorrectPassword, RPCError
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
-from . import logger, IncorrectPassword, PWD_LEN, ENCODING, \
+from . import logger, PWD_LEN, ENCODING, Side, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
-    RPCError, token_from_name, TIMEOUT_FORMAT, get_token_name, \
+    token_from_name, TIMEOUT_FORMAT, get_token_name, \
     ALL_ADDRESSES
 
 # pylint: disable=invalid-name
@@ -163,7 +164,6 @@ def save_account(priv_key, pub_key, password, datadir):
     :param pub_key: public key
     :param password: password to encrypt key
     :param datadir: current datadir
-    :raise InvalidAccountFile: if account already exists
     :return: filename of the account data
     """
     encrypted_priv_key, nonce = encrypt_aes(password, priv_key)
@@ -954,6 +954,9 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
     :param proof: proof of honesty
     :return: UnlockDepositTransaction
     """
+
+    if side not in [Side.OFFER_MAKER.value, Side.OFFER_TAKER.value]:
+        raise RuntimeError("Unknown exchange side: %d", side)
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + deposit)

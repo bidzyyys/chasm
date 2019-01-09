@@ -28,29 +28,19 @@ def filter_txos(txos, address):
     :return: list of TXOs dict
     """
 
-    txos = []
+    result = []
     for tx in txos:
         for output_no in txos[tx]:
             if txos[tx][output_no].receiver == address:
-                txos.append({
+                result.append({
                     "tx": tx,
                     "hex": rlp_serializer.encode(
                         txos[tx][output_no]).hex(),
                     "output_no": output_no,
                     "value": txos[tx][output_no].value
                 })
-    # TODO remove
-    if not txos:
-        txos = [
-            {
-                "tx": b'Tests'.hex(),
-                "hex": b'TEST'.hex(),
-                "output_no": 69,
-                "value": 1000
-            }
-        ]
 
-    return txos
+    return result
 
 
 @dispatcher.add_method

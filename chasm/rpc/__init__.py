@@ -1,4 +1,5 @@
 """RPC module"""
+from enum import Enum
 
 from chasm.consensus.xpeer_validation.tokens import Tokens
 from chasm.logger.logger import get_logger
@@ -32,8 +33,13 @@ TOKENS_DICT = {
 
 TIMEOUT_FORMAT = "%Y-%m-%d::%H:%M:%S"
 
-OFFER_MAKER = 0
-OFFER_TAKER = 1
+
+class Side(Enum):
+    """
+    Side of an exchange
+    """
+    OFFER_MAKER = 0
+    OFFER_TAKER = 1
 
 
 def get_token_name(token):
@@ -65,23 +71,3 @@ def list_token_names():
     tokens = tokens.replace("]", "")
 
     return tokens
-
-
-class IncorrectPassword(ValueError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class InvalidAccountFile(ValueError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class RPCError(ValueError):
-    def __init__(self, message):
-        super().__init__(message)
-
-
-class BadResponse(RPCError):
-    def __init__(self, message):
-        super().__init__(message)

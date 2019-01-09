@@ -11,3 +11,13 @@ class InputOutputSumsException(TransactionValidationException):
 class TxOverwriteError(Exception):
     def __init__(self, tx_hash):
         super().__init__(f"Tried to overwrite transaction with hash: {tx_hash}")
+
+
+class IncorrectPassword(ValueError):
+    def __init__(self, message):
+        super().__init__(message)
+
+
+class RPCError(ValueError):
+    def __init__(self, message):
+        super().__init__(message)

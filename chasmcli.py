@@ -3,7 +3,7 @@
 import argparse
 
 from chasm.logger.logger import get_logger
-from chasm.rpc import list_token_names, TIMEOUT_FORMAT, OFFER_MAKER, OFFER_TAKER
+from chasm.rpc import list_token_names, TIMEOUT_FORMAT, Side
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, \
     show_keys, show_marketplace, show_matches, show_accepted_offers, show_all_funds, \
@@ -213,7 +213,8 @@ def create_unlock_parser(subparsers):
                         help="transaction fee(bdzys)")
     parser.add_argument('--side', required=True, type=int,
                         help="side of the exchange: maker({}), taker({})"
-                        .format(OFFER_MAKER, OFFER_TAKER))
+                        .format(Side.OFFER_MAKER.value,
+                                Side.OFFER_TAKER.value))
     parser.add_argument('--proof', required=True,
                         help='proof of honesty(hex)')
     parser.set_defaults(func=unlock_deposit)
