@@ -170,7 +170,8 @@ def create_offers_parser(subparsers):
                                    description="show accepted offers")
     parser.add_argument('--address', required=True,
                         help="address for income")
-    parser.set_defaults(func=show_accepted_offers)
+    parser.set_defaults(func=show_accepted_offers
+                        )
 
 
 def create_match_parser(subparsers):
@@ -194,6 +195,8 @@ def create_match_parser(subparsers):
 def create_matches_parser(subparsers):
     parser = subparsers.add_parser('matches',
                                    description="show offer matches")
+    parser.add_argument('--address', required=True,
+                        help="address for income")
     parser.set_defaults(func=show_matches)
 
 

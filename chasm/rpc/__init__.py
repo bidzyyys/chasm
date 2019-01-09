@@ -43,7 +43,10 @@ def get_token_name(token):
 def token_from_name(name):
     for key in TOKENS_DICT:
         if TOKENS_DICT[key] == name.lower():
-            return key
+            if key is ALL:
+                return key
+            else:
+                return key.value
 
     raise ValueError("Token not found: {}".format(name))
 

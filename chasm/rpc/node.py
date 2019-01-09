@@ -9,7 +9,7 @@ from werkzeug.wrappers import Request, Response
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.state.state import State
-from . import logger, ALL
+from . import logger, ALL, ALL_ADDRESSES
 
 # pylint: disable=invalid-name
 
@@ -140,22 +140,53 @@ def publish_transaction(signed_tx_json):
 
 @dispatcher.add_method
 def get_matches(offer_addr, match_addr):
+    """
+    Get pairs of offer and its match filtered by addresses
+    :param offer_addr: address to filter offers
+    :param match_addr: address to filter matches
+    :return: list of tuples (OfferTransaction, MatchTransaction)
+    transactions are serialized into json
+    """
     logger.info("Getting matches, offer_addr: %s, match_addr: %s",
                 offer_addr, match_addr)
-    return []
 
+    matches = state.get_accepted_offers()
 
-@dispatcher.add_method
-def get_accepted_offers(address):
-    pass
+    result = []
+    for match_pair in matches:
+        try:
+            offer = state.get_transaction(match_pair[0]).transaction
+            match = state.get_transaction(match_pair[1]).transaction
+            if offer_addr in (offer.address_out.hex(), ALL_ADDRESSES) and \
+                    match_addr in (match.address_in.hex(), ALL_ADDRESSES):
+                result.append((json_serializer.encode(offer),
+                               json_serializer.encode(match)))
+        except (ValueError, IndexError):
+            logger.error("Got hash of unknown transaction")
+
+    return result
 
 
 @Request.application
 def application(request):
+    """
+    Node(server) application
+    :param request:
+    :return: None
+    """
     response = JSONRPCResponseManager.handle(
         request.data, dispatcher)
     return Response(response.json, mimetype='application/json')
 
 
-def run(host, port):
+def run(host, port, db_dir):
+    """
+    Run node application
+    :param db_dir: path to database directory
+    :param host: node hostname
+    :param port: node port
+    :return: None
+    """
     run_simple(host, port, application)
+    logger.info("Node application closed")
+    state.close()

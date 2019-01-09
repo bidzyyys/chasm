@@ -6,6 +6,7 @@ from chasm.logger.logger import get_logger
 from chasm.rpc.node import run
 
 
+# pylint: disable=missing-docstring
 def get_parser():
     parser = argparse.ArgumentParser(description='Node app',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -16,8 +17,8 @@ def get_parser():
     parser.add_argument('-p', "--port", default=6969,
                         help="port")
 
-    parser.add_argument('-d', '--datadir', default="~/.chasm",
-                        help="datadir for chasm storage")
+    parser.add_argument('--db', default="~/.chasm/db",
+                        help="database directory")
 
     return parser
 
@@ -32,7 +33,8 @@ def main():
 
     try:
         run(host=args.node,
-            port=args.port)
+            port=args.port,
+            db_dir=args.db)
 
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt")

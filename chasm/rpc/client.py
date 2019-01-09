@@ -498,6 +498,16 @@ def display_offer(offer: OfferTransaction):
     print("Payment address: {}\n".format(offer.address_out.hex()))
 
 
+def display_match(match: MatchTransaction):
+    """
+    Display match info
+    :param match: match to be displayed
+    :return: None
+    """
+    print("Hash: {}".format(rlp_serializer.encode(match).hex()))
+    print("Address: {}".format(match.address_in))
+
+
 def show_marketplace(args):
     """
     Display all current offers
@@ -511,7 +521,8 @@ def show_marketplace(args):
         raise RuntimeError("Cannot display current offers, invalid token")
 
     offers = fetch_current_offers(args.node, args.port,
-                                  token_in, token_out)
+                                  token_in,
+                                  token_out)
 
     print("Current offers: {}".format(len(offers)))
     for offer in offers:
@@ -744,13 +755,42 @@ def transfer(args):
 
 
 def show_matches(args):
-    print(__name__ + str(args))
+    """
+    Show all matches with given income address
+    :param args: args given by user
+    :return: None
+    """
+
+    match_pairs = fetch_matches(host=args.node, port=args.port,
+                                offer_addr=ALL_ADDRESSES,
+                                match_addr=args.address)
+
+    print("Found matches: {}".format(len(match_pairs)))
+    for pair in match_pairs:
+        print("Match:")
+        display_match(pair[1])
+        print("Offer: {}"
+              .format(rlp_serializer.encode(pair[0])
+                      .hex()))
 
 
 def show_accepted_offers(args):
-    matches = fetch_matches(host=args.node, port=args.port,
-                            offer_addr=args.address,
-                            match_addr=ALL_ADDRESSES)
+    """
+    Display all accepted offers with given income address
+    :param args: args given by user
+    :return: None
+    """
+    match_pairs = fetch_matches(host=args.node, port=args.port,
+                                offer_addr=args.address,
+                                match_addr=ALL_ADDRESSES)
+
+    print("Found offers: {}".format(len(match_pairs)))
+    for pair in match_pairs:
+        print("Offer:")
+        display_offer(pair[0])
+        print("Match: {}"
+              .format(rlp_serializer.encode(pair[1])
+                      .hex()))
 
 
 def fetch_matches(host, port, offer_addr, match_addr):
@@ -807,8 +847,8 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
 
     return OfferTransaction(inputs=inputs,
                             outputs=[deposit_output, confirmation_output, own_transfer],
-                            token_in=int(token_in.value), value_in=int(value_in),
-                            token_out=int(token_out.value), value_out=int(value_out),
+                            token_in=int(token_in), value_in=int(value_in),
+                            token_out=int(token_out), value_out=int(value_out),
                             address_out=bytes.fromhex(receive_address),
                             deposit_index=int(0), confirmation_fee_index=int(1),
                             timeout=int(timeout))
