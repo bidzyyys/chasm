@@ -1,7 +1,9 @@
 """Client for running commands on node"""
 
 import argparse
+import os
 
+from chasm import startup
 from chasm.logger.logger import get_logger
 from chasm.rpc import list_token_names, TIMEOUT_FORMAT, Side
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
@@ -11,20 +13,23 @@ from chasm.rpc.client import show_transaction, show_balance, generate_account, \
 
 
 # pylint: disable=missing-docstring
-def get_parser():
+def get_parser(config):
     parser = argparse.ArgumentParser(description='Chasm client',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-n', '--node', default="127.0.0.1",
+    parser.add_argument('-n', '--node', default=config.get('CLI', 'node'),
                         help="hostname")
 
-    parser.add_argument('-p', "--port", default=6969, type=int,
+    parser.add_argument('-p', "--port", default=config.getint('RPC', 'port'),
                         help="port")
 
-    parser.add_argument('-d', '--datadir', default="~/.chasm",
+    parser.add_argument('-d', '--datadir', default=config.get('DEFAULT', 'data_dir'),
                         help="datadir for chasm storage")
 
+
     create_subparsers(parser.add_subparsers())
+
+    parser.set_defaults(func=lambda x: parser.print_help())
 
     return parser
 
@@ -262,14 +267,19 @@ def main():
     """
     Main function, runs client side
     """
-    logger = get_logger("chasmcli")
-    parser = get_parser()
+
+    config_file = os.path.join(os.getcwd(), "config.ini")
+    config = startup.get_config(config_file)
+
+    parser = get_parser(config)
     args = parser.parse_args()
+
+    logger = get_logger("chasm-cli", level=config.get('LOGGER', 'level'))
 
     try:
         args.func(args)
     except RuntimeError:
-        logger.exception("An error occured!")
+        logger.exception("An error occurred!")
     except KeyboardInterrupt:
         logger.info("Keyboard interrupt")
 
