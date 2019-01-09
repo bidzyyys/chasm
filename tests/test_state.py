@@ -7,9 +7,10 @@ from pytest import fixture
 
 from chasm import consensus
 from chasm.consensus import GENESIS_BLOCK, Block
-from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction
+from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction
 from chasm.consensus.primitives.tx_input import TxInput
-from chasm.consensus.primitives.tx_output import TransferOutput
+from chasm.consensus.primitives.tx_output import TransferOutput, XpeerFeeOutput
+from chasm.consensus.xpeer_validation.tokens import Tokens
 from chasm.exceptions import TxOverwriteError
 from chasm.state.state import State
 
@@ -75,7 +76,7 @@ def filled_state(empty_state, alice):
 
     for i in range(100):
         block = next_empty_block(empty_state)
-        block.add_transaction(MintingTransaction(outputs=[output], height=empty_state.current_height+1))
+        block.add_transaction(MintingTransaction(outputs=[output], height=empty_state.current_height + 1))
         block.update_merkle_root()
         empty_state.apply_block(block)
 
@@ -263,7 +264,26 @@ def test_cannot_apply_transaction_with_the_same_hash_twice(filled_state, utxo, a
         filled_state.apply_block(another_block)
 
 
-def test_transaction_with_deposit(filled_state):
-    pass
+def test_transaction_with_deposit(filled_state, utxo, alice):
+    next_block = next_empty_block(filled_state)
+
+    tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
+                          token_in=Tokens.ETHEREUM.value, token_out=Tokens.BITCOIN.value, value_in=1, value_out=2,
+                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=1000)
+
+    signed = SignedTransaction.build_signed(tx, [alice.priv])
+
+    next_block.add_transaction(signed)
+
+    filled_state.apply_block(next_block)
+
+    assert utxo not in filled_state.get_utxos()
+    assert utxo not in filled_state.get_dutxos()
+
+    assert (signed.hash(), 0) in filled_state.get_utxos()
+    assert (signed.hash(), 0) not in filled_state.get_dutxos()
+
+    assert (signed.hash(), 1) not in filled_state.get_utxos()
+    assert (signed.hash(), 1) in filled_state.get_dutxos()
 
 

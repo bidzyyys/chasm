@@ -56,6 +56,10 @@ class State:
                 self.utxos[(tx_hash, index)] = output
                 self.db.put_utxo(tx_hash, index, output)
 
+            for (tx_hash, index, output) in new_dutxos:
+                self.dutxos[(tx_hash, index)] = output
+                self.db.put_dutxo(tx_hash, index, output)
+
             self.db.put_block(block, current_block_height)
             self._set_current_height(current_block_height)
 
@@ -187,6 +191,7 @@ class State:
         self.tx_indices = tx_indices
 
         self.utxos = dict(self.db.get_utxos())
+        self.dutxos = dict(self.db.get_dutxos())
 
         self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
         self.current_height = self._read_current_height()
@@ -207,15 +212,15 @@ class State:
 
     @staticmethod
     def _extract_outputs_from_block(block):
-        outputs = []
-        deposits = []
+        utxos = []
+        dutxos = []
 
         for tx in block.transactions:
             for output, i in zip(tx.outputs, range(tx.outputs.__len__())):
-                outputs.append((tx.hash(), i, output))
+                utxos.append((tx.hash(), i, output))
             if isinstance(tx, SignedTransaction):
-                if hasattr(tx, 'deposit_index'):
-                    index = tx.deposit_index
-                    deposits.append(outputs.pop(-len(tx.outputs) + index))
+                if hasattr(tx.transaction, 'deposit_index'):
+                    index = tx.transaction.deposit_index
+                    dutxos.append(utxos.pop(-len(tx.outputs) + index))
 
-        return outputs, deposits
+        return utxos, dutxos

@@ -17,6 +17,7 @@ class DB:
         BLOCK = b'b'
         TRANSACTION = b't'
         UTXO = b'u'
+        DUTXO = b'd'
         PENDING_TRANSACTION = b'p'
 
     _rlp_serializer = RLPSerializer()
@@ -120,6 +121,19 @@ class DB:
         utxos_db = self.db.prefixed_db(DB._KeyPrefixes.UTXO.value)
         return [(rlp.decode(k, sedes.List([sedes.binary, sedes.big_endian_int])), DB._rlp_serializer.decode(v)) for
                 k, v in utxos_db]
+
+    def put_dutxo(self, tx_hash, index, output):
+        key = rlp.encode([tx_hash, index])
+        self.put(key, DB._rlp_serializer.encode(output), prefix=DB._KeyPrefixes.DUTXO)
+
+    def get_dutxos(self):
+        dutxos_db = self.db.prefixed_db(DB._KeyPrefixes.DUTXO.value)
+        return [(rlp.decode(k, sedes.List([sedes.binary, sedes.big_endian_int])), DB._rlp_serializer.decode(v)) for
+                k, v in dutxos_db]
+
+    def delete_dutxo(self, tx_hash, index):
+        key = rlp.encode([tx_hash, index])
+        self.delete(key, prefix=DB._KeyPrefixes.DUTXO)
 
     def delete_pending(self, index):
         self.delete(Serializer.int_to_bytes(index), prefix=DB._KeyPrefixes.PENDING_TRANSACTION)
