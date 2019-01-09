@@ -1,5 +1,6 @@
 import copy
 import queue
+from threading import RLock
 from typing import Union
 
 import plyvel
@@ -26,6 +27,8 @@ class State:
         self.current_height = 0
         self.buffer_len = pending_queue_size
 
+        self._lock = RLock()
+
         try:
             self.db = DB(db_dir)
         except plyvel.Error:
@@ -35,12 +38,11 @@ class State:
         self.reload()
 
     def apply_block(self, block: Block):
-        current_block_height = self._read_current_height() + 1
         block_hash = block.hash()
 
-        with self._Transaction(self):
+        with self._Transaction(self), self._lock:
             self.blocks[block_hash] = block
-            self.blocks_by_height[current_block_height] = block_hash
+            self.blocks_by_height[self.current_height + 1] = block_hash
 
             for tx, i in zip(block.transactions, range(len(block.transactions))):
                 if tx.hash() in self.tx_indices:
@@ -62,46 +64,56 @@ class State:
                 self.dutxos[(tx_hash, index)] = output
                 self.db.put_dutxo(tx_hash, index, output)
 
-            self.db.put_block(block, current_block_height)
-            self._set_current_height(current_block_height)
+            self.db.put_block(block, self.current_height + 1)
+            self._set_current_height(self.current_height + 1)
 
     def add_pending_tx(self, tx: Transaction, priority=0):
-        index = self.pending_txs.push(tx, priority)
-        self.db.put_pending_tx(index, tx, priority)
+        with self._lock:
+            index = self.pending_txs.push(tx, priority)
+            self.db.put_pending_tx(index, tx, priority)
 
     def pop_pending_tx(self) -> Union[SignedTransaction, MintingTransaction]:
-        index, tx = self.pending_txs.pop()
-        self.db.delete_pending(index)
+        with self._lock:
+            index, tx = self.pending_txs.pop()
+            self.db.delete_pending(index)
+
         return tx
 
     def get_utxos(self) -> dict:
-        return copy.deepcopy(self.utxos)
+        with self._lock:
+            return copy.deepcopy(self.utxos)
 
     def get_utxo(self, tx_hash: int, index: int) -> Union[SignedTransaction, MintingTransaction]:
-        utxo = self.utxos[(tx_hash, index)]
-        return copy.deepcopy(utxo)
+        with self._lock:
+            utxo = self.utxos[(tx_hash, index)]
+            return copy.deepcopy(utxo)
 
     def get_transaction(self, tx_hash) -> Union[SignedTransaction, MintingTransaction]:
-        block, index = self.tx_indices[tx_hash]
-        block = self.get_block_by_hash(block)
-
-        return block.transactions[index]
+        with self._lock:
+            block, index = self.tx_indices[tx_hash]
+            block = self.get_block_by_hash(block)
+            return block.transactions[index]
 
     def get_block_by_no(self, block_no) -> Block:
-        block_hash = self.blocks_by_height[block_no]
-        return self.get_block_by_hash(block_hash)
+        with self._lock:
+            block_hash = self.blocks_by_height[block_no]
+            return self.get_block_by_hash(block_hash)
 
     def get_block_by_hash(self, block_hash):
-        return copy.deepcopy(self.blocks[block_hash])
+        with self._lock:
+            return copy.deepcopy(self.blocks[block_hash])
 
     def get_active_offers(self):
-        return copy.deepcopy(self.active_offers)
+        with self._lock:
+            return copy.deepcopy(self.active_offers)
 
     def get_accepted_offers(self):
-        return copy.deepcopy(self.accepted_offers)
+        with self._lock:
+            return copy.deepcopy(self.accepted_offers)
 
     def get_dutxos(self):
-        return copy.deepcopy(self.dutxos)
+        with self._lock:
+            return copy.deepcopy(self.dutxos)
 
     def _read_current_height(self):
         encoded = self.db.get(b'highest_block')
@@ -185,18 +197,19 @@ class State:
         return blocks, block_indices, tx_indices
 
     def reload(self):
-        blocks, blocks_height_indexes, tx_indices = self._build_blocks_from_db_data(self.db.get_blocks())
+        with self._lock:
+            blocks, blocks_height_indexes, tx_indices = self._build_blocks_from_db_data(self.db.get_blocks())
 
-        self.blocks = blocks
-        self.blocks_by_height = blocks_height_indexes
+            self.blocks = blocks
+            self.blocks_by_height = blocks_height_indexes
 
-        self.tx_indices = tx_indices
+            self.tx_indices = tx_indices
 
-        self.utxos = dict(self.db.get_utxos())
-        self.dutxos = dict(self.db.get_dutxos())
+            self.utxos = dict(self.db.get_utxos())
+            self.dutxos = dict(self.db.get_dutxos())
 
-        self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
-        self.current_height = self._read_current_height()
+            self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
+            self.current_height = self._read_current_height()
 
     def _init_database(self):
         self.db.put_block(GENESIS_BLOCK, 0)
