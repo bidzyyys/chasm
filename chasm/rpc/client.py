@@ -959,7 +959,7 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
     """
 
     if side not in [Side.OFFER_MAKER.value, Side.OFFER_TAKER.value]:
-        raise RuntimeError("Unknown exchange side: %d", side)
+        raise RuntimeError("Unknown exchange side: {}".format(side))
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + deposit)
