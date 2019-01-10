@@ -27,7 +27,7 @@ def parameters(address):
     }
 
 
-@when(parsers.parse('I get UTXOs'))
+@when('I get UTXOs')
 def get_utxos_from_server(parameters):
     utxos = get_utxos(address=parameters["address"],
                       port=TEST_PORT, node=TEST_NODE)
@@ -35,14 +35,14 @@ def get_utxos_from_server(parameters):
     parameters["utxos"] = utxos
 
 
-@when(parsers.parse('I count balance of the account'))
+@when('I count balance of the account')
 def get_balance(parameters):
     balance = count_balance(address=parameters["address"],
                             port=TEST_PORT, node=TEST_NODE)
     parameters["balance"] = balance
 
 
-@then(parsers.parse("UTXOs sum to balance"))
+@then("UTXOs sum to balance")
 def verify_balance(parameters):
     balance = sum(utxo["value"] for utxo in parameters["utxos"])
     assert balance == parameters["balance"]
