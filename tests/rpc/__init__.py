@@ -1,5 +1,8 @@
 # pylint: disable=missing-docstring
 
+from os import makedirs
+from shutil import rmtree
+
 from chasm.rpc import PAYLOAD_TAGS, PARAMS, METHOD
 from chasm.rpc.client import run
 
@@ -25,6 +28,14 @@ def check_server(port=TEST_PORT, node=TEST_NODE):
         return False
 
     return response == 'elho'
+
+
+def remove_dir(dir):
+    rmtree(path=dir, ignore_errors=True)
+
+
+def create_dir_structure(path):
+    makedirs(path, exist_ok=True)
 
 
 def init_address(address, balance=0, utxos=0, dutxo=0):
