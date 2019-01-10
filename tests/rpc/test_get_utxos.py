@@ -1,13 +1,10 @@
 # pylint: disable=missing-docstring
-import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import get_utxos, count_balance
-from . import check_server, TEST_NODE, TEST_PORT, init_address
+from . import skip_test, TEST_NODE, TEST_PORT, init_address
 
-pytestmark = pytest.mark.skipif(condition=check_server() is False,
-                                reason="requires server running on {}:{}"
-                                .format(TEST_NODE, TEST_PORT))
+pytestmark = skip_test()
 
 
 @scenario('test_get_utxos.feature', 'Get UTXOs of non-existing address')

@@ -7,9 +7,8 @@ from ecdsa import VerifyingKey
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc import client
-from chasm.rpc.client import sign_tx, create_account, get_account_data, \
-    get_priv_key
-from . import remove_dir, mock_input_yes
+from chasm.rpc.client import sign_tx, create_account
+from . import remove_dir, mock_input_yes, get_private_key
 
 
 @scenario('test_sign_tx.feature', 'Sign given transaction')
@@ -30,10 +29,9 @@ def parameters(datadir):
 
 @when('I sign the transaction')
 def sign(parameters):
-    account = get_account_data(datadir=parameters["datadir"],
-                               pub_key_hex=parameters["address"])
-    priv_key = get_priv_key(account=account,
-                            pwd=parameters["pwd"])
+    priv_key = get_private_key(datadir=parameters["datadir"],
+                               address=parameters["address"],
+                               password=parameters["pwd"])
 
     client.input = mock_input_yes
 

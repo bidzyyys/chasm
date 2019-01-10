@@ -1,15 +1,12 @@
 # pylint: disable=missing-docstring
-import pytest
 from pytest_bdd import scenario, given, when, then
 
 from chasm.rpc import client
 from chasm.rpc.client import send_tx
 from . import mock_input_yes, TEST_NODE, TEST_PORT, \
-    check_server
+    skip_test
 
-pytestmark = pytest.mark.skipif(condition=check_server() is False,
-                                reason="requires server running on {}:{}"
-                                .format(TEST_NODE, TEST_PORT))
+pytestmark = skip_test()
 
 
 @scenario('test_send_tx.feature', 'Send signed transaction')

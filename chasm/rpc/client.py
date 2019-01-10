@@ -767,6 +767,32 @@ def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
 
 
+def do_simple_transfer(node, port, amount, receiver, sender, tx_fee, datadir, signing_key=None):
+    """
+    Create transfer and then publish
+    :param node: node hostname
+    :param port: node port
+    :param amount: amount to be transferred
+    :param receiver: receiver address
+    :param sender: sender address
+    :param tx_fee: transaction fee
+    :param datadir: datadir with sender keystore
+    :param signing_key: sender's private key(for tests)
+    :return: True if transaction is published
+    """
+
+    tx = build_transfer_tx(node=node,
+                           port=port,
+                           amount=amount,
+                           receiver=receiver,
+                           owner=sender,
+                           tx_fee=tx_fee)
+
+    logger.info("Transaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key)
+
+
 def transfer(args):
     """
     Transfer given amount of xpc to the receiver
@@ -779,16 +805,9 @@ def transfer(args):
     :return: None
     """
 
-    tx = build_transfer_tx(node=args.node,
-                           port=args.port,
-                           amount=args.value,
-                           receiver=args.receiver,
-                           owner=args.owner,
-                           tx_fee=args.fee)
-
-    logger.info("Transaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.owner, args.datadir):
+    if do_simple_transfer(node=args.node, port=args.port, amount=args.value,
+                          receiver=args.receiver, sender=args.owner,
+                          tx_fee=args.fee, datadir=args.datadir):
         logger.info("Transaction sent successfully!")
 
 
@@ -1070,10 +1089,11 @@ def xpeer_transfer(args):
         logger.info("Transaction sent successfully!")
 
 
-def publish_transaction(host, port, transaction, pub_key, datadir):
+def publish_transaction(host, port, transaction, pub_key, datadir, signing_key=None):
     """
     Publish transaction
     Signs and send transaction
+    :param signing_key: sender private key, only for tests
     :param host: node hostname
     :param port: node portname
     :param datadir: directory with keystore
@@ -1085,7 +1105,8 @@ def publish_transaction(host, port, transaction, pub_key, datadir):
     if result:
         signature = sign_transaction(transaction=transaction,
                                      pub_key=pub_key,
-                                     datadir=datadir)
+                                     datadir=datadir,
+                                     priv_key=signing_key)
 
         result = send_transaction(host=host, port=port,
                                   transaction=transaction,
