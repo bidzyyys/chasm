@@ -268,8 +268,7 @@ def main():
     Main function, runs client side
     """
 
-    config_file = os.path.join(os.getcwd(), "config.ini")
-    config = startup.get_config(config_file)
+    config = startup.get_config()
 
     parser = get_parser(config)
     args = parser.parse_args()
