@@ -591,7 +591,7 @@ def get_transaction(node, port, transaction):
     Get transaction
     :param node: node hostname
     :param port: node port
-    :param transaction: transaction(hex)
+    :param transaction: hash of the transaction
     :raise ValueError: if given transaction does not exist
     :raise RuntimeError: if rpc error occurs
     :return: transaction
@@ -772,7 +772,7 @@ def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
     :param amount: value to be transferred
     :param receiver: receiver address
     :param tx_fee: transaction fee
-    :param owner: owner address
+    :param owner: owner's address
     :return: Transaction
     """
 
@@ -790,10 +790,10 @@ def do_simple_transfer(node, port, amount, receiver, sender, tx_fee, datadir, si
     :param node: node hostname
     :param port: node port
     :param amount: amount to be transferred
-    :param receiver: receiver address
-    :param sender: sender address
+    :param receiver: receiver's address
+    :param sender: sender's address
     :param tx_fee: transaction fee
-    :param datadir: datadir with sender keystore
+    :param datadir: datadir with sender's keystore
     :param signing_key: sender's private key(for tests)
     :return: Tuple(True if transaction is published and transaction)
     """
@@ -902,7 +902,7 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
     Create offer
     :param node: node hostname
     :param port: node port
-    :param address: offer creator address
+    :param address: offer creator's address
     :param token_in: token to be sold
     :param token_out: token to be accepted as a payment
     :param value_in: amount of sold tokens
@@ -936,7 +936,7 @@ def do_offer(node, port, sender, token, amount, expected, price,
     Create offer and then publish it
     :param node: node hostname
     :param port: node port
-    :param sender: offer maker address(xpc)
+    :param sender: offer maker's address(xpc)
     :param token: token to be sold
     :param amount: amount of sold token
     :param expected: token expected as payment
@@ -946,8 +946,8 @@ def do_offer(node, port, sender, token, amount, expected, price,
     :param deposit: deposit fee
     :param timeout_str: offer timeout
     :param tx_fee: transaction fee
-    :param datadir: datadir with offer maker account file
-    :param signing_key: offer maker signing key, only for tests
+    :param datadir: datadir with offer maker's keystore
+    :param signing_key: offer maker's signing key, only for tests
     :return: Tuple(True if offer is published, transaction)
     """
     try:
@@ -994,11 +994,11 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
     :param tx_fee: transaction fee
     :param deposit: deposit fee
     :param confirmation_fee: confirmation fee
-    :param receive: receive payment address
+    :param receive: receiver's payment address
     :param offer_hash: offer hash
     :param node: node hostname
     :param port: node portname
-    :param address: offer match creator
+    :param address: offer match creator's address
     :return: MatchTransaction
     """
     inputs, own_transfer = build_inputs(node=node, port=port,
@@ -1014,20 +1014,46 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
                             confirmation_fee_index=int(0), deposit_index=int(1))
 
 
+def do_offer_match(node, port, sender, offer_hash, receive_addr, tx_fee,
+                   conf_fee, deposit, datadir, signing_key=None):
+    """
+    Create offer match and then publish
+    :param datadir: datadir with user's keystore
+    :param node: node hostname
+    :param port: node port
+    :param sender: offer match creator(xpc address)
+    :param offer_hash: hash of the offer
+    :param receive_addr: address for income payment
+    :param tx_fee: transaction fee
+    :param conf_fee: confirmation fee
+    :param deposit: deposit
+    :param signing_key: Offer taker's private key(only for tests)
+    :return: tuple(True if published, transaction)
+    """
+    tx = build_match(node=node, port=port,
+                     address=sender, offer_hash=offer_hash,
+                     receive=receive_addr, tx_fee=tx_fee,
+                     confirmation_fee=conf_fee, deposit=deposit)
+
+    logger.info("MatchTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def accept_offer(args):
     """
     Accept offer
     :param args: args given by user
     :return: None
     """
-    tx = build_match(node=args.node, port=args.port,
-                     address=args.address, offer_hash=args.offer,
-                     receive=args.receive, tx_fee=args.fee,
-                     confirmation_fee=args.confirmation, deposit=args.deposit)
-
-    logger.info("MatchTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
+    published, _ = do_offer_match(node=args.node, port=args.port,
+                                  sender=args.address,
+                                  offer_hash=args.offer,
+                                  receive_addr=args.receive,
+                                  tx_fee=args.fee,
+                                  conf_fee=args.confirmation,
+                                  deposit=args.deposit, datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -1060,21 +1086,47 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
                                        deposit_index=int(0))
 
 
+def do_unlock_deposit(node, port, sender, offer_hash, deposit,
+                      tx_fee, side, proof, datadir, signing_key=None):
+    """
+    Build UnlockDeposit transaction and then publish it
+    :param node: node hostname
+    :param port: node port
+    :param sender: sender's address
+    :param offer_hash: hash of the offer(exchange id)
+    :param deposit: deposit
+    :param tx_fee: transaction fee
+    :param side: exchange side
+    :param proof: honesty proof
+    :param datadir: directory with sender's keystore
+    :param signing_key: sender's signing key(only for tests)
+    :return: tuple(True if published, transaction)
+    """
+    tx = build_unlock(node=node, port=port,
+                      address=sender, offer_hash=offer_hash,
+                      deposit=deposit, tx_fee=tx_fee,
+                      side=side, proof=proof)
+
+    logger.info("UnlockingDepositTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def unlock_deposit(args):
     """
     Unlock deposit
     :param args: args given by user
     :return: None
     """
-
-    tx = build_unlock(node=args.node, port=args.port,
-                      address=args.address, offer_hash=args.offer,
-                      deposit=args.deposit, tx_fee=args.fee,
-                      side=args.side, proof=args.proof)
-
-    logger.info("UnlockingDepositTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
+    published, _ = do_unlock_deposit(node=args.node, port=args.port,
+                                     sender=args.address,
+                                     offer_hash=args.offer,
+                                     deposit=args.deposit,
+                                     tx_fee=args.fee,
+                                     side=args.side,
+                                     proof=args.proof,
+                                     datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -1116,24 +1168,45 @@ def build_xpeer_transfer(node, port, amount, receiver, tx_fee, owner, offer_hash
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
 
 
+def do_xpeer_transfer(node, port, amount, receiver, sender, tx_fee,
+                      offer_hash, datadir, signing_key=None):
+    """
+    Build xpeer transfer and then publish it
+    :param node: node hostname
+    :param port: node port
+    :param amount: amount to transferred
+    :param receiver: receiver's address
+    :param sender: sender's address
+    :param tx_fee: transaction fee
+    :param offer_hash: hash of the offer(exchange id)
+    :param datadir: datadir with sender's keystore
+    :param signing_key: sender's signing key(only for tests)
+    :return: tuple(True if published, transaction)
+    """
+    tx = build_xpeer_transfer(node=node, port=port,
+                              amount=amount, receiver=receiver,
+                              owner=sender, tx_fee=tx_fee,
+                              offer_hash=offer_hash)
+
+    logger.info("XpeerTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def xpeer_transfer(args):
     """
     Transfer xpc as a part of an exchange
     :param args: args given by user
     :return: None
     """
-
-    tx = build_xpeer_transfer(node=args.node,
-                              port=args.port,
-                              amount=args.value,
-                              receiver=args.receiver,
-                              owner=args.owner,
-                              tx_fee=args.fee,
-                              offer_hash=args.offer)
-
-    logger.info("XpeerTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.owner, args.datadir):
+    published, _ = do_xpeer_transfer(node=args.node, port=args.port,
+                                     amount=args.value,
+                                     receiver=args.receiver,
+                                     sender=args.owner,
+                                     tx_fee=args.fee,
+                                     offer_hash=args.offer,
+                                     datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
