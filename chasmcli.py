@@ -18,7 +18,7 @@ def get_parser():
     parser.add_argument('-n', '--node', default="127.0.0.1",
                         help="hostname")
 
-    parser.add_argument('-p', "--port", default=6969,
+    parser.add_argument('-p', "--port", default=6969, type=int,
                         help="port")
 
     parser.add_argument('-d', '--datadir', default="~/.chasm",

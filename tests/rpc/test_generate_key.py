@@ -9,13 +9,6 @@ from chasm.rpc.client import create_account, get_addresses, \
     get_priv_key, get_account_data
 
 
-def verify_tx(parameters, sender):
-    if parameters[sender]['after'] < 0:
-        for owner in parameters:
-            parameters[owner]['after'] = parameters[owner]['before']
-        raise ValueError("Invalid transaction")
-
-
 @scenario('test_generate_key.feature', 'Key generation')
 def test_generate_key():
     pass

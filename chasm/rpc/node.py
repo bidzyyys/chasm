@@ -16,7 +16,7 @@ from . import logger, ALL, ALL_ADDRESSES
 json_serializer = JSONSerializer()
 rlp_serializer = RLPSerializer()
 
-state = State()
+state = None
 
 
 def filter_txos(txos, address):
@@ -157,6 +157,16 @@ def get_matches(offer_addr, match_addr):
     return result
 
 
+@dispatcher.add_method
+def helo():
+    """
+    Hello world method
+    Check if server responds to request
+    :return: elho(as SMTP)
+    """
+    return "elho"
+
+
 @Request.application
 def application(request):
     """
@@ -177,6 +187,8 @@ def run(host, port, db_dir):
     :param port: node port
     :return: None
     """
+    global state
+    state = State(db_dir=db_dir)
     run_simple(host, port, application)
     logger.info("Node application closed")
     state.close()
