@@ -14,7 +14,7 @@ from chasm.state._db import DB
 
 
 class State:
-    def __init__(self, db_dir="~/.chasm/db", maxlen=10):
+    def __init__(self, db_dir, pending_queue_size):
         self.blocks = {}
         self.tx_indices = {}
         self.utxos = {}
@@ -24,7 +24,7 @@ class State:
         self.active_offers = {}
         self.accepted_offers = {}
         self.current_height = 0
-        self.buffer_len = maxlen
+        self.buffer_len = pending_queue_size
 
         try:
             self.db = DB(db_dir)
