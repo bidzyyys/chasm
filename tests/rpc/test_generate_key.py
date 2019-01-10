@@ -1,12 +1,12 @@
 # pylint: disable=missing-docstring, redefined-outer-name
 from os.path import isfile, isdir
-from shutil import rmtree
 
 from ecdsa import VerifyingKey
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import create_account, get_addresses, \
     get_priv_key, get_account_data
+from . import remove_dir
 
 
 @scenario('test_generate_key.feature', 'Key generation')
@@ -59,7 +59,3 @@ def validate_keys(parameters):
     pub_key = VerifyingKey.from_der(bytes.fromhex(addresses[0][0]))
     signature = priv_key.sign(b"message")
     assert pub_key.verify(signature, b"message")
-
-
-def remove_dir(dir):
-    rmtree(path=dir, ignore_errors=True)
