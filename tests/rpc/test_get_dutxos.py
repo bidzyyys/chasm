@@ -43,7 +43,7 @@ def check_balance(parameters, balance, dutxos):
     assert dutxos == len(parameters["dutxos"])
 
 
-@when(parsers.parse('Initialized address has {balance:d} bdzys in {utxos:d} UTXOs'))
-def initialize(parameters, balance, utxos):
+@when(parsers.parse('Initialized address has {balance:d} bdzys in {dutxos:d} DUTXOs'))
+def initialize(parameters, balance, dutxos):
     init_address(address=parameters["address"],
-                 balance=balance, utxos=utxos)
+                 dutxos_sum=balance, dutxos=dutxos)
