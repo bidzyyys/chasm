@@ -14,28 +14,43 @@ from chasm.consensus.xpeer_validation.tokens import Tokens
 from chasm.exceptions import TxOverwriteError
 from chasm.state.state import State
 
-TEST_DB_PATH = '/tmp/xpeer'
 
+class RestoredState:
+    def __init__(self, prev_state, data_dir, pending_queue_size):
+        self.prev_state = prev_state
 
-class RestoredState(State):
-    def __init__(self, prev_state):
-        prev_state.close()
-        super().__init__(TEST_DB_PATH)
+        self.pending_size = pending_queue_size
+        self.data_dir = data_dir
 
     def __enter__(self):
-        return self
+        self.prev_state.close()
+        self.state = State(self.data_dir, self.pending_size)
+        return self.state
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.close()
+        self.state.close()
 
 
 @fixture
-def empty_state():
-    shutil.rmtree(TEST_DB_PATH, ignore_errors=True)
-    state = State(TEST_DB_PATH)
+def empty_state(config):
+    data_dir = config.get('DEFAULT', 'data_dir')
+    pending_size = config.getint('XPEER', 'pending_txs')
+
+    shutil.rmtree(data_dir, ignore_errors=True)
+
+    state = State(data_dir, pending_size)
     yield state
+
     state.close()
-    shutil.rmtree(TEST_DB_PATH)
+    shutil.rmtree(data_dir)
+
+
+@fixture
+def restored_state(empty_state, config):
+    data_dir = config.get('DEFAULT', 'data_dir')
+    pending_size = config.getint('XPEER', 'pending_txs')
+
+    return RestoredState(empty_state, data_dir, pending_size)
 
 
 @fixture
@@ -131,11 +146,11 @@ def test_removes_pending_txs_with_lowest_priority(empty_state, pending_transacti
         assert pending_transaction == empty_state.pop_pending_tx()
 
 
-def test_persists_pending_txs(empty_state, pending_transactions):
+def test_persists_pending_txs(empty_state, restored_state, pending_transactions):
     for tx, priority in zip(pending_transactions, range(len(pending_transactions), 0, -1)):
         empty_state.add_pending_tx(tx, priority)
 
-    with RestoredState(empty_state) as state:
+    with restored_state as state:
         for tx in pending_transactions:
             assert tx == state.pop_pending_tx()
 
@@ -143,14 +158,14 @@ def test_persists_pending_txs(empty_state, pending_transactions):
             state.pop_pending_tx()
 
 
-def test_removes_pending_and_does_not_restore_them(empty_state, pending_transactions):
+def test_removes_pending_and_does_not_restore_them(empty_state, restored_state, pending_transactions):
     for tx, priority in zip(pending_transactions, range(len(pending_transactions), 0, -1)):
         empty_state.add_pending_tx(tx, priority)
 
     tx = empty_state.pop_pending_tx()
     pending_transactions.remove(tx)
 
-    with RestoredState(empty_state) as state:
+    with restored_state as state:
         for tx in pending_transactions:
             assert tx == state.pop_pending_tx()
 
@@ -168,13 +183,13 @@ def test_empty_state_stores_initial_block_and_is_empty(empty_state):
     assert empty_state.get_dutxos() == {}
 
 
-def test_applies_an_empty_block_and_it_is_persisted(empty_state, block_with_minting_tx):
+def test_applies_an_empty_block_and_it_is_persisted(empty_state, restored_state, block_with_minting_tx):
     empty_state.apply_block(block_with_minting_tx)
 
     assert block_with_minting_tx == empty_state.get_block_by_no(1)
     assert block_with_minting_tx == empty_state.get_block_by_hash(block_with_minting_tx.hash())
 
-    with RestoredState(empty_state) as state:
+    with restored_state as state:
         assert block_with_minting_tx == state.get_block_by_no(1)
         assert block_with_minting_tx == state.get_block_by_hash(block_with_minting_tx.hash())
 
@@ -187,10 +202,10 @@ def test_applies_a_block_and_utxos_are_seen(empty_state, block_with_minting_tx, 
         assert empty_state.get_utxo(minting_transaction.hash(), i) == minting_transaction.outputs[i]
 
 
-def test_persists_new_utxos(empty_state, block_with_minting_tx, minting_transaction):
+def test_persists_new_utxos(empty_state, restored_state, block_with_minting_tx, minting_transaction):
     empty_state.apply_block(block_with_minting_tx)
 
-    with RestoredState(empty_state) as state:
+    with restored_state as state:
         assert minting_transaction.outputs.__len__() == state.get_utxos().__len__()
         for i in range(minting_transaction.outputs.__len__()):
             assert state.get_utxo(minting_transaction.hash(), i) == minting_transaction.outputs[i]
@@ -217,7 +232,8 @@ def test_can_use_an_already_existing_utxo(filled_state, alice, bob):
     assert signed.outputs[0] == filled_state.get_utxo(*new_utxo)
 
 
-def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, block_with_minting_tx, pending_transaction, alice):
+def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, restored_state, block_with_minting_tx,
+                                                       pending_transaction, alice):
     empty_state.apply_block(block_with_minting_tx)
 
     init_utxos = empty_state.get_utxos()
@@ -237,7 +253,7 @@ def test_does_not_apply_block_when_utxo_does_not_exits(empty_state, block_with_m
     with pytest.raises(KeyError):
         empty_state.get_block_by_no(2)
 
-    with RestoredState(empty_state) as state:
+    with restored_state as state:
         assert init_utxos == state.get_utxos()
         with pytest.raises(KeyError):
             state.get_block_by_no(2)
@@ -285,5 +301,3 @@ def test_transaction_with_deposit(filled_state, utxo, alice):
 
     assert (signed.hash(), 1) not in filled_state.get_utxos()
     assert (signed.hash(), 1) in filled_state.get_dutxos()
-
-
