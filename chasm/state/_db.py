@@ -23,7 +23,6 @@ class DB:
     _rlp_serializer = RLPSerializer()
 
     def __init__(self, db_dir, create_if_missing=False):
-        db_dir = os.path.expanduser(db_dir)
         self.db = plyvel.DB(db_dir, create_if_missing=create_if_missing)
 
         self.write_obj = self.db

@@ -8,7 +8,6 @@ from werkzeug.wrappers import Request, Response
 
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
-from chasm.state.state import State
 from . import logger, ALL, ALL_ADDRESSES
 
 # pylint: disable=invalid-name
@@ -16,7 +15,8 @@ from . import logger, ALL, ALL_ADDRESSES
 json_serializer = JSONSerializer()
 rlp_serializer = RLPSerializer()
 
-state = None
+
+# state = State()
 
 
 def filter_txos(txos, address):
@@ -158,7 +158,7 @@ def get_matches(offer_addr, match_addr):
 
 
 @dispatcher.add_method
-def helo():
+def hello():
     """
     Hello world method
     Check if server responds to request
@@ -179,16 +179,13 @@ def application(request):
     return Response(response.json, mimetype='application/json')
 
 
-def run(host, port, db_dir):
+def run(port, data_dir):
     """
     Run node application
-    :param db_dir: path to database directory
-    :param host: node hostname
     :param port: node port
+    :param data_dir: path to database directory
     :return: None
     """
-    global state
-    state = State(db_dir=db_dir)
-    run_simple(host, port, application)
+    run_simple("localhost", port, application)
     logger.info("Node application closed")
     state.close()

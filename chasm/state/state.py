@@ -1,4 +1,5 @@
 import copy
+import os
 import queue
 from typing import Union
 
@@ -14,7 +15,7 @@ from chasm.state._db import DB
 
 
 class State:
-    def __init__(self, db_dir="~/.chasm/db", maxlen=10):
+    def __init__(self, db_dir, maxlen=10):
         self.blocks = {}
         self.tx_indices = {}
         self.utxos = {}
