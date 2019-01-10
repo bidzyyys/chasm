@@ -1,4 +1,5 @@
 import copy
+import os
 import queue
 from threading import RLock
 from typing import Union
@@ -11,10 +12,11 @@ from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
 from chasm.exceptions import TxOverwriteError
+from chasm.server.services_manager import Service
 from chasm.state._db import DB
 
 
-class State:
+class State(Service):
     def __init__(self, db_dir, pending_queue_size):
         self.blocks = {}
         self.tx_indices = {}
@@ -32,10 +34,17 @@ class State:
         try:
             self.db = DB(db_dir)
         except plyvel.Error:
+            os.makedirs(db_dir, exist_ok=True)
             self.db = DB(db_dir, create_if_missing=True)
             self._init_database()
 
         self.reload()
+
+    def __start__(self, _stop_condition):
+        pass
+
+    def __stop__(self):
+        self.close()
 
     def apply_block(self, block: Block):
         block_hash = block.hash()
@@ -47,7 +56,7 @@ class State:
             for tx, i in zip(block.transactions, range(len(block.transactions))):
                 if tx.hash() in self.tx_indices:
                     raise TxOverwriteError(tx.hash())
-            self.tx_indices[tx.hash()] = (block_hash, i)
+                self.tx_indices[tx.hash()] = (block_hash, i)
 
             used_utxos = self._extract_inputs_from_block(block)
             new_utxos, new_dutxos = self._extract_outputs_from_block(block)

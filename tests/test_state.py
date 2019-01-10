@@ -33,8 +33,8 @@ class RestoredState:
 
 @fixture
 def empty_state(config):
-    data_dir = config.get('DEFAULT', 'data_dir')
-    pending_size = config.getint('XPEER', 'pending_txs')
+    data_dir = config.data_dir()
+    pending_size = config.pending_txs()
 
     shutil.rmtree(data_dir, ignore_errors=True)
 
@@ -47,8 +47,8 @@ def empty_state(config):
 
 @fixture
 def restored_state(empty_state, config):
-    data_dir = config.get('DEFAULT', 'data_dir')
-    pending_size = config.getint('XPEER', 'pending_txs')
+    data_dir = config.data_dir()
+    pending_size = config.pending_txs()
 
     return RestoredState(empty_state, data_dir, pending_size)
 

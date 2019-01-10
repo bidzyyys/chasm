@@ -1,4 +1,3 @@
-import configparser
 import os
 from collections import namedtuple
 
@@ -6,6 +5,7 @@ from ecdsa import SigningKey
 from pytest import fixture
 
 from chasm import consensus
+from chasm.config import Config
 
 Entity = namedtuple("Entity", "priv pub")
 
@@ -19,11 +19,9 @@ def __entity__():
 def config():
     dir_path = os.path.dirname(os.path.realpath(__file__))
     config_dir = os.path.abspath(os.path.join(dir_path, "../config"))
-    config_files = [ os.path.join(config_dir, file) for file in ['config.ini', 'dev.ini']]
+    config_files = [os.path.join(config_dir, file) for file in ['config.ini', 'dev.ini']]
 
-    parser = configparser.ConfigParser()
-    parser.read(config_files)
-    return parser
+    return Config(config_files)
 
 
 @fixture(scope="session")
