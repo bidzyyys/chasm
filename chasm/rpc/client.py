@@ -520,22 +520,36 @@ def display_match(match: MatchTransaction):
     print("Address: {}".format(match.address_in))
 
 
+def get_active_offers(token, expected, node, port):
+    """
+    Get active offers
+    :param token: token being sold
+    :param expected: expected income token
+    :param node: node hostname
+    :param port: node port
+    :return: list of current offers matching filters
+    """
+    try:
+        token_in = token_from_name(token)
+        token_out = token_from_name(expected)
+    except ValueError:
+        raise RuntimeError("Cannot display current offers, invalid token")
+
+    return fetch_current_offers(node, port,
+                                token_in,
+                                token_out)
+
+
 def show_marketplace(args):
     """
     Display all current offers
     :param args: args given by user
     :return: None
     """
-    try:
-        token_in = token_from_name(args.token)
-        token_out = token_from_name(args.expected)
-    except ValueError:
-        raise RuntimeError("Cannot display current offers, invalid token")
-
-    offers = fetch_current_offers(args.node, args.port,
-                                  token_in,
-                                  token_out)
-
+    offers = get_active_offers(token=args.token,
+                               expected=args.expected,
+                               node=args.node,
+                               port=args.port)
     print("Current offers: {}".format(len(offers)))
     for offer in offers:
         display_offer(offer)
@@ -577,7 +591,7 @@ def get_transaction(node, port, transaction):
     Get transaction
     :param node: node hostname
     :param port: node port
-    :param transaction: hash of the transaction(hex)
+    :param transaction: transaction(hex)
     :raise ValueError: if given transaction does not exist
     :raise RuntimeError: if rpc error occurs
     :return: transaction
@@ -781,7 +795,7 @@ def do_simple_transfer(node, port, amount, receiver, sender, tx_fee, datadir, si
     :param tx_fee: transaction fee
     :param datadir: datadir with sender keystore
     :param signing_key: sender's private key(for tests)
-    :return: True if transaction is published
+    :return: Tuple(True if transaction is published and transaction)
     """
 
     tx = build_transfer_tx(node=node,
@@ -793,7 +807,7 @@ def do_simple_transfer(node, port, amount, receiver, sender, tx_fee, datadir, si
 
     logger.info("Transaction created successfully!")
     return publish_transaction(node, port, tx,
-                               sender, datadir, signing_key)
+                               sender, datadir, signing_key), tx
 
 
 def transfer(args):
@@ -808,9 +822,10 @@ def transfer(args):
     :return: None
     """
 
-    if do_simple_transfer(node=args.node, port=args.port, amount=args.value,
-                          receiver=args.receiver, sender=args.owner,
-                          tx_fee=args.fee, datadir=args.datadir):
+    published, _ = do_simple_transfer(node=args.node, port=args.port, amount=args.value,
+                                      receiver=args.receiver, sender=args.owner,
+                                      tx_fee=args.fee, datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -914,32 +929,62 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
                             timeout=int(timeout))
 
 
+def do_offer(node, port, sender, token, amount, expected, price,
+             receive_addr, conf_fee, deposit, timeout_str, tx_fee,
+             datadir, signing_key=None):
+    """
+    Create offer and then publish it
+    :param node: node hostname
+    :param port: node port
+    :param sender: offer maker address(xpc)
+    :param token: token to be sold
+    :param amount: amount of sold token
+    :param expected: token expected as payment
+    :param price: price of sold tokens
+    :param receive_addr: address for income
+    :param conf_fee: confirmation fee
+    :param deposit: deposit fee
+    :param timeout_str: offer timeout
+    :param tx_fee: transaction fee
+    :param datadir: datadir with offer maker account file
+    :param signing_key: offer maker signing key, only for tests
+    :return: Tuple(True if offer is published, transaction)
+    """
+    try:
+        timeout = time.mktime(time.strptime(timeout_str, TIMEOUT_FORMAT))
+    except ValueError:
+        raise RuntimeError("Invalid timeout format!")
+    try:
+        token_in = token_from_name(token)
+        token_out = token_from_name(expected)
+    except ValueError:
+        raise RuntimeError("Invalid token given")
+
+    tx = build_offer(node=node, port=port, address=sender,
+                     token_in=token_in, value_in=amount,
+                     token_out=token_out, value_out=price,
+                     receive_address=receive_addr,
+                     confirmation_fee=conf_fee, deposit=deposit,
+                     timeout=timeout, tx_fee=tx_fee)
+
+    logger.info("OfferTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def create_offer(args):
     """
     Create an exchange offer
     :param args: args given by user
     :return: None
     """
-    try:
-        timeout = time.mktime(time.strptime(args.timeout, TIMEOUT_FORMAT))
-    except ValueError:
-        raise RuntimeError("Invalid timeout format!")
-    try:
-        token_in = token_from_name(args.token)
-        token_out = token_from_name(args.expected)
-    except ValueError:
-        raise RuntimeError("Invalid token given")
-
-    tx = build_offer(node=args.node, port=args.port, address=args.address,
-                     token_in=token_in, value_in=args.amount,
-                     token_out=token_out, value_out=args.price,
-                     receive_address=args.receive,
-                     confirmation_fee=args.confirmation, deposit=args.deposit,
-                     timeout=timeout, tx_fee=args.fee)
-
-    logger.info("OfferTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
+    published, _ = do_offer(node=args.node, port=args.port, sender=args.address,
+                            token=args.token, expected=args.expected, price=args.price,
+                            amount=args.amount, receive_addr=args.receive,
+                            conf_fee=args.confirmation, deposit=args.deposit,
+                            timeout_str=args.timeout, tx_fee=args.fee,
+                            datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
