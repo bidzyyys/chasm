@@ -22,7 +22,7 @@ def parameters(datadir, pwd):
     }
 
 
-@when(parsers.parse('Datadir exists with no keystore'))
+@when('Datadir exists with no keystore')
 def check_existance(parameters):
     keystore = join(parameters["datadir"], KEYSTORE)
     if isdir(keystore):
@@ -43,13 +43,13 @@ def generate(parameters, accounts):
         assert isfile(keyfile)
 
 
-@then(parsers.parse('Cleanup is done'))
+@then('Cleanup is done')
 def cleanup(parameters):
     remove_dir(parameters["datadir"])
     assert isdir(parameters["datadir"]) is False
 
 
-@then(parsers.parse('Keystore exists'))
+@then('Keystore exists')
 def check_existence(parameters):
     assert isdir(parameters["keystore"])
 

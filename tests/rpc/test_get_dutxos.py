@@ -27,14 +27,14 @@ def parameters(address):
     }
 
 
-@when(parsers.parse('I get DUTXOs'))
+@when('I get DUTXOs')
 def get_utxos_from_server(parameters):
     dutxos = get_dutxos(address=parameters["address"],
                         port=TEST_PORT, node=TEST_NODE)
     parameters["dutxos"] = dutxos
 
 
-@when(parsers.parse('I sum DUTXOs'))
+@when('I sum DUTXOs')
 def get_balance(parameters):
     balance = sum(dutxo["value"] for dutxo in parameters["dutxos"])
     parameters["balance"] = balance

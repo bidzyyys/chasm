@@ -22,13 +22,13 @@ def parameters(datadir, pwd):
     }
 
 
-@when(parsers.parse('Datadir does not exist'))
+@when('Datadir does not exist')
 def check_non_existance(parameters):
     remove_dir(parameters["datadir"])
     assert isdir(parameters["datadir"]) is False
 
 
-@when(parsers.parse('Alice creates new account'))
+@when('Alice creates new account')
 def generate(parameters):
     _, keyfile = create_account(datadir=parameters["datadir"],
                                 pwd=parameters["pwd"])
@@ -36,18 +36,18 @@ def generate(parameters):
     assert isfile(keyfile)
 
 
-@then(parsers.parse('Cleanup is done'))
+@then('Cleanup is done')
 def cleanup(parameters):
     remove_dir(parameters["datadir"])
     assert isdir(parameters["datadir"]) is False
 
 
-@then(parsers.parse('Datadir exists'))
+@then('Datadir exists')
 def check_existence(parameters):
     assert isdir(parameters["datadir"]) is True
 
 
-@then(parsers.parse('Keys are valid'))
+@then('Keys are valid')
 def validate_keys(parameters):
     addresses = get_addresses(parameters["datadir"])
     assert isfile(addresses[0][1])
