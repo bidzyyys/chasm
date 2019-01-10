@@ -156,3 +156,6 @@ class DB:
 
     def close(self):
         self.db.close()
+
+    def is_closed(self):
+        return self.db.closed

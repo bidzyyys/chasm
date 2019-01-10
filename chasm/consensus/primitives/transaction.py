@@ -4,7 +4,7 @@ from ecdsa import SigningKey, VerifyingKey
 from rlp import sedes
 
 from chasm import consensus
-from chasm.exceptions import InputOutputSumsException
+from chasm.maintenance.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list, countable_list_of_binaries
 from chasm.serialization.serializable import Serializable
 

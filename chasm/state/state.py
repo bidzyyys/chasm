@@ -11,7 +11,7 @@ from depq import DEPQ
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
-from chasm.exceptions import TxOverwriteError
+from chasm.maintenance.exceptions import TxOverwriteError
 from chasm.server.services_manager import Service
 from chasm.state._db import DB
 
@@ -31,20 +31,26 @@ class State(Service):
 
         self._lock = RLock()
 
+        self._db = None
+        self._db_dir = db_dir
+
+    def start(self, _stop_condition):
+
         try:
-            self.db = DB(db_dir)
+            self.db = DB(self._db_dir)
         except plyvel.Error:
-            os.makedirs(db_dir, exist_ok=True)
-            self.db = DB(db_dir, create_if_missing=True)
+            os.makedirs(self._db_dir, exist_ok=True)
+            self.db = DB(self._db_dir, create_if_missing=True)
             self._init_database()
 
         self.reload()
+        return True
 
-    def __start__(self, _stop_condition):
-        pass
-
-    def __stop__(self):
+    def stop(self):
         self.close()
+
+    def is_running(self):
+        return not self.db.is_closed()
 
     def apply_block(self, block: Block):
         block_hash = block.hash()
