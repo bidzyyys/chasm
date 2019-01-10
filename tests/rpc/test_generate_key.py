@@ -4,9 +4,8 @@ from os.path import isfile, isdir
 from ecdsa import VerifyingKey
 from pytest_bdd import scenario, given, when, then, parsers
 
-from chasm.rpc.client import create_account, get_addresses, \
-    get_priv_key, get_account_data
-from . import remove_dir
+from chasm.rpc.client import create_account, get_addresses
+from . import remove_dir, get_private_key
 
 
 @scenario('test_generate_key.feature', 'Key generation')
@@ -51,10 +50,10 @@ def check_existence(parameters):
 def validate_keys(parameters):
     addresses = get_addresses(parameters["datadir"])
     assert isfile(addresses[0][1])
-    account = get_account_data(datadir=parameters["datadir"],
-                               pub_key_hex=addresses[0][0])
-    priv_key = get_priv_key(account=account,
-                            pwd=parameters["pwd"])
+
+    priv_key = get_private_key(address=addresses[0][0],
+                               datadir=parameters["datadir"],
+                               password=parameters["pwd"])
 
     pub_key = VerifyingKey.from_der(bytes.fromhex(addresses[0][0]))
     signature = priv_key.sign(b"message")
