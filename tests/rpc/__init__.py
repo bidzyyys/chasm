@@ -15,7 +15,7 @@ SAMPLE_ADDR = "3056301006072a8648ce3d020106052b8104000a034\
 
 def check_server(port=TEST_PORT, node=TEST_NODE):
     payload = PAYLOAD_TAGS.copy()
-    payload[METHOD] = "helo"
+    payload[METHOD] = "hello"
     payload[PARAMS] = []
 
     try:
