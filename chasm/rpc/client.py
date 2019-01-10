@@ -548,7 +548,7 @@ def build_tx_from_json(filename):
     try:
         tx_json = read_data_file(filename)
         transaction = json_serializer.decode(tx_json)
-    except (RLPException, FileNotFoundError):
+    except (RLPException, FileNotFoundError, KeyError):
         raise RuntimeError("Cannot build transaction from file")
 
     return transaction
