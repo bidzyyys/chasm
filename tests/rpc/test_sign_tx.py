@@ -37,7 +37,7 @@ def sign(parameters):
 
     client.input = mock_input_yes
 
-    signature = sign_tx(tx_hash=parameters["tx"],
+    signature = sign_tx(tx_hex=parameters["tx"],
                         pub_key=parameters["address"],
                         datadir=parameters["datadir"],
                         signing_key=priv_key)

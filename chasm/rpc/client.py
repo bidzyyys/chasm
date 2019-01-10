@@ -683,10 +683,10 @@ def sign_transaction(transaction, pub_key, datadir, priv_key=None):
     return transaction.sign(priv_key.to_string())
 
 
-def sign_tx(tx_hash, pub_key, datadir, signing_key=None):
+def sign_tx(tx_hex, pub_key, datadir, signing_key=None):
     """
     Build transaction from hash, then sign it
-    :param tx_hash: hash of the transaction
+    :param tx_hex: transaction
     :param pub_key: public key(to find private key)
     :param datadir: datadir with private key
     :param signing_key: signing key - pass only in tests
@@ -694,7 +694,7 @@ def sign_tx(tx_hash, pub_key, datadir, signing_key=None):
     """
     signature = None
     try:
-        transaction = rlp_serializer.decode(bytes.fromhex(tx_hash))
+        transaction = rlp_serializer.decode(bytes.fromhex(tx_hex))
         if get_acceptance_from_user(transaction, question="Sign transaction?"):
             signature = sign_transaction(transaction=transaction,
                                          pub_key=pub_key,
@@ -713,7 +713,7 @@ def sign(args):
     :return: None
     """
 
-    signature = sign_tx(tx_hash=args.tx, pub_key=args.address,
+    signature = sign_tx(tx_hex=args.tx, pub_key=args.address,
                         datadir=args.datadir)
 
     if signature is not None:
@@ -1142,6 +1142,29 @@ def send_transaction(host, port, transaction, signatures):
     return run(host=host, port=port, payload=payload)
 
 
+def send_tx(node, port, tx_hex, signatures_hex):
+    """
+    Build transaction from hex and send with given signatures
+    :param node: node hostname
+    :param port: node port
+    :param tx_hex: transaction(hex)
+    :param signatures_hex: list of signatures(hex)
+    :return: True if transaction was sent
+    """
+    result = False
+    try:
+        tx = rlp_serializer.decode(bytes.fromhex(tx_hex))
+        signatures = list(map(lambda hex: bytes.fromhex(hex), signatures_hex))
+    except (RLPException, ValueError):
+        raise RuntimeError("Cannot send transaction")
+
+    if get_acceptance_from_user(tx):
+        result = send_transaction(host=node, port=port,
+                                  transaction=tx, signatures=signatures)
+
+    return result
+
+
 def send(args):
     """
     Send transaction with its signatures
@@ -1149,13 +1172,6 @@ def send(args):
     :return: None
     """
 
-    try:
-        tx = rlp_serializer.decode(bytes.fromhex(args.tx))
-        signatures = list(map(lambda hex: bytes.fromhex(hex), args.signatures))
-    except (RLPException, ValueError):
-        raise RuntimeError("Cannot send transaction")
-
-    if get_acceptance_from_user(tx):
-        if send_transaction(host=args.node, port=args.port,
-                            transaction=tx, signatures=signatures):
-            logger.info("Transaction sent successfully!")
+    if send_tx(node=args.node, port=args.port,
+               tx_hex=args.tx, signatures_hex=args.signatures):
+        logger.info("Transaction sent successfully!")
