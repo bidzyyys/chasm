@@ -661,23 +661,49 @@ def get_utxos_for_tx(node, port, address, amount):
     raise ValueError("Cannot collect required value")
 
 
-def sign_transaction(transaction, pub_key, datadir):
+def sign_transaction(transaction, pub_key, datadir, priv_key=None):
     """
     Sign transaction with private key matching given address
+    :param priv_key: Private key to sign transaction(for tests,
+    default None)
     :param transaction: transaction to be signed
     :param datadir: directory with keystore
     :param pub_key: address (public key)
     :return: signed transaction(bytes)
     """
 
-    try:
-        account = get_account_data(datadir, pub_key)
-    except FileNotFoundError:
-        raise RuntimeError("Cannot get private key!")
+    if priv_key is None:
+        try:
+            account = get_account_data(datadir, pub_key)
+        except FileNotFoundError:
+            raise RuntimeError("Cannot get private key!")
 
-    priv_key = get_priv_key(account)
+        priv_key = get_priv_key(account)
 
     return transaction.sign(priv_key.to_string())
+
+
+def sign_tx(tx_hash, pub_key, datadir, signing_key=None):
+    """
+    Build transaction from hash, then sign it
+    :param tx_hash: hash of the transaction
+    :param pub_key: public key(to find private key)
+    :param datadir: datadir with private key
+    :param signing_key: signing key - pass only in tests
+    :return: signature or None
+    """
+    signature = None
+    try:
+        transaction = rlp_serializer.decode(bytes.fromhex(tx_hash))
+        if get_acceptance_from_user(transaction, question="Sign transaction?"):
+            signature = sign_transaction(transaction=transaction,
+                                         pub_key=pub_key,
+                                         datadir=datadir,
+                                         priv_key=signing_key)
+    except (RLPException, RuntimeError):
+        raise RuntimeError("Cannot sign transaction!")
+
+    return signature
 
 
 def sign(args):
@@ -686,15 +712,12 @@ def sign(args):
     :param args: args given by user
     :return: None
     """
-    try:
-        transaction = rlp_serializer.decode(bytes.fromhex(args.tx))
-        if get_acceptance_from_user(transaction, question="Sign transaction?"):
-            signature = sign_transaction(transaction=transaction,
-                                         pub_key=args.address,
-                                         datadir=args.datadir)
-            print("\nSignature: {}".format(signature.hex()))
-    except (RLPException, RuntimeError):
-        raise RuntimeError("Cannot sign transaction!")
+
+    signature = sign_tx(tx_hash=args.tx, pub_key=args.address,
+                        datadir=args.datadir)
+
+    if signature is not None:
+        print("\nSignature: {}".format(signature.hex()))
 
 
 def build_inputs(node, port, amount, owner):
