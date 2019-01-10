@@ -38,5 +38,9 @@ def create_dir_structure(path):
     makedirs(path, exist_ok=True)
 
 
+def mock_input_yes(s):
+    return "yes"
+
+
 def init_address(address, balance=0, utxos=0, dutxo=0):
     pass
