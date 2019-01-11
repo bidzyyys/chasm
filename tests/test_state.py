@@ -6,12 +6,11 @@ import pytest
 from pytest import fixture
 
 from chasm import consensus
-from chasm.maintenance.config import Config
 from chasm.consensus import GENESIS_BLOCK, Block
 from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerFeeOutput
-from chasm.consensus.xpeer_validation.tokens import Tokens
+from chasm.consensus.tokens import Tokens
 from chasm.maintenance.exceptions import TxOverwriteError
 from chasm.state.state import State
 

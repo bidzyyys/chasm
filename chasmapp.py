@@ -3,7 +3,7 @@
 import argparse
 import os
 
-from chasm.consensus.blockchain.miner import Miner
+from chasm.consensus.mining.miner import Miner
 from chasm.maintenance.config import Config
 # pylint: disable=missing-docstring
 from chasm.maintenance.logger import Logger

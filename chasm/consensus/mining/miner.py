@@ -42,3 +42,4 @@ class Miner(Service):
 
     def is_running(self):
         return self._thread.is_alive()
+
