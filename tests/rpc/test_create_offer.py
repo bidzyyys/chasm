@@ -8,7 +8,7 @@ from chasm.rpc.client import do_offer, count_balance, \
     get_active_offers, get_transaction
 from . import TEST_DATADIR, SAMPLE_PASSWORD, get_test_account, \
     TEST_NODE, TEST_PORT, get_private_key, mock_input_yes, \
-    rlp_serializer, remove_dir, skip_test
+    remove_dir, skip_test
 
 pytestmark = skip_test()
 
@@ -41,7 +41,7 @@ def create_offer(parameters, amount, token, price, expected, timeout, conf_fee, 
                                  datadir=TEST_DATADIR,
                                  password=SAMPLE_PASSWORD
                              ))
-    parameters["offer"] = rlp_serializer.encode(offer).hex()
+    parameters["offer"] = offer.hash()
 
 
 @then(parsers.parse('Alice has {balance:d} bdzys'))
