@@ -76,12 +76,13 @@ class ServicesManager:
             self._running_services[name] = service
 
     def watch(self):
-        while True:
+        should_finish = False
+        while not should_finish:
+            time.sleep(10)
             for name, service in self._running_services.items():
                 if not service.is_running():
                     self._logger.error(colored(f'Service {name} not running - closing application.', 'red'))
-                    return
-            time.sleep(30)
+                    should_finish = True
 
     def _start_service(self, name, service):
 
