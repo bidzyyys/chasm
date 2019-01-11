@@ -19,7 +19,7 @@ TEST_DATADIR = "datadir"
 
 
 def publish_test_offer(sender, token="btc", amount=1, expected="xpc",
-                       price=1000, timeout="2019-02-01::00:00:00",
+                       price=1000, timeout="2020-02-01::00:00:00",
                        deposit=10, confirmation_fee=2, tx_fee=1,
                        receive_addr="aaaa", datadir=TEST_DATADIR,
                        pwd=SAMPLE_PASSWORD, node=TEST_NODE,
