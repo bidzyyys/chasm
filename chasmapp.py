@@ -5,6 +5,7 @@ import os
 
 from chasm.consensus.mining.miner_service import MinerService
 from chasm.maintenance.config import Config
+# pylint: disable=missing-docstring
 from chasm.maintenance.logger import Logger
 from chasm.rpc.node import RPCServerService
 from chasm.services_manager import LazyService, ServicesManager
