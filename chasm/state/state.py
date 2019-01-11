@@ -11,6 +11,8 @@ from depq import DEPQ
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
+from chasm.consensus.validation.block_validator import BlockValidator
+from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import TxOverwriteError
 from chasm.services_manager import Service
 from chasm.state._db import DB
@@ -28,6 +30,9 @@ class State(Service):
         self.accepted_offers = {}
         self.current_height = 0
         self.buffer_len = pending_queue_size
+
+        self.block_validator: BlockValidator = None
+        self.tx_validator: TxValidator = None
 
         self._lock = RLock()
 
@@ -54,6 +59,8 @@ class State(Service):
 
     def apply_block(self, block: Block):
         block_hash = block.hash()
+
+        self.block_validator.validate(block)
 
         with self._Transaction(self), self._lock:
             self.blocks[block_hash] = block
@@ -82,7 +89,12 @@ class State(Service):
             self.db.put_block(block, self.current_height + 1)
             self._set_current_height(self.current_height + 1)
 
+        self._update_validators()
+
     def add_pending_tx(self, tx: Transaction, priority=0):
+
+        self.tx_validator.validate(tx)
+
         with self._lock:
             index = self.pending_txs.push(tx, priority)
             self.db.put_pending_tx(index, tx, priority)
@@ -226,6 +238,8 @@ class State(Service):
             self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
             self.current_height = self._read_current_height()
 
+            self._update_validators()
+
     def _init_database(self):
         self.db.put_block(GENESIS_BLOCK, 0)
         self._set_current_height(0)
@@ -254,3 +268,7 @@ class State(Service):
                     dutxos.append(utxos.pop(-len(tx.outputs) + index))
 
         return utxos, dutxos
+
+    def _update_validators(self):
+        self.block_validator = BlockValidator(self.get_utxos(), self.get_dutxos(), {}, {})
+        self.tx_validator = TxValidator(self.get_utxos(), self.get_dutxos(), {}, {})
