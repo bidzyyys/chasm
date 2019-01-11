@@ -4,7 +4,7 @@ from threading import Thread
 
 from termcolor import colored
 
-from chasm.server.services_manager import Service
+from chasm.services_manager import Service
 from chasm.state.state import State
 
 

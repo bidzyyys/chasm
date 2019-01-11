@@ -1,181 +1,194 @@
 """RPC Server"""
 from queue import Full
+from threading import Thread
 
-from jsonrpc import JSONRPCResponseManager, dispatcher
+from jsonrpc import Dispatcher, JSONRPCResponseManager
 from rlp.exceptions import RLPException
-from werkzeug.serving import run_simple
+from werkzeug import serving
+from werkzeug.serving import ThreadedWSGIServer
 from werkzeug.wrappers import Request, Response
 
+from chasm.maintenance.logger import Logger
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
-from . import logger, ALL, ALL_ADDRESSES
-
-# pylint: disable=invalid-name
+from chasm.services_manager import Service
+from chasm.state.state import State
+from . import ALL, ALL_ADDRESSES
 
 json_serializer = JSONSerializer()
 rlp_serializer = RLPSerializer()
 
 
-# state = State()
+class RPCServer:
 
+    def __init__(self, state):
+        self._state = state
+        self._logger = Logger('chasm.rpc.handler')
 
-def filter_txos(txos, address):
-    """
-    Filter both DUTXOs and UTXOs
-    and create list of readable TXOs dict
-    :param txos: list of outputs
-    :param address: required address(bytes)
-    :return: list of TXOs dict
-    """
+    @staticmethod
+    def _filter_txos(txos, address):
+        """
+        Filter both DUTXOs and UTXOs
+        and create list of readable TXOs dict
+        :param txos: list of outputs
+        :param address: required address(bytes)
+        :return: list of TXOs dict
+        """
 
-    result = []
-    for tx in txos:
-        for output_no in txos[tx]:
-            if txos[tx][output_no].receiver == address:
-                result.append({
-                    "tx": tx,
-                    "hex": rlp_serializer.encode(
-                        txos[tx][output_no]).hex(),
-                    "output_no": output_no,
-                    "value": txos[tx][output_no].value
-                })
+        result = []
+        for tx in txos:
+            for output_no in txos[tx]:
+                if txos[tx][output_no].receiver == address:
+                    result.append({
+                        "tx": tx,
+                        "hex": rlp_serializer.encode(
+                            txos[tx][output_no]).hex(),
+                        "output_no": output_no,
+                        "value": txos[tx][output_no].value
+                    })
 
-    return result
+        return result
 
+    def get_utxos(self, address):
+        """
+        Return UTXOs of given address
+        :param address: address(hex)
+        :return: list of UTXOs dict
+        """
+        self._logger.info("Getting UTXOs of: %s", address)
+        utxos = self._state.get_utxos()
+        return self._filter_txos(utxos, bytes.fromhex(address))
 
-@dispatcher.add_method
-def get_utxos(address):
-    """
-    Return UTXOs of given address
-    :param address: address(hex)
-    :return: list of UTXOs dict
-    """
-    logger.info("Getting UTXOs of: %s", address)
-    utxos = state.get_utxos()
-    return filter_txos(utxos, bytes.fromhex(address))
+    def get_dutxos(self, address):
+        """
+        Return DUTXOs of given address
+        :param address: address(hex)
+        :return: list of DUTXOs dict
+        """
+        self._logger.info("Getting DUTXOs of: %s", address)
+        dutxos = self._state.get_dutxos()
+        return self._filter_txos(dutxos, bytes.fromhex(address))
 
+    def get_current_offers(self, token_in, token_out):
+        """
+        Return all current offers
+        :param token_in: Filter on token being sold
+        :param token_out: Filter on expected payment token
+        :return: list of json serialized offers
+        """
+        self._logger.info("Getting current offers")
+        offers = self._state.get_active_offers()
+        offers = list(filter(lambda o:
+                             token_in in (ALL, o.token_in) and
+                             token_out in (ALL, o.token_out),
+                             offers))
 
-@dispatcher.add_method
-def get_dutxos(address):
-    """
-    Return DUTXOs of given address
-    :param address: address(hex)
-    :return: list of DUTXOs dict
-    """
-    logger.info("Getting DUTXOs of: %s", address)
-    dutxos = state.get_dutxos()
-    return filter_txos(dutxos, bytes.fromhex(address))
+        serialized_offers = list(map(lambda offer: json_serializer.encode(offer),
+                                     offers))
+        return serialized_offers
 
+    def get_tx(self, tx_hash):
+        """
+        Get transaction from blockchain
+        :param tx_hash: hash of the transaction
+        :return: Transaction / None if tx does not exist
+        """
 
-@dispatcher.add_method
-def get_current_offers(token_in, token_out):
-    """
-    Return all current offers
-    :param token_in: Filter on token being sold
-    :param token_out: Filter on expected payment token
-    :return: list of json serialized offers
-    """
-    logger.info("Getting current offers")
-    offers = state.get_active_offers()
-    offers = list(filter(lambda o:
-                         token_in in (ALL, o.token_in) and
-                         token_out in (ALL, o.token_out),
-                         offers))
-
-    serialized_offers = list(map(lambda offer: json_serializer.encode(offer),
-                                 offers))
-    return serialized_offers
-
-
-@dispatcher.add_method
-def get_tx(tx_hash):
-    """
-    Get transaction from blockchain
-    :param tx_hash: hash of the transaction
-    :return: Transaction / None if tx does not exist
-    """
-
-    try:
-        transaction = state.get_transaction(bytes.fromhex(tx_hash))
-    except ValueError:
-        logger.info("Transaction not found, hex: %s", tx_hash)
-        return None
-    return json_serializer.encode(transaction.transaction)
-
-
-@dispatcher.add_method
-def publish_transaction(signed_tx_json):
-    """
-    Add SignedTransaction to the blockchain
-    :param signed_tx_json: serialized SignedTransaction
-    :return: True if transaction is added
-    """
-
-    logger.info("Publishing tx: %s",
-                json_serializer.encode(signed_tx_json))
-
-    result = True
-    try:
-        signed_tx = json_serializer.decode(signed_tx_json)
-        state.add_pending_tx(signed_tx)
-    except RLPException:
-        logger.exception("Cannot deserialize transaction")
-        result = False
-    except Full:
-        logger.exception("Cannot add transaction")
-        result = False
-
-    return result
-
-
-@dispatcher.add_method
-def get_matches(offer_addr, match_addr):
-    """
-    Get pairs of offer and its match filtered by addresses
-    :param offer_addr: address to filter offers
-    :param match_addr: address to filter matches
-    :return: list of tuples (OfferTransaction, MatchTransaction)
-    transactions are serialized into json
-    """
-    logger.info("Getting matches, offer_addr: %s, match_addr: %s",
-                offer_addr, match_addr)
-
-    matches = state.get_accepted_offers()
-
-    result = []
-    for match_pair in matches:
         try:
-            offer = state.get_transaction(match_pair[0]).transaction
-            match = state.get_transaction(match_pair[1]).transaction
-            if offer_addr in (offer.address_out.hex(), ALL_ADDRESSES) and \
-                    match_addr in (match.address_in.hex(), ALL_ADDRESSES):
-                result.append((json_serializer.encode(offer),
-                               json_serializer.encode(match)))
-        except (ValueError, IndexError):
-            logger.error("Got hash of unknown transaction")
+            transaction = self._state.get_transaction(bytes.fromhex(tx_hash))
+        except ValueError:
+            self._logger.info("Transaction not found, hex: %s", tx_hash)
+            return None
+        return json_serializer.encode(transaction.transaction)
 
-    return result
+    def publish_transaction(self, signed_tx_json):
+        """
+        Add SignedTransaction to the blockchain
+        :param signed_tx_json: serialized SignedTransaction
+        :return: True if transaction is added
+        """
+
+        self._logger.info("Publishing tx: %s",
+                          json_serializer.encode(signed_tx_json))
+
+        result = True
+        try:
+            signed_tx = json_serializer.decode(signed_tx_json)
+            self._state.add_pending_tx(signed_tx)
+        except RLPException:
+            self._logger.exception("Cannot deserialize transaction")
+            result = False
+        except Full:
+            self._logger.exception("Cannot add transaction")
+            result = False
+
+        return result
+
+    def get_matches(self, offer_addr, match_addr):
+        """
+        Get pairs of offer and its match filtered by addresses
+        :param offer_addr: address to filter offers
+        :param match_addr: address to filter matches
+        :return: list of tuples (OfferTransaction, MatchTransaction)
+        transactions are serialized into json
+        """
+        self._logger.info("Getting matches, offer_addr: %s, match_addr: %s",
+                          offer_addr, match_addr)
+
+        matches = self._state.get_accepted_offers()
+
+        result = []
+        for match_pair in matches:
+            try:
+                offer = self._state.get_transaction(match_pair[0]).transaction
+                match = self._state.get_transaction(match_pair[1]).transaction
+                if offer_addr in (offer.address_out.hex(), ALL_ADDRESSES) and \
+                        match_addr in (match.address_in.hex(), ALL_ADDRESSES):
+                    result.append((json_serializer.encode(offer),
+                                   json_serializer.encode(match)))
+            except (ValueError, IndexError):
+                self._logger.error("Got hash of unknown transaction")
+
+        return result
 
 
-@Request.application
-def application(request):
-    """
-    Node(server) application
-    :param request:
-    :return: None
-    """
-    response = JSONRPCResponseManager.handle(
-        request.data, dispatcher)
-    return Response(response.json, mimetype='application/json')
+class RPCServerService(Service):
+    def __init__(self, state: State, port: int):
+        self._prototype = RPCServer(state)
+        self._dispatcher = Dispatcher()
+        self._logger = Logger('chasm.rpc.server')
 
+        self._port = port
+        self._server_thread: Thread = None
+        self._server: ThreadedWSGIServer = None
 
-def run(port, data_dir):
-    """
-    Run node application
-    :param port: node port
-    :param data_dir: path to database directory
-    :return: None
-    """
-    run_simple("localhost", port, application)
-    logger.info("Node application closed")
-    state.close()
+    def application(self, request: Request):
+        """
+        Node(server) application
+        :param request:
+        :return: None
+        """
+
+        self._logger.info('Got a request.')
+
+        response = JSONRPCResponseManager.handle(
+            request.data, self._dispatcher)
+        return Response(response.json, mimetype='application/json')
+
+    def start(self, stop_condition):
+        self._dispatcher.build_method_map(self._prototype)
+
+        application = Request.application(self.application)
+
+        self._server = serving.make_server(host='localhost', port=self._port, app=application, threaded=True)
+        self._server_thread = Thread(target=lambda: self._server.serve_forever())
+        self._server_thread.start()
+
+        return True
+
+    def is_running(self):
+        return self._server_thread.is_alive()
+
+    def stop(self):
+        self._server.shutdown()
+        self._server_thread.join()

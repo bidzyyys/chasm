@@ -2,13 +2,12 @@
 
 import argparse
 import os
-import time
 
-from chasm.config import Config
-from chasm.consensus.blockchain.service import Miner
-from chasm.logger.logger import get_logger
+from chasm.maintenance.config import Config
 # pylint: disable=missing-docstring
-from chasm.server.services_manager import ServicesManager
+from chasm.maintenance.logger import Logger
+from chasm.rpc.node import RPCServerService
+from chasm.services_manager import LazyService, ServicesManager
 from chasm.state.state import State
 
 
@@ -24,18 +23,6 @@ def get_parser(config):
     return parser
 
 
-def get_services(config):
-    def _get_logger(name):
-        return get_logger(name, config.logger_level())
-
-    db_dir = os.path.join(config.data_dir(), 'db')
-
-    state = State(db_dir, config.pending_txs())
-    miner = Miner(state, config.miner(), config.block_interval(), _get_logger('chasm.miner'))
-
-    return [state, miner]
-
-
 def main():
     """
     Main function, runs server side
@@ -46,19 +33,15 @@ def main():
     parser = get_parser(config)
     args = parser.parse_args()
 
-    logger = get_logger("chasm.app", config.logger_level())
+    Logger.level = config.logger_level()
 
-    with ServicesManager(get_services(config), get_logger("chasm.manager", config.logger_level())):
-        while True:
-            time.sleep(10)
+    services = [
+        LazyService('state', State, db_dir=os.path.join(args.datadir, 'db'), pending_queue_size=config.pending_txs()),
+        LazyService('rpc_server', RPCServerService, port=config.rpc_port(), required_services=['state'])
+    ]
 
-
-# try:
-#     run(port=args.port, data_dir=args.datadir)
-# except KeyboardInterrupt:
-#     logger.info("Keyboard interrupt")
-# except BaseException:
-#     logger.error("Unexpected exception:", exc_info=True)
+    with ServicesManager(services) as manager:
+        manager.run()
 
 
 if __name__ == "__main__":

@@ -12,7 +12,7 @@ from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
 from chasm.maintenance.exceptions import TxOverwriteError
-from chasm.server.services_manager import Service
+from chasm.services_manager import Service
 from chasm.state._db import DB
 
 

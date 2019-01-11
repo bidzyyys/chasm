@@ -29,7 +29,7 @@ class LazyService:
         self.required = required_services or []
 
     def build(self, services):
-        required = {name: services for name, service in zip(self.required, services)}
+        required = {name: service for name, service in zip(self.required, services)}
         return self.name, self.klass(*self.args, **{**self.kwargs, **required})
 
 
@@ -92,10 +92,10 @@ class ServicesManager:
                 if task.result(1):
                     self._logger.info(f'Started service: {name}')
                 else:
-                    self._logger.info(f'Failed to start a service: {name}')
+                    self._logger.error(colored(f'Failed to start a service: {name}', 'red'))
                     raise RuntimeError
             except concurrent.futures.TimeoutError:
-                self._logger.info(f'Failed to start a service: {name}')
+                self._logger.error(colored(f'Failed to start a service due to a timeout: {name}'), 'red')
                 raise
 
     def _should_close(self):
