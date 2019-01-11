@@ -865,7 +865,9 @@ def show_accepted_offers(args):
                       .hex()))
 
 
-def fetch_matches(host, port, offer_addr, match_addr):
+def fetch_matches(host, port,
+                  offer_addr=ALL_ADDRESSES,
+                  match_addr=ALL_ADDRESSES):
     """
     Fetch matches
     :param host: node hostname

@@ -8,8 +8,7 @@ import pytest
 
 from chasm.rpc import PAYLOAD_TAGS, PARAMS, METHOD
 from chasm.rpc.client import run, get_account_data, \
-    get_priv_key, create_account
-from chasm.serialization.rlp_serializer import RLPSerializer
+    get_priv_key, create_account, do_offer
 
 TEST_NODE = "127.0.0.1"
 TEST_PORT = 6000
@@ -18,7 +17,24 @@ SAMPLE_ADDR = "3056301006072a8648ce3d020106052b8104000a0342000403526e777d17ae58b
 SAMPLE_PASSWORD = "test1234test1234"
 TEST_DATADIR = "datadir"
 
-rlp_serializer = RLPSerializer()
+
+def publish_test_offer(sender, token="btc", amount=1, expected="xpc",
+                       price=1000, timeout="2019-02-01::00:00:00",
+                       deposit=10, confirmation_fee=2, tx_fee=1,
+                       receive_addr="aaaa", datadir=TEST_DATADIR,
+                       pwd=SAMPLE_PASSWORD, node=TEST_NODE,
+                       port=TEST_PORT):
+    signing_key = get_private_key(address=sender, datadir=datadir, password=pwd)
+    published, offer = do_offer(node=node, port=port, sender=sender,
+                                token=token, amount=amount,
+                                expected=expected, price=price,
+                                receive_addr=receive_addr,
+                                conf_fee=confirmation_fee, deposit=deposit,
+                                timeout_str=timeout, tx_fee=tx_fee,
+                                datadir=datadir, signing_key=signing_key)
+
+    assert published
+    return offer.hash()
 
 
 def skip_test():
@@ -50,7 +66,8 @@ def create_dir_structure(path):
     makedirs(path, exist_ok=True)
 
 
-def get_private_key(address, datadir, password):
+def get_private_key(address, datadir=TEST_DATADIR,
+                    password=SAMPLE_PASSWORD):
     account = get_account_data(datadir=datadir,
                                pub_key_hex=address)
     priv_key = get_priv_key(account=account,
@@ -62,11 +79,12 @@ def mock_input_yes(s):
     return "yes"
 
 
-def get_test_account(balance, utxos, dutxos_sum=0, dutxos=0, datadir=TEST_DATADIR, pwd=SAMPLE_PASSWORD):
-    assert isdir(datadir) is False
+def get_test_account(balance, utxos, dutxos_sum=0, dutxos=0,
+                     datadir=TEST_DATADIR, pwd=SAMPLE_PASSWORD):
     address, _ = create_account(datadir=datadir, pwd=pwd)
     init_address(address=address, balance=balance, utxos=utxos,
                  dutxos_sum=dutxos_sum, dutxos=dutxos)
+    assert isdir(datadir)
     return {
         "address": address.hex(),
     }
