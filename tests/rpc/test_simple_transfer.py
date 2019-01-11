@@ -8,9 +8,7 @@ from chasm.consensus.primitives.transaction import Transaction
 from chasm.rpc import client
 from chasm.rpc.client import do_simple_transfer, count_balance, \
     get_transaction
-from . import SAMPLE_ADDR, TEST_PORT, TEST_NODE, \
-    SAMPLE_PASSWORD, get_private_key, remove_dir, \
-    mock_input_yes, TEST_DATADIR, skip_test, get_test_account
+from . import mock_acceptance, skip_test, init_address
 
 pytestmark = skip_test()
 
@@ -21,44 +19,46 @@ def test_simple_transfer():
     pass
 
 
-@given(parsers.parse('Alice has {xpc:d} bdzys in {utxos:d} UTXO'))
-def parameters(xpc, utxos):
-    account_dict = get_test_account(balance=xpc, utxos=utxos)
-    return account_dict
+@given(parsers.parse('{owner1} has {xpc1:d} bdzys in {utxos1:d} UTXO and {owner2} has {xpc2} bdzys in {utxos2:d} UTXO'))
+def parameters(alice_account, bob_account, owner1, owner2, xpc1, utxos1, xpc2, utxos2):
+    key1, addr1 = alice_account
+    init_address(address=addr1, balance=xpc1, utxos=utxos1)
+    key2, addr2 = bob_account
+    init_address(address=addr2, balance=xpc2, utxos=utxos2)
+    return {
+        owner1: {
+            "address": addr1,
+            "key": key1
+        },
+        owner2: {
+            "address": addr2,
+            "key": key2
+        }
+    }
 
 
-@when(parsers.parse('Alice sends {xpc} bdzys to Bob with {tx_fee} bdzys transaction fee'))
-def send(parameters, xpc, tx_fee):
-    client.input = mock_input_yes
-    result, tx = do_simple_transfer(node=TEST_NODE, port=TEST_PORT,
-                                    amount=xpc, receiver=SAMPLE_ADDR,
-                                    sender=parameters["address"], tx_fee=tx_fee,
-                                    datadir=TEST_DATADIR,
-                                    signing_key=get_private_key(
-                                        address=parameters["address"],
-                                        datadir=TEST_DATADIR,
-                                        password=SAMPLE_PASSWORD
-                                    ))
-    parameters["result"] = result
+@when(parsers.parse('{sender} sends {xpc:d} bdzys to {receiver} with {tx_fee:d} bdzys transaction fee'))
+def send(parameters, node, test_port, datadir,
+         sender, receiver, xpc, tx_fee):
+    client.input = mock_acceptance
+    result, tx = do_simple_transfer(node=node, port=test_port,
+                                    amount=xpc, receiver=parameters[receiver]["address"],
+                                    sender=parameters[sender]["address"], tx_fee=tx_fee,
+                                    datadir=datadir,
+                                    signing_key=parameters[sender]["key"])
+    assert result
     parameters["tx"] = tx.hash()
 
 
-@then(parsers.parse('Alice has {alice_funds:d} bdzys and Bob has {bob_funds} bdzys'))
-def verify_tx(parameters, alice_funds, bob_funds):
-    assert parameters["result"]
-    assert alice_funds == count_balance(parameters["address"], node=TEST_NODE, port=TEST_PORT)
-    assert bob_funds == count_balance(SAMPLE_ADDR, node=TEST_NODE, port=TEST_PORT)
-
-
-@then('Cleanup is done')
-def cleanup(parameters):
-    remove_dir(TEST_DATADIR)
-    assert isdir(TEST_DATADIR) is False
+@then(parsers.parse('{owner} has {funds:d} bdzys'))
+def verify_tx(parameters, node, test_port, owner, funds):
+    assert count_balance(parameters[owner]["address"],
+                         node=node, port=test_port) == funds
 
 
 @then('Transaction exists')
-def check_existence(parameters):
-    tx = get_transaction(node=TEST_NODE, port=TEST_PORT,
+def check_existence(parameters, node, test_port):
+    tx = get_transaction(node=node, port=test_port,
                          transaction=parameters["tx"])
 
     assert isinstance(tx, Transaction)

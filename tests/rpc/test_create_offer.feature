@@ -10,4 +10,3 @@ And There is 1 active offer with token: btc and expected: xpc
 And There is 1 active offer with token: btc and expected: all
 And There is 0 active offer with token: eth and expected: all
 And There is 0 active offer with token: all and expected: eth
-And Cleanup is done

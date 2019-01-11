@@ -2,7 +2,7 @@
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import get_dutxos
-from . import skip_test, TEST_NODE, TEST_PORT, init_address
+from . import skip_test, init_address
 
 pytestmark = skip_test()
 
@@ -17,17 +17,18 @@ def test_get_existing_utxos():
     pass
 
 
-@given(parsers.parse('Address: {address}'))
-def parameters(address):
+@given(parsers.parse('New address'))
+def parameters(alice_account):
+    _, address = alice_account
     return {
         "address": address
     }
 
 
 @when('I get DUTXOs')
-def get_utxos_from_server(parameters):
+def get_utxos_from_server(parameters, node, test_port):
     dutxos = get_dutxos(address=parameters["address"],
-                        port=TEST_PORT, node=TEST_NODE)
+                        port=test_port, node=node)
     parameters["dutxos"] = dutxos
 
 
@@ -37,10 +38,10 @@ def get_balance(parameters):
     parameters["balance"] = balance
 
 
-@then(parsers.parse("Address has {balance:d} bdzys in {dutxos:d} DUTXOs"))
+@then(parsers.parse("Owner has {balance:d} bdzys in {dutxos:d} DUTXOs"))
 def check_balance(parameters, balance, dutxos):
-    assert balance == parameters["balance"]
-    assert dutxos == len(parameters["dutxos"])
+    assert parameters["balance"] == balance
+    assert len(parameters["dutxos"]) == dutxos
 
 
 @when(parsers.parse('Initialized address has {balance:d} bdzys in {dutxos:d} DUTXOs'))

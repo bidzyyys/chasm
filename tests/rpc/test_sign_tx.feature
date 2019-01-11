@@ -1,7 +1,6 @@
 Scenario: Sign given transaction
-Given New datadir: datadir, new address and hash of the transaction
+Given Hex of the transaction
 
-When I sign the transaction
+When Alice signs the transaction
 
 Then Signature is valid
-And Datadir is removed

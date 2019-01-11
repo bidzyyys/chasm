@@ -4,11 +4,9 @@ from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus.primitives.transaction import OfferTransaction
 from chasm.rpc import client
-from chasm.rpc.client import do_offer, count_balance, \
+from chasm.rpc.client import count_balance, \
     get_active_offers, get_transaction
-from . import TEST_DATADIR, SAMPLE_PASSWORD, get_test_account, \
-    TEST_NODE, TEST_PORT, get_private_key, mock_input_yes, \
-    remove_dir, skip_test
+from . import skip_test, mock_acceptance, init_address
 
 pytestmark = skip_test()
 
@@ -19,52 +17,44 @@ def test_create_offer():
 
 
 @given(parsers.parse('Alice has {xpc:d} bdzys in {utxos:d} UTXO'))
-def parameters(xpc, utxos):
-    account_dict = get_test_account(balance=xpc, utxos=utxos)
-    return account_dict
+def parameters(alice_account, xpc, utxos):
+    _, address = alice_account
+    init_address(address=address, balance=xpc, utxos=utxos)
+    return {
+        "address": address,
+        "offer": ""
+    }
 
 
 @when(parsers.parse(
     'Alice creates exchange offer: {amount:d} {token} for {price:d} {expected} until {timeout} confirmation fee {conf_fee:d} xpc transaction fee {tx_fee:d} xpc deposit {deposit:d} xpc with payment on her used address'))
-def create_offer(parameters, amount, token, price, expected, timeout, conf_fee, tx_fee, deposit):
-    client.input = mock_input_yes
-    result, offer = do_offer(node=TEST_NODE, port=TEST_PORT,
-                             sender=parameters["address"],
-                             token=token, amount=amount,
-                             expected=expected, price=price,
-                             receive_addr=parameters["address"],
-                             conf_fee=conf_fee, deposit=deposit,
-                             timeout_str=timeout, tx_fee=tx_fee,
-                             datadir=TEST_DATADIR,
-                             signing_key=get_private_key(
-                                 address=parameters["address"],
-                                 datadir=TEST_DATADIR,
-                                 password=SAMPLE_PASSWORD
-                             ))
+def create_offer(parameters, alice_account, publish_offer, amount, token, price, expected,
+                 timeout, conf_fee, tx_fee, deposit):
+    signing_key, address = alice_account
+    client.input = mock_acceptance
+    offer = publish_offer(address, signing_key, address,
+                          token, amount, expected, price,
+                          deposit, conf_fee, tx_fee,
+                          timeout)
     parameters["offer"] = offer.hash()
 
 
 @then(parsers.parse('Alice has {balance:d} bdzys'))
-def check_balance(parameters, balance):
-    assert balance == count_balance(parameters["address"],
-                                    node=TEST_NODE,
-                                    port=TEST_PORT)
+def check_balance(parameters, balance, node, test_port):
+    assert count_balance(parameters["address"],
+                         node=node, port=test_port) == balance
 
 
-@then(parsers.parse('There is {count:d} active offer with token: {token} and expected: {expected}'))
-def check_active_offers(count, token, expected):
+@then(parsers.parse(
+    'There is {count:d} active offer with token: {token} and expected: {expected}'))
+def check_active_offers(count, token, expected, node, test_port):
     active_offers = get_active_offers(token=token, expected=expected,
-                                      node=TEST_NODE, port=TEST_PORT)
+                                      node=node, port=test_port)
     assert len(active_offers) == count
 
 
 @then('Offer exists')
-def check_existence(parameters):
-    offer = get_transaction(node=TEST_NODE, port=TEST_PORT,
+def check_existence(parameters, node, test_port):
+    offer = get_transaction(node=node, port=test_port,
                             transaction=parameters["offer"])
     assert isinstance(offer, OfferTransaction)
-
-
-@then('Cleanup is done')
-def cleanup():
-    remove_dir(TEST_DATADIR)
