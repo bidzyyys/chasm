@@ -86,7 +86,7 @@ class ServicesManager:
     def _start_service(self, name, service):
 
         with ThreadPoolExecutor(max_workers=1) as executor:
-            task = executor.submit(service.start, self._should_close)
+            task = executor.submit(service.start, self.should_close)
             self._logger.info(f'Starting service: {name}')
             try:
                 if task.result(1):
@@ -98,5 +98,5 @@ class ServicesManager:
                 self._logger.error(colored(f'Failed to start a service due to a timeout: {name}'), 'red')
                 raise
 
-    def _should_close(self):
+    def should_close(self):
         return self._should_close
