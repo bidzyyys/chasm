@@ -6,7 +6,7 @@ from chasm.consensus.primitives.transaction import MatchTransaction
 from chasm.rpc.client import get_transaction, do_offer_match, \
     count_balance, fetch_matches
 from . import get_test_account, publish_test_offer, TEST_NODE, \
-    TEST_PORT, TEST_DATADIR, get_private_key, skip_test
+    TEST_PORT, TEST_DATADIR, get_private_key, skip_test, remove_dir
 
 pytestmark = skip_test()
 
@@ -101,3 +101,8 @@ def assert_offers_non_existence():
 def assert_matches_non_existence():
     assert fetch_matches(host=TEST_NODE, port=TEST_PORT,
                          match_addr="0000") is None
+
+
+@then('Cleanup is done')
+def cleanup():
+    remove_dir(TEST_DATADIR)
