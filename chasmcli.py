@@ -1,10 +1,10 @@
 """Client for running commands on node"""
 
 import argparse
-import os
 
-from chasm import startup
-from chasm.logger.logger import get_logger
+from chasm import rpc
+from chasm.maintenance.config import Config
+from chasm.maintenance.logger import Logger
 from chasm.rpc import list_token_names, TIMEOUT_FORMAT, Side
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, \
@@ -17,15 +17,14 @@ def get_parser(config):
     parser = argparse.ArgumentParser(description='Chasm client',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-n', '--node', default=config.get('CLI', 'node'),
+    parser.add_argument('-n', '--node', default=config.cli_node(),
                         help="hostname")
 
-    parser.add_argument('-p', "--port", default=config.getint('RPC', 'port'),
+    parser.add_argument('-p', "--port", default=config.rpc_port(),
                         help="port")
 
-    parser.add_argument('-d', '--datadir', default=config.get('DEFAULT', 'data_dir'),
+    parser.add_argument('-d', '--datadir', default=config.data_dir(),
                         help="datadir for chasm storage")
-
 
     create_subparsers(parser.add_subparsers())
 
@@ -268,12 +267,15 @@ def main():
     Main function, runs client side
     """
 
-    config = startup.get_config()
+    config = Config()
 
     parser = get_parser(config)
     args = parser.parse_args()
 
-    logger = get_logger("chasm-cli", level=config.get('LOGGER', 'level'))
+    Logger.level = config.logger_level()
+
+    logger = Logger('chasm.cli')
+    rpc.client.logger = Logger('chasm.cli.rpc')
 
     try:
         args.func(args)

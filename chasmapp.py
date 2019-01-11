@@ -1,21 +1,25 @@
 """Full node app"""
 
 import argparse
+import os
 
-from chasm import startup
-from chasm.logger.logger import get_logger
-from chasm.rpc.node import run
-
-
+from chasm.consensus.blockchain.miner import Miner
+from chasm.maintenance.config import Config
 # pylint: disable=missing-docstring
+from chasm.maintenance.logger import Logger
+from chasm.rpc.node import RPCServerService
+from chasm.services_manager import LazyService, ServicesManager
+from chasm.state.state import State
+
+
 def get_parser(config):
     parser = argparse.ArgumentParser(description='Node app',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-p', "--port", default=config.getint('RPC', 'port'),
+    parser.add_argument('-p', "--port", default=config.rpc_port(),
                         help="port")
 
-    parser.add_argument('-d', '--datadir', default=config.get('DEFAULT', 'data_dir'),
+    parser.add_argument('-d', '--datadir', default=config.data_dir(),
                         help="datadir for chasm storage")
     return parser
 
@@ -25,20 +29,22 @@ def main():
     Main function, runs server side
     """
 
-    config = startup.get_config()
+    config = Config()
 
     parser = get_parser(config)
     args = parser.parse_args()
 
-    logger = get_logger("chasm-app", config.get('LOGGER', 'level'))
+    Logger.level = config.logger_level()
 
-    try:
-        run(port=args.port, data_dir=args.datadir)
+    services = [
+        LazyService('state', State, db_dir=os.path.join(args.datadir, 'db'), pending_queue_size=config.pending_txs()),
+        LazyService('rpc_server', RPCServerService, port=config.rpc_port(), required_services=['state']),
+        LazyService('miner', Miner, miner_address=config.miner(), block_interval=config.block_interval(),
+                    required_services=['state'])
+    ]
 
-    except KeyboardInterrupt:
-        logger.info("Keyboard interrupt")
-    except BaseException:
-        logger.error("Unexpected exception:", exc_info=True)
+    with ServicesManager(services) as manager:
+        manager.run()
 
 
 if __name__ == "__main__":

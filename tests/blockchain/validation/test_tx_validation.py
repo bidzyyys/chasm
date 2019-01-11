@@ -3,7 +3,7 @@ from ecdsa import VerifyingKey, BadSignatureError
 from pytest import fixture
 
 from chasm import consensus
-from chasm.exceptions import InputOutputSumsException
+from chasm.maintenance.exceptions import InputOutputSumsException
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput

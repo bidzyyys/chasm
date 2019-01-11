@@ -20,10 +20,11 @@ from chasm.consensus.primitives.transaction import Transaction, \
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, \
     XpeerOutput, XpeerFeeOutput
-from chasm.exceptions import IncorrectPassword, RPCError
+from chasm.maintenance.exceptions import IncorrectPassword, RPCError
+from chasm.maintenance.logger import Logger
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
-from . import logger, PWD_LEN, ENCODING, Side, \
+from . import PWD_LEN, ENCODING, Side, \
     KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
     token_from_name, TIMEOUT_FORMAT, get_token_name, \
     ALL_ADDRESSES
@@ -32,6 +33,8 @@ from . import logger, PWD_LEN, ENCODING, Side, \
 
 json_serializer = JSONSerializer()
 rlp_serializer = RLPSerializer()
+
+logger: Logger = None
 
 
 def get_password(prompt="Type password: "):

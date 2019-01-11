@@ -6,12 +6,13 @@ import pytest
 from pytest import fixture
 
 from chasm import consensus
+from chasm.maintenance.config import Config
 from chasm.consensus import GENESIS_BLOCK, Block
 from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerFeeOutput
 from chasm.consensus.xpeer_validation.tokens import Tokens
-from chasm.exceptions import TxOverwriteError
+from chasm.maintenance.exceptions import TxOverwriteError
 from chasm.state.state import State
 
 
@@ -25,6 +26,7 @@ class RestoredState:
     def __enter__(self):
         self.prev_state.close()
         self.state = State(self.data_dir, self.pending_size)
+        self.state.start(None)
         return self.state
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -33,12 +35,13 @@ class RestoredState:
 
 @fixture
 def empty_state(config):
-    data_dir = config.get('DEFAULT', 'data_dir')
-    pending_size = config.getint('XPEER', 'pending_txs')
+    data_dir = config.data_dir()
+    pending_size = config.pending_txs()
 
     shutil.rmtree(data_dir, ignore_errors=True)
 
     state = State(data_dir, pending_size)
+    state.start(None)
     yield state
 
     state.close()
@@ -47,8 +50,8 @@ def empty_state(config):
 
 @fixture
 def restored_state(empty_state, config):
-    data_dir = config.get('DEFAULT', 'data_dir')
-    pending_size = config.getint('XPEER', 'pending_txs')
+    data_dir = config.data_dir()
+    pending_size = config.pending_txs()
 
     return RestoredState(empty_state, data_dir, pending_size)
 
