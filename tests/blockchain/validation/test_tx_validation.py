@@ -1,4 +1,5 @@
 # pylint: disable=missing-docstring,redefined-outer-name,invalid-name
+from ecdsa import BadSignatureError
 from pytest import fixture, raises
 
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
@@ -6,7 +7,7 @@ from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
-    InputOutputSumsException
+    InputOutputSumsException, SignaturesAmountException
 
 
 @fixture
@@ -79,3 +80,19 @@ def test_sum_of_outputs_is_higher_than_sum_of_outputs(validator, utxos, simple_t
     simple_transaction.outputs[0].value = 1000
     with raises(InputOutputSumsException):
         validator(utxos).check_sums(simple_transaction)
+
+
+def test_verifies_different_signature_count(validator, utxos, simple_transaction):
+    with raises(SignaturesAmountException):
+        validator(utxos).check_signatures(simple_transaction, [])
+
+
+def test_verifies_invalid_signature(validator, utxos, signed_simple_transaction):
+    with raises(BadSignatureError):
+        validator(utxos).check_signatures(signed_simple_transaction.transaction,
+                                          signed_simple_transaction.signatures[::-1])
+
+
+def test_verifies_signature(validator, utxos, signed_simple_transaction):
+    assert validator(utxos).check_signatures(signed_simple_transaction.transaction,
+                                             signed_simple_transaction.signatures)

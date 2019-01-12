@@ -1,13 +1,16 @@
 # pylint: disable=missing-docstring
+from ecdsa import VerifyingKey
 from multipledispatch import dispatch
 
+from chasm.consensus import HASH_FUNC, CURVE
 from chasm.consensus.primitives.transaction import Transaction, \
     SignedTransaction, OfferTransaction, MatchTransaction, \
     UnlockingDepositTransaction, ConfirmationTransaction, \
     MintingTransaction
 from chasm.consensus.validation.validator import Validator
 from chasm.maintenance.exceptions import DuplicatedInput, \
-    NonexistentUTXO, InputOutputSumsException
+    NonexistentUTXO, InputOutputSumsException, \
+    SignaturesAmountException
 
 
 class TxValidator(Validator):
@@ -52,20 +55,29 @@ class TxValidator(Validator):
                                            output_sum)
         return True
 
-    def check_signatures(self, tx):
-        pass
+    def check_signatures(self, tx, signatures):
+        if len(tx.inputs) != len(signatures):
+            raise SignaturesAmountException(tx.hash(),
+                                            len(tx.inputs),
+                                            len(signatures))
+        utxos = self._get_input_utxos(tx)
+        for utxo, signature in zip(utxos, signatures):
+            vk = VerifyingKey.from_string(utxo.receiver, curve=CURVE, hashfunc=HASH_FUNC)
+            vk.verify(signature, tx.encoded)
 
-    def _get_utxo(self, tx_input):
+        return True
+
+    def _get_utxo(self, tx_hash, tx_input):
+        key = (tx_input.tx_hash, tx_input.output_no)
+        if key not in self._utxos:
+            raise NonexistentUTXO(tx_hash, tx_input.tx_hash,
+                                  tx_input.output_no)
         return self._utxos.get((tx_input.tx_hash, tx_input.output_no))
 
     def _get_input_utxos(self, tx):
         utxos = []
         for tx_input in tx.inputs:
-            key = (tx_input.tx_hash, tx_input.output_no)
-            if key not in self._utxos:
-                raise NonexistentUTXO(tx.hash(), tx_input.tx_hash.hex(),
-                                      tx_input.output_no)
-            utxos.append(self._utxos.get(key))
+            utxos.append(self._get_utxo(tx.hash(), tx_input))
 
         return utxos
 
