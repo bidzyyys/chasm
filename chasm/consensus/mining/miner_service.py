@@ -12,7 +12,7 @@ from chasm.state.service import StateService
 
 
 class MinerService(Service):
-    WORKER_STEP = 10
+    WORKER_STEP = 10000
 
     def __init__(self, state: StateService, config: Config):
         self._state = state
