@@ -92,7 +92,7 @@ class ServicesManager:
             task = executor.submit(service.start, self.should_close)
             self._logger.info(f'Starting service: {name}')
             try:
-                if task.result(1):
+                if task.result(10):
                     self._logger.info(f'Started service: {name}')
                 else:
                     self._logger.error(colored(f'Failed to start a service: {name}', 'red'))
