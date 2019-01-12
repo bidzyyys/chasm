@@ -16,6 +16,16 @@ class InputOutputSumsException(TransactionValidationException):
         super().__init__(tx_hash, f"inputs are of greater value than outputs ({input_sum, output_sum})")
 
 
+class SignaturesAmountException(TransactionValidationException):
+    def __init__(self, tx_hash, inputs_amount, signatures_amount):
+        super().__init__(tx_hash, f"insufficient amount of signatures ({inputs_amount, signatures_amount})")
+
+
+class DuplicatedInput(TransactionValidationException):
+    def __init__(self, tx_hash, tx_input):
+        super().__init__(tx_hash, f"duplicated input: {tx_input}")
+
+
 class TxOverwriteError(Exception):
     def __init__(self, tx_hash):
         super().__init__(f"Tried to overwrite transaction with hash: {tx_hash}")

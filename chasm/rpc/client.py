@@ -1226,14 +1226,14 @@ def publish_transaction(host, port, transaction, pub_key, datadir, signing_key=N
     """
     result = get_acceptance_from_user(transaction)
     if result:
-        signature = sign_transaction(transaction=transaction,
-                                     pub_key=pub_key,
-                                     datadir=datadir,
-                                     priv_key=signing_key)
+        signatures = [sign_transaction(transaction=transaction,
+                                       pub_key=pub_key,
+                                       datadir=datadir,
+                                       priv_key=signing_key) for _ in transaction.inputs]
 
         result = send_transaction(host=host, port=port,
                                   transaction=transaction,
-                                  signatures=[signature])
+                                  signatures=signatures)
 
     return result
 

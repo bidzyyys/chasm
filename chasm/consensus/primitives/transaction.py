@@ -1,10 +1,7 @@
-from functools import reduce
-
-from ecdsa import SigningKey, VerifyingKey
+from ecdsa import SigningKey
 from rlp import sedes
 
 from chasm import consensus
-from chasm.maintenance.exceptions import InputOutputSumsException
 from chasm.serialization import countable_list, countable_list_of_binaries
 from chasm.serialization.serializable import Serializable
 
@@ -25,27 +22,11 @@ class Transaction(Serializable):
         self.inputs = inputs
         self.outputs = outputs
 
-        self.utxos = []
         self.encoded = RLPSerializer().encode(self)
-
-    def find_utxos(self):
-        pass
 
     def sign(self, private_key: str):
         key = SigningKey.from_string(private_key, curve=consensus.CURVE)
         return key.sign(self.encoded, hashfunc=consensus.HASH_FUNC)
-
-    def verify_signature(self, public_key, signature):
-        key = VerifyingKey.from_string(public_key, curve=consensus.CURVE, hashfunc=consensus.HASH_FUNC)
-        return key.verify(signature, self.encoded)
-
-    def verify_sums(self):
-        input_sums = reduce(lambda partial_sum, utxo: partial_sum + utxo.value, self.utxos, 0)
-        output_sums = reduce(lambda partial_sum, output: partial_sum + output.value, self.outputs, 0)
-        if input_sums < output_sums:
-            raise InputOutputSumsException(self.hash(), input_sums, output_sums)
-        else:
-            return True
 
     def hash(self):
         return consensus.HASH_FUNC(self.encoded).digest()
