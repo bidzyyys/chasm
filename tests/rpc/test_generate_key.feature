@@ -1,9 +1,8 @@
 Scenario: Key generation
-Given Datadir: datadir, password: test1234test1234
+Given Password: test1234test1234
 
-When Datadir does not exist
+When Keystore does not exist
 And Alice creates new account
 
-Then Datadir exists
+Then Keystore exists
 And Keys are valid
-And Cleanup is done

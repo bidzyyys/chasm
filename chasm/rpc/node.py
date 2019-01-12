@@ -151,6 +151,14 @@ class RPCServer:
 
         return result
 
+    def hello(self):
+        """
+        Hello world method
+        Check if server responds to request
+        :return: elho(as SMTP)
+        """
+        return "elho"
+
 
 class RPCServerService(Service):
     def __init__(self, state: State, port: int):

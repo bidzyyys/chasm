@@ -38,7 +38,7 @@ def main():
 
     services = [
         LazyService('state', State, db_dir=os.path.join(args.datadir, 'db'), pending_queue_size=config.pending_txs()),
-        LazyService('rpc_server', RPCServerService, port=config.rpc_port(), required_services=['state']),
+        LazyService('rpc_server', RPCServerService, port=args.port, required_services=['state']),
         LazyService('miner', Miner, miner_address=config.miner(), block_interval=config.block_interval(),
                     required_services=['state'])
     ]

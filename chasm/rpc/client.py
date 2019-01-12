@@ -520,22 +520,36 @@ def display_match(match: MatchTransaction):
     print("Address: {}".format(match.address_in))
 
 
+def get_active_offers(token, expected, node, port):
+    """
+    Get active offers
+    :param token: token being sold
+    :param expected: expected income token
+    :param node: node hostname
+    :param port: node port
+    :return: list of current offers matching filters
+    """
+    try:
+        token_in = token_from_name(token)
+        token_out = token_from_name(expected)
+    except ValueError:
+        raise RuntimeError("Cannot display current offers, invalid token")
+
+    return fetch_current_offers(node, port,
+                                token_in,
+                                token_out)
+
+
 def show_marketplace(args):
     """
     Display all current offers
     :param args: args given by user
     :return: None
     """
-    try:
-        token_in = token_from_name(args.token)
-        token_out = token_from_name(args.expected)
-    except ValueError:
-        raise RuntimeError("Cannot display current offers, invalid token")
-
-    offers = fetch_current_offers(args.node, args.port,
-                                  token_in,
-                                  token_out)
-
+    offers = get_active_offers(token=args.token,
+                               expected=args.expected,
+                               node=args.node,
+                               port=args.port)
     print("Current offers: {}".format(len(offers)))
     for offer in offers:
         display_offer(offer)
@@ -551,7 +565,7 @@ def build_tx_from_json(filename):
     try:
         tx_json = read_data_file(filename)
         transaction = json_serializer.decode(tx_json)
-    except (RLPException, FileNotFoundError):
+    except (RLPException, FileNotFoundError, KeyError):
         raise RuntimeError("Cannot build transaction from file")
 
     return transaction
@@ -577,7 +591,7 @@ def get_transaction(node, port, transaction):
     Get transaction
     :param node: node hostname
     :param port: node port
-    :param transaction: hash of the transaction(hex)
+    :param transaction: hash of the transaction
     :raise ValueError: if given transaction does not exist
     :raise RuntimeError: if rpc error occurs
     :return: transaction
@@ -664,23 +678,49 @@ def get_utxos_for_tx(node, port, address, amount):
     raise ValueError("Cannot collect required value")
 
 
-def sign_transaction(transaction, pub_key, datadir):
+def sign_transaction(transaction, pub_key, datadir, priv_key=None):
     """
     Sign transaction with private key matching given address
+    :param priv_key: Private key to sign transaction(for tests,
+    default None)
     :param transaction: transaction to be signed
     :param datadir: directory with keystore
     :param pub_key: address (public key)
     :return: signed transaction(bytes)
     """
 
-    try:
-        account = get_account_data(datadir, pub_key)
-    except FileNotFoundError:
-        raise RuntimeError("Cannot get private key!")
+    if priv_key is None:
+        try:
+            account = get_account_data(datadir, pub_key)
+        except FileNotFoundError:
+            raise RuntimeError("Cannot get private key!")
 
-    priv_key = get_priv_key(account)
+        priv_key = get_priv_key(account)
 
     return transaction.sign(priv_key.to_string())
+
+
+def sign_tx(tx_hex, pub_key, datadir, signing_key=None):
+    """
+    Build transaction from hash, then sign it
+    :param tx_hex: transaction
+    :param pub_key: public key(to find private key)
+    :param datadir: datadir with private key
+    :param signing_key: signing key - pass only in tests
+    :return: signature or None
+    """
+    signature = None
+    try:
+        transaction = rlp_serializer.decode(bytes.fromhex(tx_hex))
+        if get_acceptance_from_user(transaction, question="Sign transaction?"):
+            signature = sign_transaction(transaction=transaction,
+                                         pub_key=pub_key,
+                                         datadir=datadir,
+                                         priv_key=signing_key)
+    except (RLPException, RuntimeError):
+        raise RuntimeError("Cannot sign transaction!")
+
+    return signature
 
 
 def sign(args):
@@ -689,15 +729,12 @@ def sign(args):
     :param args: args given by user
     :return: None
     """
-    try:
-        transaction = rlp_serializer.decode(bytes.fromhex(args.tx))
-        if get_acceptance_from_user(transaction, question="Sign transaction?"):
-            signature = sign_transaction(transaction=transaction,
-                                         pub_key=args.address,
-                                         datadir=args.datadir)
-            print("\nSignature: {}".format(signature.hex()))
-    except (RLPException, RuntimeError):
-        raise RuntimeError("Cannot sign transaction!")
+
+    signature = sign_tx(tx_hex=args.tx, pub_key=args.address,
+                        datadir=args.datadir)
+
+    if signature is not None:
+        print("\nSignature: {}".format(signature.hex()))
 
 
 def build_inputs(node, port, amount, owner):
@@ -735,7 +772,7 @@ def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
     :param amount: value to be transferred
     :param receiver: receiver address
     :param tx_fee: transaction fee
-    :param owner: owner address
+    :param owner: owner's address
     :return: Transaction
     """
 
@@ -745,6 +782,32 @@ def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
                                        receiver=bytes.fromhex(receiver))
 
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
+
+
+def do_simple_transfer(node, port, amount, receiver, sender, tx_fee, datadir, signing_key=None):
+    """
+    Create transfer and then publish
+    :param node: node hostname
+    :param port: node port
+    :param amount: amount to be transferred
+    :param receiver: receiver's address
+    :param sender: sender's address
+    :param tx_fee: transaction fee
+    :param datadir: datadir with sender's keystore
+    :param signing_key: sender's private key(for tests)
+    :return: Tuple(True if transaction is published and transaction)
+    """
+
+    tx = build_transfer_tx(node=node,
+                           port=port,
+                           amount=amount,
+                           receiver=receiver,
+                           owner=sender,
+                           tx_fee=tx_fee)
+
+    logger.info("Transaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
 
 
 def transfer(args):
@@ -759,16 +822,10 @@ def transfer(args):
     :return: None
     """
 
-    tx = build_transfer_tx(node=args.node,
-                           port=args.port,
-                           amount=args.value,
-                           receiver=args.receiver,
-                           owner=args.owner,
-                           tx_fee=args.fee)
-
-    logger.info("Transaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.owner, args.datadir):
+    published, _ = do_simple_transfer(node=args.node, port=args.port, amount=args.value,
+                                      receiver=args.receiver, sender=args.owner,
+                                      tx_fee=args.fee, datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -811,7 +868,9 @@ def show_accepted_offers(args):
                       .hex()))
 
 
-def fetch_matches(host, port, offer_addr, match_addr):
+def fetch_matches(host, port,
+                  offer_addr=ALL_ADDRESSES,
+                  match_addr=ALL_ADDRESSES):
     """
     Fetch matches
     :param host: node hostname
@@ -845,7 +904,7 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
     Create offer
     :param node: node hostname
     :param port: node port
-    :param address: offer creator address
+    :param address: offer creator's address
     :param token_in: token to be sold
     :param token_out: token to be accepted as a payment
     :param value_in: amount of sold tokens
@@ -872,32 +931,62 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
                             timeout=int(timeout))
 
 
+def do_offer(node, port, sender, token, amount, expected, price,
+             receive_addr, conf_fee, deposit, timeout_str, tx_fee,
+             datadir, signing_key=None):
+    """
+    Create offer and then publish it
+    :param node: node hostname
+    :param port: node port
+    :param sender: offer maker's address(xpc)
+    :param token: token to be sold
+    :param amount: amount of sold token
+    :param expected: token expected as payment
+    :param price: price of sold tokens
+    :param receive_addr: address for income
+    :param conf_fee: confirmation fee
+    :param deposit: deposit fee
+    :param timeout_str: offer timeout
+    :param tx_fee: transaction fee
+    :param datadir: datadir with offer maker's keystore
+    :param signing_key: offer maker's signing key, only for tests
+    :return: Tuple(True if offer is published, transaction)
+    """
+    try:
+        timeout = time.mktime(time.strptime(timeout_str, TIMEOUT_FORMAT))
+    except ValueError:
+        raise RuntimeError("Invalid timeout format!")
+    try:
+        token_in = token_from_name(token)
+        token_out = token_from_name(expected)
+    except ValueError:
+        raise RuntimeError("Invalid token given")
+
+    tx = build_offer(node=node, port=port, address=sender,
+                     token_in=token_in, value_in=amount,
+                     token_out=token_out, value_out=price,
+                     receive_address=receive_addr,
+                     confirmation_fee=conf_fee, deposit=deposit,
+                     timeout=timeout, tx_fee=tx_fee)
+
+    logger.info("OfferTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def create_offer(args):
     """
     Create an exchange offer
     :param args: args given by user
     :return: None
     """
-    try:
-        timeout = time.mktime(time.strptime(args.timeout, TIMEOUT_FORMAT))
-    except ValueError:
-        raise RuntimeError("Invalid timeout format!")
-    try:
-        token_in = token_from_name(args.token)
-        token_out = token_from_name(args.expected)
-    except ValueError:
-        raise RuntimeError("Invalid token given")
-
-    tx = build_offer(node=args.node, port=args.port, address=args.address,
-                     token_in=token_in, value_in=args.amount,
-                     token_out=token_out, value_out=args.price,
-                     receive_address=args.receive,
-                     confirmation_fee=args.confirmation, deposit=args.deposit,
-                     timeout=timeout, tx_fee=args.fee)
-
-    logger.info("OfferTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
+    published, _ = do_offer(node=args.node, port=args.port, sender=args.address,
+                            token=args.token, expected=args.expected, price=args.price,
+                            amount=args.amount, receive_addr=args.receive,
+                            conf_fee=args.confirmation, deposit=args.deposit,
+                            timeout_str=args.timeout, tx_fee=args.fee,
+                            datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -907,11 +996,11 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
     :param tx_fee: transaction fee
     :param deposit: deposit fee
     :param confirmation_fee: confirmation fee
-    :param receive: receive payment address
+    :param receive: receiver's payment address
     :param offer_hash: offer hash
     :param node: node hostname
     :param port: node portname
-    :param address: offer match creator
+    :param address: offer match creator's address
     :return: MatchTransaction
     """
     inputs, own_transfer = build_inputs(node=node, port=port,
@@ -927,20 +1016,46 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
                             confirmation_fee_index=int(0), deposit_index=int(1))
 
 
+def do_offer_match(node, port, sender, offer_hash, receive_addr, tx_fee,
+                   conf_fee, deposit, datadir, signing_key=None):
+    """
+    Create offer match and then publish
+    :param datadir: datadir with user's keystore
+    :param node: node hostname
+    :param port: node port
+    :param sender: offer match creator(xpc address)
+    :param offer_hash: hash of the offer
+    :param receive_addr: address for income payment
+    :param tx_fee: transaction fee
+    :param conf_fee: confirmation fee
+    :param deposit: deposit
+    :param signing_key: Offer taker's private key(only for tests)
+    :return: tuple(True if published, transaction)
+    """
+    tx = build_match(node=node, port=port,
+                     address=sender, offer_hash=offer_hash,
+                     receive=receive_addr, tx_fee=tx_fee,
+                     confirmation_fee=conf_fee, deposit=deposit)
+
+    logger.info("MatchTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def accept_offer(args):
     """
     Accept offer
     :param args: args given by user
     :return: None
     """
-    tx = build_match(node=args.node, port=args.port,
-                     address=args.address, offer_hash=args.offer,
-                     receive=args.receive, tx_fee=args.fee,
-                     confirmation_fee=args.confirmation, deposit=args.deposit)
-
-    logger.info("MatchTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
+    published, _ = do_offer_match(node=args.node, port=args.port,
+                                  sender=args.address,
+                                  offer_hash=args.offer,
+                                  receive_addr=args.receive,
+                                  tx_fee=args.fee,
+                                  conf_fee=args.confirmation,
+                                  deposit=args.deposit, datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -959,7 +1074,7 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
     """
 
     if side not in [Side.OFFER_MAKER.value, Side.OFFER_TAKER.value]:
-        raise RuntimeError("Unknown exchange side: %d", side)
+        raise RuntimeError("Unknown exchange side: {}".format(side))
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + deposit)
@@ -973,21 +1088,47 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
                                        deposit_index=int(0))
 
 
+def do_unlock_deposit(node, port, sender, offer_hash, deposit,
+                      tx_fee, side, proof, datadir, signing_key=None):
+    """
+    Build UnlockDeposit transaction and then publish it
+    :param node: node hostname
+    :param port: node port
+    :param sender: sender's address
+    :param offer_hash: hash of the offer(exchange id)
+    :param deposit: deposit
+    :param tx_fee: transaction fee
+    :param side: exchange side
+    :param proof: honesty proof
+    :param datadir: directory with sender's keystore
+    :param signing_key: sender's signing key(only for tests)
+    :return: tuple(True if published, transaction)
+    """
+    tx = build_unlock(node=node, port=port,
+                      address=sender, offer_hash=offer_hash,
+                      deposit=deposit, tx_fee=tx_fee,
+                      side=side, proof=proof)
+
+    logger.info("UnlockingDepositTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def unlock_deposit(args):
     """
     Unlock deposit
     :param args: args given by user
     :return: None
     """
-
-    tx = build_unlock(node=args.node, port=args.port,
-                      address=args.address, offer_hash=args.offer,
-                      deposit=args.deposit, tx_fee=args.fee,
-                      side=args.side, proof=args.proof)
-
-    logger.info("UnlockingDepositTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.address, args.datadir):
+    published, _ = do_unlock_deposit(node=args.node, port=args.port,
+                                     sender=args.address,
+                                     offer_hash=args.offer,
+                                     deposit=args.deposit,
+                                     tx_fee=args.fee,
+                                     side=args.side,
+                                     proof=args.proof,
+                                     datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
@@ -1029,31 +1170,53 @@ def build_xpeer_transfer(node, port, amount, receiver, tx_fee, owner, offer_hash
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
 
 
+def do_xpeer_transfer(node, port, amount, receiver, sender, tx_fee,
+                      offer_hash, datadir, signing_key=None):
+    """
+    Build xpeer transfer and then publish it
+    :param node: node hostname
+    :param port: node port
+    :param amount: amount to transferred
+    :param receiver: receiver's address
+    :param sender: sender's address
+    :param tx_fee: transaction fee
+    :param offer_hash: hash of the offer(exchange id)
+    :param datadir: datadir with sender's keystore
+    :param signing_key: sender's signing key(only for tests)
+    :return: tuple(True if published, transaction)
+    """
+    tx = build_xpeer_transfer(node=node, port=port,
+                              amount=amount, receiver=receiver,
+                              owner=sender, tx_fee=tx_fee,
+                              offer_hash=offer_hash)
+
+    logger.info("XpeerTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               sender, datadir, signing_key), tx
+
+
 def xpeer_transfer(args):
     """
     Transfer xpc as a part of an exchange
     :param args: args given by user
     :return: None
     """
-
-    tx = build_xpeer_transfer(node=args.node,
-                              port=args.port,
-                              amount=args.value,
-                              receiver=args.receiver,
-                              owner=args.owner,
-                              tx_fee=args.fee,
-                              offer_hash=args.offer)
-
-    logger.info("XpeerTransaction created successfully!")
-    if publish_transaction(args.node, args.port, tx,
-                           args.owner, args.datadir):
+    published, _ = do_xpeer_transfer(node=args.node, port=args.port,
+                                     amount=args.value,
+                                     receiver=args.receiver,
+                                     sender=args.owner,
+                                     tx_fee=args.fee,
+                                     offer_hash=args.offer,
+                                     datadir=args.datadir)
+    if published:
         logger.info("Transaction sent successfully!")
 
 
-def publish_transaction(host, port, transaction, pub_key, datadir):
+def publish_transaction(host, port, transaction, pub_key, datadir, signing_key=None):
     """
     Publish transaction
     Signs and send transaction
+    :param signing_key: sender private key, only for tests
     :param host: node hostname
     :param port: node portname
     :param datadir: directory with keystore
@@ -1065,7 +1228,8 @@ def publish_transaction(host, port, transaction, pub_key, datadir):
     if result:
         signature = sign_transaction(transaction=transaction,
                                      pub_key=pub_key,
-                                     datadir=datadir)
+                                     datadir=datadir,
+                                     priv_key=signing_key)
 
         result = send_transaction(host=host, port=port,
                                   transaction=transaction,
@@ -1122,6 +1286,29 @@ def send_transaction(host, port, transaction, signatures):
     return run(host=host, port=port, payload=payload)
 
 
+def send_tx(node, port, tx_hex, signatures_hex):
+    """
+    Build transaction from hex and send with given signatures
+    :param node: node hostname
+    :param port: node port
+    :param tx_hex: transaction(hex)
+    :param signatures_hex: list of signatures(hex)
+    :return: True if transaction was sent
+    """
+    result = False
+    try:
+        tx = rlp_serializer.decode(bytes.fromhex(tx_hex))
+        signatures = list(map(lambda hex: bytes.fromhex(hex), signatures_hex))
+    except (RLPException, ValueError):
+        raise RuntimeError("Cannot send transaction")
+
+    if get_acceptance_from_user(tx):
+        result = send_transaction(host=node, port=port,
+                                  transaction=tx, signatures=signatures)
+
+    return result
+
+
 def send(args):
     """
     Send transaction with its signatures
@@ -1129,13 +1316,6 @@ def send(args):
     :return: None
     """
 
-    try:
-        tx = rlp_serializer.decode(bytes.fromhex(args.tx))
-        signatures = list(map(lambda hex: bytes.fromhex(hex), args.signatures))
-    except (RLPException, ValueError):
-        raise RuntimeError("Cannot send transaction")
-
-    if get_acceptance_from_user(tx):
-        if send_transaction(host=args.node, port=args.port,
-                            transaction=tx, signatures=signatures):
-            logger.info("Transaction sent successfully!")
+    if send_tx(node=args.node, port=args.port,
+               tx_hex=args.tx, signatures_hex=args.signatures):
+        logger.info("Transaction sent successfully!")

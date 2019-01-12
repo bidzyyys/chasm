@@ -16,8 +16,13 @@ def default_config_file():
     return os.path.join(default_config_dir(), 'config.ini')
 
 
+def default_test_config_file():
+    return os.path.join(default_config_dir(), 'dev.ini')
+
+
 DEFAULT_CONFIG_DIR = default_config_dir()
 DEFAULT_CONFIG_FILE = default_config_file()
+DEFAULT_TEST_CONFIG = default_test_config_file()
 
 
 class Config:
