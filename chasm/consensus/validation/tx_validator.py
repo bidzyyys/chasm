@@ -7,7 +7,7 @@ from chasm.consensus.primitives.transaction import Transaction, \
     MintingTransaction
 from chasm.consensus.validation.validator import Validator
 from chasm.maintenance.exceptions import DuplicatedInput, \
-    NonexistentUTXO
+    NonexistentUTXO, InputOutputSumsException
 
 
 class TxValidator(Validator):
@@ -34,10 +34,8 @@ class TxValidator(Validator):
         checked = []
         for tx_input in tx.inputs:
             if (tx_input.tx_hash, tx_input.output_no) in checked:
-                raise DuplicatedInput(tx.hash(),
-                                      "tx_hash: {}, output_no: {}".
-                                      format(tx_input.tx_hash.hex(),
-                                             tx_input.output_no))
+                raise DuplicatedInput(tx.hash(), tx_input.tx_hash.hex(),
+                                      tx_input.output_no)
             checked.append((tx_input.tx_hash, tx_input.output_no))
         return True
 
@@ -45,26 +43,34 @@ class TxValidator(Validator):
         pass
 
     def check_sums(self, tx):
-        pass
+        utxos = self._get_input_utxos(tx)
+        input_sum = sum(utxo.value for utxo in utxos)
+        output_sum = sum(output.value for output in tx.outputs)
+        if input_sum < output_sum:
+            raise InputOutputSumsException(tx.hash(),
+                                           input_sum,
+                                           output_sum)
+        return True
 
     def check_signatures(self, tx):
         pass
 
-    def get_utxo(self, tx_input):
+    def _get_utxo(self, tx_input):
         return self._utxos.get((tx_input.tx_hash, tx_input.output_no))
 
-    def get_input_utxos(self, tx):
+    def _get_input_utxos(self, tx):
         utxos = []
         for tx_input in tx.inputs:
             key = (tx_input.tx_hash, tx_input.output_no)
             if key not in self._utxos:
-                raise NonexistentUTXO(tx.hash(), tx_input.tx_hash, tx_input.output_no)
+                raise NonexistentUTXO(tx.hash(), tx_input.tx_hash.hex(),
+                                      tx_input.output_no)
             utxos.append(self._utxos.get(key))
 
         return utxos
 
     def check_inputs_are_utxos(self, tx):
-        self.get_input_utxos(tx)
+        self._get_input_utxos(tx)
         return True
 
     def check_type_specifics(self, tx):

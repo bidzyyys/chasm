@@ -5,7 +5,8 @@ from chasm.consensus.primitives.transaction import Transaction, SignedTransactio
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.consensus.validation.tx_validator import TxValidator
-from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO
+from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
+    InputOutputSumsException
 
 
 @fixture
@@ -68,3 +69,13 @@ def test_tries_to_spend_nonexistent_utxo(validator, simple_transaction):
 
 def test_nonexistent_utxo(validator, utxos, simple_transaction):
     assert validator(utxos).check_inputs_are_utxos(simple_transaction)
+
+
+def test_verifies_sum_of_inputs_vs_sum_of_outputs(validator, utxos, simple_transaction):
+    assert validator(utxos).check_sums(simple_transaction)
+
+
+def test_sum_of_outputs_is_higher_than_sum_of_outputs(validator, utxos, simple_transaction):
+    simple_transaction.outputs[0].value = 1000
+    with raises(InputOutputSumsException):
+        validator(utxos).check_sums(simple_transaction)
