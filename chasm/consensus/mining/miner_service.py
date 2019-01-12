@@ -38,7 +38,9 @@ class MinerService(Service):
             nonce = self._mine(block)
             if nonce:
                 block.header.set_nonce(nonce)
-                self._logger.info('\U00002692 ' + colored(f' Mined new block with hash {block.hash().hex()}', 'yellow'))
+                self._logger.info('\U00002692 ' + colored(
+                    f' Mined new block with hash {block.hash().hex()}, difficulty: {block.header.difficulty}',
+                    'yellow'))
 
                 self._state.apply_block(block)
                 self._logger.info('\U000026D3 ' + colored(

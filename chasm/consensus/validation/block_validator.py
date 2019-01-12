@@ -41,7 +41,7 @@ class BlockStatelessValidator:
         if height % DIFFICULTY_COMPUTATION_INTERVAL == 0:
             return last_diff  # TODO: recalculate difficulty
         else:
-            return last_diff
+            return 16
 
     @staticmethod
     def check_block_difficulty(height, last_diff, old_timestamp, last_timestamp):
@@ -49,6 +49,9 @@ class BlockStatelessValidator:
 
     @staticmethod
     def check_block_hash(block_hash, difficulty):
-        for i in range(2):
-            if block_hash[i] > 0:
+        for k in range(difficulty // 8):
+            if block_hash[k] > 0:
                 raise BlockHashError
+
+        if block_hash[difficulty // 8] % (2 ** (difficulty % 8)) > 0:
+            raise BlockHashError
