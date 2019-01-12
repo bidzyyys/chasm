@@ -6,7 +6,8 @@ from chasm.consensus.primitives.transaction import Transaction, \
     UnlockingDepositTransaction, ConfirmationTransaction, \
     MintingTransaction
 from chasm.consensus.validation.validator import Validator
-from chasm.maintenance.exceptions import DuplicatedInput
+from chasm.maintenance.exceptions import DuplicatedInput, \
+    NonexistentUTXO
 
 
 class TxValidator(Validator):
@@ -49,8 +50,22 @@ class TxValidator(Validator):
     def check_signatures(self, tx):
         pass
 
+    def get_utxo(self, tx_input):
+        return self._utxos.get((tx_input.tx_hash, tx_input.output_no))
+
+    def get_input_utxos(self, tx):
+        utxos = []
+        for tx_input in tx.inputs:
+            key = (tx_input.tx_hash, tx_input.output_no)
+            if key not in self._utxos:
+                raise NonexistentUTXO(tx.hash(), tx_input.tx_hash, tx_input.output_no)
+            utxos.append(self._utxos.get(key))
+
+        return utxos
+
     def check_inputs_are_utxos(self, tx):
-        pass
+        self.get_input_utxos(tx)
+        return True
 
     def check_type_specifics(self, tx):
         self.do_specific_validation(tx)

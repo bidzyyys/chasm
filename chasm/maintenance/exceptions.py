@@ -22,8 +22,13 @@ class SignaturesAmountException(TransactionValidationException):
 
 
 class DuplicatedInput(TransactionValidationException):
-    def __init__(self, tx_hash, tx_input):
-        super().__init__(tx_hash, f"duplicated input: {tx_input}")
+    def __init__(self, tx_hash, input_tx_hash, input_output_no):
+        super().__init__(tx_hash, f"duplicated input: ({input_tx_hash}, {input_output_no})")
+
+
+class NonexistentUTXO(TransactionValidationException):
+    def __init__(self, tx_hash, input_tx_hash, input_output_no):
+        super().__init__(tx_hash, f"nonexistent UTXO: ({input_tx_hash}, {input_output_no})")
 
 
 class TxOverwriteError(Exception):

@@ -5,7 +5,7 @@ from chasm.consensus.primitives.transaction import Transaction, SignedTransactio
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.consensus.validation.tx_validator import TxValidator
-from chasm.maintenance.exceptions import DuplicatedInput
+from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO
 
 
 @fixture
@@ -15,7 +15,11 @@ def inputs():
 
 @fixture
 def utxos(inputs, alice, bob, carol):
-    return [TransferOutput(100, entity.pub) for entity in [alice, bob, carol]]
+    utxos = {}
+    for tx_input, entity in zip(inputs, [alice, bob, carol]):
+        utxos[(tx_input.tx_hash, tx_input.output_no)] = TransferOutput(100, entity.pub)
+
+    return utxos
 
 
 @fixture
@@ -55,3 +59,12 @@ def test_tries_to_spend_duplicated_input(validator, simple_transaction):
 
 def test_spend_duplicated_input(validator, simple_transaction):
     assert validator().check_inputs_repetitions(simple_transaction)
+
+
+def test_tries_to_spend_nonexistent_utxo(validator, simple_transaction):
+    with raises(NonexistentUTXO):
+        validator().check_inputs_are_utxos(simple_transaction)
+
+
+def test_nonexistent_utxo(validator, utxos, simple_transaction):
+    assert validator(utxos).check_inputs_are_utxos(simple_transaction)
