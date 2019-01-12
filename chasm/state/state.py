@@ -31,7 +31,7 @@ class State(Service):
 
         self._lock = RLock()
 
-        self._db = None
+        self.db = None
         self._db_dir = db_dir
 
     def start(self, _stop_condition):

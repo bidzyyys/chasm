@@ -31,6 +31,12 @@ class Block(Serializable):
         def __eq__(self, other):
             return self.__class__ == other.__class__ and self.__dict__ == other.__dict__
 
+        def adjust_timestamp(self):
+            self.timestamp = int(time.time())
+
+        def set_nonce(self, value):
+            self.nonce = value
+
         def hash(self):
             encoded = rlp.encode(
                 [self.previous_block_hash, self.merkle_root, self.timestamp, self.nonce, self.difficulty])
@@ -56,14 +62,12 @@ class Block(Serializable):
         root = bytes.fromhex(merkle_tree.get_merkle_root())  # the library returns hex encoded hash, but we use bytes
         self._header.merkle_root = root
 
-    def adjust_timestamp(self):
-        self._header.timestamp = int(time.time())
-
-    def adjust_nonce(self):
-        self._header.nonce += 1
-
     def add_transaction(self, tx):
         self.transactions.append(tx)
+
+    @property
+    def header(self):
+        return self._header
 
     @property
     def previous_block_hash(self):

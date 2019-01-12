@@ -3,9 +3,8 @@
 import argparse
 import os
 
-from chasm.consensus.mining.miner import Miner
+from chasm.consensus.mining.miner_service import MinerService
 from chasm.maintenance.config import Config
-# pylint: disable=missing-docstring
 from chasm.maintenance.logger import Logger
 from chasm.rpc.node import RPCServerService
 from chasm.services_manager import LazyService, ServicesManager
@@ -38,13 +37,15 @@ def main():
 
     services = [
         LazyService('state', State, db_dir=os.path.join(args.datadir, 'db'), pending_queue_size=config.pending_txs()),
-        LazyService('rpc_server', RPCServerService, port=args.port, required_services=['state']),
-        LazyService('miner', Miner, miner_address=config.miner(), block_interval=config.block_interval(),
-                    required_services=['state'])
+        LazyService('rpc_server', RPCServerService, port=config.rpc_port(), required_services=['state']),
+        LazyService('miner', MinerService, miner_address=config.miner(), block_interval=config.block_interval(),
+                    workers=config.mining_workers(), required_services=['state'])
     ]
 
     with ServicesManager(services) as manager:
         manager.run()
+
+    exit()
 
 
 if __name__ == "__main__":

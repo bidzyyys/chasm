@@ -54,3 +54,6 @@ class Config:
 
     def data_dir(self):
         return _canonize_path(self.parser.get('DEFAULT', 'data_dir'))
+
+    def mining_workers(self):
+        return self.parser.getint('XPEER', 'miner_threads')
