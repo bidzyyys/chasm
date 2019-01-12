@@ -38,7 +38,8 @@ class Config:
     @staticmethod
     def _init(parser):
         return {'logger_level': parser.get('LOGGER', 'level'),
-                'datadir': _canonize_path(parser.get('DEFAULT', 'data_dir')), 'node': parser.get('CLI', 'node'),
+                'datadir': _canonize_path(parser.get('DEFAULT', 'data_dir')),
+                'node': parser.get('CLI', 'node'),
                 'rpc_port': parser.getint('RPC', 'port'),
                 'xpeer_pending_txs': parser.getint('XPEER', 'pending_txs'),
                 'xpeer_miner_address': bytes.fromhex(parser.get('XPEER', 'miner_address')[2::]),
