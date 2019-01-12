@@ -1,3 +1,11 @@
+class ValidationError(Exception):
+    pass
+
+
+class BlockValidationError(ValidationError):
+    pass
+
+
 class TransactionValidationException(Exception):
     def __init__(self, tx_hash, message):
         super().__init__(f"Transaction ({tx_hash.hex()})validation exception :" + message)
@@ -21,3 +29,8 @@ class IncorrectPassword(ValueError):
 class RPCError(ValueError):
     def __init__(self, message):
         super().__init__(message)
+
+
+class BlockHashError(BlockValidationError):
+    def __init__(self):
+        super().__init__()

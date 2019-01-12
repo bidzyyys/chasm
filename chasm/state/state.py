@@ -11,14 +11,13 @@ from depq import DEPQ
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
-from chasm.consensus.validation.block_validator import BlockValidator
+from chasm.consensus.validation.block_validator import BlockValidator, DIFFICULTY_COMPUTATION_INTERVAL
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import TxOverwriteError
-from chasm.services_manager import Service
 from chasm.state._db import DB
 
 
-class State(Service):
+class State:
     def __init__(self, db_dir, pending_queue_size):
         self.blocks = {}
         self.tx_indices = {}
@@ -39,8 +38,6 @@ class State(Service):
         self.db = None
         self._db_dir = db_dir
 
-    def start(self, _stop_condition):
-
         try:
             self.db = DB(self._db_dir)
         except plyvel.Error:
@@ -49,18 +46,11 @@ class State(Service):
             self._init_database()
 
         self.reload()
-        return True
-
-    def stop(self):
-        self.close()
-
-    def is_running(self):
-        return not self.db.is_closed()
 
     def apply_block(self, block: Block):
         block_hash = block.hash()
 
-        self.block_validator.validate(block)
+        # self.block_validator.validate(block)
 
         with self._Transaction(self), self._lock:
             self.blocks[block_hash] = block
@@ -270,5 +260,9 @@ class State(Service):
         return utxos, dutxos
 
     def _update_validators(self):
-        self.block_validator = BlockValidator(self.get_utxos(), self.get_dutxos(), {}, {})
+        old_block_height = self.current_height - DIFFICULTY_COMPUTATION_INTERVAL
+        last_header = self.get_block_by_no(self.current_height).header
+        old_header = self.get_block_by_no(old_block_height if old_block_height > 0 else 0).header
+
+        self.block_validator = BlockValidator(self.get_utxos(), {}, {}, last_header, old_header, self.current_height)
         self.tx_validator = TxValidator(self.get_utxos(), self.get_dutxos(), {}, {})

@@ -8,6 +8,7 @@ from werkzeug import serving
 from werkzeug.serving import ThreadedWSGIServer
 from werkzeug.wrappers import Request, Response
 
+from chasm.maintenance.config import Config
 from chasm.maintenance.logger import Logger
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
@@ -161,12 +162,12 @@ class RPCServer:
 
 
 class RPCServerService(Service):
-    def __init__(self, state: State, port: int):
+    def __init__(self, state: State, config: Config):
         self._prototype = RPCServer(state)
         self._dispatcher = Dispatcher()
         self._logger = Logger('chasm.rpc.server')
 
-        self._port = port
+        self._port = config.get('rpc_port')
         self._server_thread: Thread = None
         self._server: ThreadedWSGIServer = None
 

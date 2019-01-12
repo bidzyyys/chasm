@@ -4,8 +4,7 @@ from abc import ABC
 
 class Validator(ABC):
 
-    @staticmethod
-    def prepare(obj):
+    def prepare(self, obj):
         raise NotImplementedError
 
     def validate(self, obj):

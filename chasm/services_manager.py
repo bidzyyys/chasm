@@ -81,7 +81,7 @@ class ServicesManager:
         should_finish = False
         while not should_finish:
             time.sleep(10)
-            for name, service in self._running_services.items():
+            for name, service in self._running_services:
                 if not service.is_running():
                     self._logger.error(colored(f'Service {name} not running - closing application.', 'red'))
                     should_finish = True

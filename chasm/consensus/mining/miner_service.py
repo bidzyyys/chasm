@@ -5,25 +5,25 @@ from termcolor import colored
 
 from chasm.consensus.mining.block_builder import BlockBuilder
 from chasm.consensus.mining.miner import Miner
+from chasm.maintenance.config import Config
 from chasm.maintenance.logger import Logger
 from chasm.services_manager import Service
-from chasm.state.state import State
+from chasm.state.service import StateService
 
 
 class MinerService(Service):
     WORKER_STEP = 10
 
-    def __init__(self, state: State, miner_address: bytes, block_interval: int, workers: int):
+    def __init__(self, state: StateService, config: Config):
         self._state = state
-        self._block_interval = block_interval
-        self._workers = workers
-
-        self._builder = BlockBuilder(state, miner_address)
-
+        self._config = config
         self._thread = Thread(target=self, name=MinerService.__name__)
-        self._exit_condition = None
 
-        self._logger = Logger('chasm.miner')
+        self._builder = None
+        self._workers = None
+
+        self._exit_condition = None
+        self._logger = None
 
     def __call__(self, *args, **kwargs):
 
@@ -45,6 +45,14 @@ class MinerService(Service):
                     f' Successfully applied the new block at height {self._state.current_height}', "green"))
 
     def start(self, exit_condition):
+
+        miner = self._config.get('xpeer_miner_address')
+
+        self._logger = Logger('chasm.miner')
+
+        self._builder = BlockBuilder(self._state, miner)
+        self._workers = self._config.get('xpeer_miner_threads')
+
         self._exit_condition = exit_condition
         self._thread.start()
         return True
@@ -75,5 +83,7 @@ class MinerService(Service):
             for miner, _ in workers:
                 if miner.result:
                     return miner.result
+
+            self._logger.debug(colored(f'Searched through up to: {searched_nonces}', "blue"))
 
         return None

@@ -27,33 +27,22 @@ DEFAULT_TEST_CONFIG = default_test_config_file()
 
 class Config:
 
-    def __init__(self, config_files=DEFAULT_CONFIG_FILE):
-        self.parser = configparser.ConfigParser()
+    def __init__(self, config_files, overridden={}):
+        parser = configparser.ConfigParser()
         if not isinstance(config_files, list):
             config_files = [config_files]
-        assert config_files == self.parser.read(config_files)
+        assert config_files == parser.read(config_files)
 
-    def logger_level(self):
-        return self.parser.get('LOGGER', 'level')
+        self._configs = {**self._init(parser), **overridden}
 
-    def cli_node(self):
-        return self.parser.get('CLI', 'node')
+    @staticmethod
+    def _init(parser):
+        return {'logger_level': parser.get('LOGGER', 'level'),
+                'datadir': _canonize_path(parser.get('DEFAULT', 'data_dir')), 'node': parser.get('CLI', 'node'),
+                'rpc_port': parser.getint('RPC', 'port'),
+                'xpeer_pending_txs': parser.getint('XPEER', 'pending_txs'),
+                'xpeer_miner_address': bytes.fromhex(parser.get('XPEER', 'miner_address')[2::]),
+                'xpeer_miner_threads': parser.getint('XPEER', 'miner_threads')}
 
-    def rpc_port(self):
-        return self.parser.getint('RPC', 'port')
-
-    def block_interval(self):
-        return self.parser.getint('XPEER', 'block_interval')
-
-    def pending_txs(self):
-        return self.parser.getint('XPEER', 'pending_txs')
-
-    def miner(self):
-        str_addr = self.parser.get('XPEER', 'miner_address')
-        return bytes.fromhex(str_addr[2::])
-
-    def data_dir(self):
-        return _canonize_path(self.parser.get('DEFAULT', 'data_dir'))
-
-    def mining_workers(self):
-        return self.parser.getint('XPEER', 'miner_threads')
+    def get(self, param):
+        return self._configs[param]
