@@ -31,22 +31,19 @@ class RPCServer:
         """
         Filter both DUTXOs and UTXOs
         and create list of readable TXOs dict
-        :param txos: list of outputs
+        :param txos: dictionary of outputs of outputs
         :param address: required address(bytes)
         :return: list of TXOs dict
         """
 
         result = []
-        for tx in txos:
-            for output_no in txos[tx]:
-                if txos[tx][output_no].receiver == address:
-                    result.append({
-                        "tx": tx,
-                        "hex": rlp_serializer.encode(
-                            txos[tx][output_no]).hex(),
-                        "output_no": output_no,
-                        "value": txos[tx][output_no].value
-                    })
+        for (tx, output_no), txo in txos.items():
+            if txo.receiver == address:
+                result.append({
+                    "tx": tx.hex(),
+                    "output_no": output_no,
+                    "value": txo.value
+                })
 
         return result
 

@@ -3,7 +3,7 @@
 import argparse
 
 from chasm import rpc
-from chasm.maintenance.config import Config
+from chasm.maintenance.config import Config, DEFAULT_CONFIG_FILE
 from chasm.maintenance.logger import Logger
 from chasm.rpc import list_token_names, TIMEOUT_FORMAT, Side
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
@@ -13,18 +13,17 @@ from chasm.rpc.client import show_transaction, show_balance, generate_account, \
 
 
 # pylint: disable=missing-docstring
-def get_parser(config):
+def get_parser():
     parser = argparse.ArgumentParser(description='Chasm client',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-n', '--node', default=config.cli_node(),
-                        help="hostname")
+    parser.add_argument('-n', '--node', required=False,  help="hostname")
 
-    parser.add_argument('-p', "--port", default=config.rpc_port(),
-                        help="port")
+    parser.add_argument('-p', "--port", required=False, help="port")
 
-    parser.add_argument('-d', '--datadir', default=config.data_dir(),
-                        help="datadir for chasm storage")
+    parser.add_argument('-d', '--datadir', required=False, help="datadir for chasm storage")
+
+    parser.add_argument('-c', '--config', required=False, help='config file')
 
     create_subparsers(parser.add_subparsers())
 
@@ -262,20 +261,35 @@ def create_keys_parser(subparsers):
     parser.set_defaults(func=show_keys)
 
 
+def _prepare_config(args):
+    overridden = {}
+    if args.datadir:
+        overridden['datadir'] = args.datadir
+    if args.node:
+        overridden['node'] = args.node
+    if args.port:
+        overridden['rpc_port'] = args.port
+
+    return Config(args.config or DEFAULT_CONFIG_FILE, overridden=overridden)
+
+
 def main():
     """
     Main function, runs client side
     """
 
-    config = Config()
-
-    parser = get_parser(config)
+    parser = get_parser()
     args = parser.parse_args()
 
-    Logger.level = config.logger_level()
+    config = _prepare_config(args)
+    Logger.level = config.get('logger_level')
 
     logger = Logger('chasm.cli')
     rpc.client.logger = Logger('chasm.cli.rpc')
+
+    args.node = config.get('node')
+    args.port = config.get('rpc_port')
+    args.datadir = config.get('datadir')
 
     try:
         args.func(args)

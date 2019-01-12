@@ -13,11 +13,11 @@ from chasm.consensus.primitives.transaction import Transaction, SignedTransactio
     MatchTransaction, ConfirmationTransaction, UnlockingDepositTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerOutput, XpeerFeeOutput
-from chasm.consensus.xpeer_validation.tokens import Tokens
+from chasm.consensus.tokens import Tokens
 from chasm.maintenance.config import Config, DEFAULT_CONFIG_FILE, \
     DEFAULT_CONFIG_DIR, DEFAULT_TEST_CONFIG
-from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.rpc.client import do_offer, build_transfer_tx
+from chasm.serialization.rlp_serializer import RLPSerializer
 
 Entity = namedtuple("Entity", "priv pub")
 
@@ -80,9 +80,9 @@ def bob_account():
 
 @fixture
 def datadir(test_config):
-    os.makedirs(test_config.data_dir())
-    yield os.path.abspath(test_config.data_dir())
-    rmtree(test_config.data_dir(), ignore_errors=True)
+    os.makedirs(test_config.get('datadir'))
+    yield test_config.get('datadir')
+    rmtree(test_config.get('datadir'), ignore_errors=True)
 
 
 @fixture(scope="session")

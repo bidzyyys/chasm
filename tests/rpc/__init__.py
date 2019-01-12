@@ -12,10 +12,10 @@ CONFIG = Config([DEFAULT_TEST_CONFIG])
 def skip_test():
     return pytest.mark.skipif(condition=check_server() is False,
                               reason="requires server running on port: {}"
-                              .format(CONFIG.rpc_port()))
+                              .format(CONFIG.get('rpc_port')))
 
 
-def check_server(port=CONFIG.rpc_port(), node='localhost'):
+def check_server(port=CONFIG.get('rpc_port'), node='localhost'):
     payload = PAYLOAD_TAGS.copy()
     payload[METHOD] = "hello"
     payload[PARAMS] = []
