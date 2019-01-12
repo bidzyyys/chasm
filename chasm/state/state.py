@@ -81,7 +81,7 @@ class State:
 
         self._update_validators()
 
-    def add_pending_tx(self, tx: Transaction, priority=0):
+    def add_pending_tx(self, tx: SignedTransaction, priority=0):
 
         self.tx_validator.validate(tx)
 
@@ -89,7 +89,7 @@ class State:
             index = self.pending_txs.push(tx, priority)
             self.db.put_pending_tx(index, tx, priority)
 
-    def pop_pending_tx(self) -> Union[SignedTransaction, MintingTransaction]:
+    def pop_pending_tx(self) -> SignedTransaction:
         with self._lock:
             index, tx = self.pending_txs.pop()
             self.db.delete_pending(index)
