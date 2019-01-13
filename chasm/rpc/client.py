@@ -9,7 +9,7 @@ from getpass import getpass
 
 import requests
 from Crypto.Cipher import AES
-from ecdsa import SigningKey
+from ecdsa import SigningKey, VerifyingKey
 from ecdsa.der import UnexpectedDER
 from rlp.exceptions import RLPException
 
@@ -35,6 +35,16 @@ json_serializer = JSONSerializer()
 rlp_serializer = RLPSerializer()
 
 logger: Logger = None
+
+
+def hex_to_address(pub_key_hex):
+    """
+    Convert hex to address
+    :param pub_key_hex: hex
+    :return: address
+    """
+    return VerifyingKey.from_der(bytes.fromhex(pub_key_hex)). \
+        to_string()
 
 
 def get_password(prompt="Type password: "):
@@ -325,13 +335,13 @@ def count_balance(address, node, port):
 def get_utxos(address, node, port):
     """
     Get all UTXOs of the address
-    :param address: owner of UTXOs
+    :param address: owner of UTXOs(hex)
     :param node: node hostname
     :param port: node port
     :return: list of UTXOs
     """
     try:
-        utxos = fetch_utxos(address, node, port)
+        utxos = fetch_utxos(hex_to_address(address), node, port)
     except RPCError:
         raise RuntimeError("Cannot get UTXOs of: {}".format(address))
 
@@ -357,7 +367,7 @@ def get_dutxos(address, node, port):
     :return: list of DUTXOs
     """
     try:
-        dutxos = fetch_dutxos(address, node, port)
+        dutxos = fetch_dutxos(hex_to_address(address), node, port)
     except (RPCError, RuntimeError):
         raise RuntimeError("Cannot get DUTXOs of: {}".format(address))
 
@@ -657,14 +667,14 @@ def get_utxos_for_tx(node, port, address, amount):
     Get UTXOs that cover required amount
     :param node: node hostname
     :param port: node port
-    :param address: address of the owner
+    :param address: address of the owner(hex)
     :param amount: amount to be covered
     :raise ValueError: if owner has too little money
     :raise RuntimeError: if an error occurs while getting UTXOs
     :return: UTXOs to be used in a transaction and their amount
     """
     try:
-        utxos = fetch_utxos(address=address, host=node, port=port)
+        utxos = fetch_utxos(address=hex_to_address(address), host=node, port=port)
     except RPCError:
         raise RuntimeError("Cannot get UTXOs of: {}".format(address))
 
@@ -758,7 +768,7 @@ def build_inputs(node, port, amount, owner):
                       utxos))
 
     own_transfer = TransferOutput(value=int(collected_funds - amount),
-                                  receiver=bytes.fromhex(owner))
+                                  receiver=hex_to_address(owner))
 
     return inputs, own_transfer
 
@@ -779,7 +789,7 @@ def build_transfer_tx(node, port, amount, receiver, tx_fee, owner):
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         amount=amount + tx_fee, owner=owner)
     reqested_transfer = TransferOutput(value=int(amount),
-                                       receiver=bytes.fromhex(receiver))
+                                       receiver=hex_to_address(receiver))
 
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
 
@@ -919,7 +929,7 @@ def build_offer(node, port, address, token_in, token_out, value_in, value_out,
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + confirmation_fee + deposit)
-    deposit_output = TransferOutput(value=deposit, receiver=bytes.fromhex(address))
+    deposit_output = TransferOutput(value=deposit, receiver=hex_to_address(address))
     confirmation_output = XpeerFeeOutput(value=confirmation_fee)
 
     return OfferTransaction(inputs=inputs,
@@ -1006,7 +1016,7 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         owner=address,
                                         amount=tx_fee + confirmation_fee + deposit)
-    deposit_output = TransferOutput(value=deposit, receiver=bytes.fromhex(address))
+    deposit_output = TransferOutput(value=deposit, receiver=hex_to_address(address))
     confirmation_output = XpeerFeeOutput(value=confirmation_fee)
 
     return MatchTransaction(inputs=inputs,
@@ -1078,7 +1088,7 @@ def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
 
     inputs, own_transfer = build_inputs(node=node, port=port, owner=address,
                                         amount=tx_fee + deposit)
-    deposit_output = TransferOutput(value=deposit, receiver=bytes.fromhex(address))
+    deposit_output = TransferOutput(value=deposit, receiver=hex_to_address(address))
 
     return UnlockingDepositTransaction(inputs=inputs,
                                        outputs=[deposit_output, own_transfer],
@@ -1164,7 +1174,7 @@ def build_xpeer_transfer(node, port, amount, receiver, tx_fee, owner, offer_hash
 
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         amount=amount + tx_fee, owner=owner)
-    reqested_transfer = XpeerOutput(value=int(amount), receiver=bytes.fromhex(receiver),
+    reqested_transfer = XpeerOutput(value=int(amount), receiver=hex_to_address(receiver),
                                     exchange=bytes.fromhex(offer_hash))
 
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
