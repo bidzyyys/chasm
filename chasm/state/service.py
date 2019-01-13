@@ -21,8 +21,22 @@ class StateService(Service):
     def stop(self):
         self._state.close()
 
+    def apply_block(self, block):
+        # self._build_block_validator().validate(block)
+        self._state.apply_block(block)
+
+    def add_pending_tx(self, tx):
+        # self._build_tx_validator().validate(tx)
+        self._state.add_pending_tx(tx)
+
     def __getattribute__(self, item):
         try:
             return Service.__getattribute__(self, item)
         except AttributeError:
             return getattr(self._state, item)
+
+    def _build_block_validator(self):
+        return None
+
+    def _build_tx_validator(self):
+        return None
