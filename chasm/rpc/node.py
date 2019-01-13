@@ -133,7 +133,7 @@ class RPCServer:
         self._logger.info("Getting matches, offer_addr: %s, match_addr: %s",
                           offer_addr, match_addr)
 
-        matches = self._state.get_accepted_offers()
+        matches = self._state.get_matched_offers()
 
         result = []
         for match_pair in matches:

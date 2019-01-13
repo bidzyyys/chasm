@@ -39,7 +39,7 @@ class StateService(Service):
 
     def _build_block_validator(self):
         return BlockValidator(self._state.get_utxos(), self._state.get_active_offers(),
-                              self._state.get_accepted_offers(), 1, 1, 1)
+                              self._state.get_matched_offers(), 1, 1, 1)
 
     def _build_tx_validator(self):
-        return TxValidator(self._state.get_utxos(), self._state.get_active_offers(), self._state.get_accepted_offers())
+        return TxValidator(self._state.get_utxos(), self._state.get_active_offers(), self._state.get_matched_offers())
