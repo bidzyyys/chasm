@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring
-from ecdsa import VerifyingKey
+from datetime import datetime, timedelta
+
+from ecdsa import VerifyingKey, BadSignatureError
 from multipledispatch import dispatch
 
 from chasm.consensus import HASH_FUNC, CURVE
@@ -7,10 +9,20 @@ from chasm.consensus.primitives.transaction import Transaction, \
     SignedTransaction, OfferTransaction, MatchTransaction, \
     UnlockingDepositTransaction, ConfirmationTransaction, \
     MintingTransaction
+from chasm.consensus.primitives.tx_output import TransferOutput, \
+    XpeerFeeOutput, XpeerOutput
+from chasm.consensus.tokens import ADDRESS_LENGTH, Tokens
 from chasm.consensus.validation.validator import Validator
 from chasm.maintenance.exceptions import DuplicatedInput, \
     NonexistentUTXO, InputOutputSumsException, \
-    SignaturesAmountException, TransactionSizeException
+    SignaturesAmountException, TransactionSizeException, \
+    ReceiverUseXpeerOutputBeforeConfirmationError, \
+    SenderUseXpeerOutputAfterConfirmationError, \
+    SenderUseXpeerOutputBeforeTimeoutError, \
+    UseXpeerFeeOutputExceptionAsInput, \
+    InvalidAddressLengthOutputError, \
+    SendXpeerOutputWithoutExchangeError, \
+    SendXpeerFeeOutputError
 from chasm.serialization.rlp_serializer import RLPSerializer
 
 MAX_SIZE = 2 ** 20
@@ -65,8 +77,39 @@ class TxValidator(Validator):
                                             len(signatures))
         utxos = self._get_input_utxos(tx)
         for utxo, signature in zip(utxos, signatures):
-            vk = VerifyingKey.from_string(utxo.receiver, curve=CURVE, hashfunc=HASH_FUNC)
-            vk.verify(signature, tx.encoded)
+            self._validate_signature(utxo, signature, tx)
+
+        return True
+
+    @dispatch(TransferOutput, bytes, Transaction)
+    def _validate_signature(self, utxo, signature, tx):
+        vk = VerifyingKey.from_string(utxo.receiver, curve=CURVE, hashfunc=HASH_FUNC)
+        vk.verify(signature, tx.encoded)
+        return True
+
+    @dispatch(XpeerFeeOutput, bytes, Transaction)
+    def _validate_signature(self, utxo, signature, tx):
+        return True
+
+    @dispatch(XpeerOutput, bytes, Transaction)
+    def _validate_signature(self, utxo: XpeerOutput, signature, tx):
+        try:
+            # receiver
+            vk_1 = VerifyingKey.from_string(utxo.receiver, curve=CURVE, hashfunc=HASH_FUNC)
+            vk_1.verify(signature, tx.encoded)
+            if utxo.exchange in self._accepted_offers:
+                raise ReceiverUseXpeerOutputBeforeConfirmationError(tx.hash(), utxo.exchange)
+        except BadSignatureError:
+            # sender
+            vk_1 = VerifyingKey.from_string(utxo.sender, curve=CURVE, hashfunc=HASH_FUNC)
+            vk_1.verify(signature, tx.encoded)
+            if utxo.exchange not in self._accepted_offers:
+                raise SenderUseXpeerOutputAfterConfirmationError(tx.hash(), utxo.exchange)
+
+            timeout = datetime.fromtimestamp(self._accepted_offers.get(utxo.exchange)[2])
+            timeout += timedelta(days=14)
+            if datetime.now() < timeout:
+                raise SenderUseXpeerOutputBeforeTimeoutError(tx.hash(), utxo.exchange)
 
         return True
 
@@ -88,76 +131,114 @@ class TxValidator(Validator):
         self._get_input_utxos(tx)
         return True
 
+    @dispatch(MintingTransaction)
     def check_type_specifics(self, tx):
-        self.do_specific_validation(tx)
-
-    @dispatch(object)
-    def do_specific_validation(self, arg, *args):
-        raise NotImplementedError
+        return True
 
     @dispatch(Transaction)
-    def do_specific_validation(self, tx: Transaction):
-        return TxValidator.BaseTxValidator(). \
+    def do_specific_validation(self, tx, ):
+        return TxValidator.BaseTxValidator(self._utxos,
+                                           self._accepted_offers). \
             validate(tx)
 
-    @dispatch(OfferTransaction)
+    @dispatch(OfferTransaction, list)
     def do_specific_validation(self, tx: OfferTransaction):
-        return TxValidator.OfferValidator(). \
+        return TxValidator.OfferValidator(self._utxos,
+                                          self._accepted_offers). \
             validate(tx)
 
-    @dispatch(MatchTransaction)
+    @dispatch(MatchTransaction, list)
     def do_specific_validation(self, tx: MatchTransaction):
-        return TxValidator.MatchTransactionValidator(). \
+        return TxValidator.AcceptanceValidator(self._utxos,
+                                               self._accepted_offers,
+                                               self._active_offers). \
             validate(tx)
 
-    @dispatch(ConfirmationTransaction)
+    @dispatch(ConfirmationTransaction, list)
     def do_specific_validation(self, tx: ConfirmationTransaction):
-        return TxValidator.ConfirmationValidator(). \
+        return TxValidator.ConfirmationValidator(self._utxos,
+                                                 self._accepted_offers). \
             validate(tx)
 
-    @dispatch(UnlockingDepositTransaction)
+    @dispatch(UnlockingDepositTransaction, list)
     def do_specific_validation(self, tx: UnlockingDepositTransaction):
-        return TxValidator.DepositUnlockValidator(). \
+        return TxValidator.DepositUnlockValidator(self._utxos,
+                                                  self._accepted_offers,
+                                                  self._active_offers). \
             validate(tx)
 
-    @dispatch(MintingTransaction)
-    def do_specific_validation(self, tx: MintingTransaction):
-        return TxValidator.MintingTransactionValidator(). \
-            validate(tx)
+    class TransactionValidator(Validator):
+        def __init__(self, utxos, accepted_offers):
+            self._utxos = utxos
+            self._accepted_offers = accepted_offers
 
-    class OfferValidator(Validator):
+        @staticmethod
+        def prepare(self, obj):
+            return {'tx': obj}
+
+        @dispatch(TransferOutput, int, bytes)
+        def _validate_output(self, output: TransferOutput, output_no, tx_hash):
+            if len(output.receiver) < ADDRESS_LENGTH.get(Tokens.XPEER.value):
+                raise InvalidAddressLengthOutputError(tx_hash, len(output.receiver),
+                                                      output_no)
+            return True
+
+        @dispatch(XpeerOutput, int, bytes)
+        def _validate_output(self, output: XpeerOutput, output_no, tx_hash):
+            if len(output.receiver) < ADDRESS_LENGTH.get(Tokens.XPEER.value):
+                raise InvalidAddressLengthOutputError(tx_hash, len(output.receiver),
+                                                      output_no)
+            if output.exchange not in self._accepted_offers:
+                raise SendXpeerOutputWithoutExchangeError(tx_hash, output_no)
+
+        @dispatch(XpeerFeeOutput, int, bytes)
+        def _validate_output(self, output, output_no, tx_hash):
+            raise SendXpeerFeeOutputError(tx_hash, output_no)
+
+    class BaseTxValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers):
+            super().__init__(utxos, accepted_offers)
+
+        def prepare(self, obj):
+            return {'tx': obj}
+
+        def check_outputs(self, tx):
+            self._validate_output(tx)
+
+        def check_inputs(self, tx):
+            for tx_input in tx.inputs:
+                if isinstance(self._utxos.get((tx_input.tx_hash,
+                                               tx_input.output_no)),
+                              XpeerFeeOutput):
+                    raise UseXpeerFeeOutputExceptionAsInput(tx.hash())
+
+    class OfferValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers, active_offers):
+            self._active_offers = active_offers
+            super().__init__(utxos, accepted_offers)
+
         def check_does_not_use_fees_as_inputs(self):
             # TODO
             pass
 
-    class AcceptanceValidator(Validator):
+    class AcceptanceValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers, active_offers):
+            self._active_offers = active_offers
+            super().__init__(utxos, accepted_offers)
+
         def check_does_not_use_fees_as_inputs(self):
             # TODO
             pass
 
-    class ConfirmationValidator(Validator):
+    class ConfirmationValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers):
+            super().__init__(utxos, accepted_offers)
+
         def check_uses_fees_inputs_from_the_right_exchange(self):
             # TODO
             pass
 
-    class DepositUnlockValidator(Validator):
-        # TODO
-        pass
-
-    class MatchTransactionValidator(Validator):
-        # TODO
-        pass
-
-    class MintingTransactionValidator(Validator):
-        # TODO
-        pass
-
-    class BaseTxValidator(Validator):
-
-        @staticmethod
-        def prepare(obj):
-            return {'tx': obj}
-
-        def check_does_not_use_fees_as_inputs(self, tx):
-            # TODO
-            return True
+    class DepositUnlockValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers, active_offers):
+            self._active_offers = active_offers
+            super().__init__(utxos, accepted_offers)
