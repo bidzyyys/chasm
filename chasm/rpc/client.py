@@ -1175,6 +1175,7 @@ def build_xpeer_transfer(node, port, amount, receiver, tx_fee, owner, offer_hash
     inputs, own_transfer = build_inputs(node=node, port=port,
                                         amount=amount + tx_fee, owner=owner)
     reqested_transfer = XpeerOutput(value=int(amount), receiver=hex_to_address(receiver),
+                                    sender=hex_to_address(owner),
                                     exchange=bytes.fromhex(offer_hash))
 
     return Transaction(inputs=inputs, outputs=[reqested_transfer, own_transfer])
