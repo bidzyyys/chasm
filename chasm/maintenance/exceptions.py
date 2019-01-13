@@ -31,6 +31,11 @@ class NonexistentUTXO(TransactionValidationException):
         super().__init__(tx_hash, f"nonexistent UTXO: ({input_tx_hash}, {input_output_no})")
 
 
+class TransactionSizeException(TransactionValidationException):
+    def __init__(self, tx_hash, size):
+        super().__init__(tx_hash, f"too much size: {size} bytes")
+
+
 class TxOverwriteError(Exception):
     def __init__(self, tx_hash):
         super().__init__(f"Tried to overwrite transaction with hash: {tx_hash}")

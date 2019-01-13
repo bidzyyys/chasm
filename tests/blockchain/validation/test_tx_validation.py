@@ -7,7 +7,7 @@ from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
-    InputOutputSumsException, SignaturesAmountException
+    InputOutputSumsException, SignaturesAmountException, TransactionSizeException
 
 
 @fixture
@@ -41,6 +41,15 @@ def signed_simple_transaction(simple_transaction, alice, bob, carol):
                                           [alice.priv,
                                            bob.priv,
                                            carol.priv])
+
+
+@fixture
+def too_much_signed_simple_transaction(signed_simple_transaction):
+    for _ in range(13):
+        signed_simple_transaction.transaction.outputs.extend(
+            signed_simple_transaction.transaction.outputs.copy())
+
+    return signed_simple_transaction
 
 
 @fixture
@@ -96,3 +105,52 @@ def test_verifies_invalid_signature(validator, utxos, signed_simple_transaction)
 def test_verifies_signature(validator, utxos, signed_simple_transaction):
     assert validator(utxos).check_signatures(signed_simple_transaction.transaction,
                                              signed_simple_transaction.signatures)
+
+
+def test_tx_size(validator, signed_simple_transaction):
+    assert validator().check_size(signed_simple_transaction)
+
+
+def test_tx_has_too_much_size(validator, too_much_signed_simple_transaction):
+    with raises(TransactionSizeException):
+        validator().check_size(too_much_signed_simple_transaction)
+
+
+def test_verify_valid_transaction(validator, utxos, signed_simple_transaction):
+    validator(utxos).validate(signed_simple_transaction)
+
+
+def test_invalid_utxos_transaction(validator, signed_simple_transaction):
+    with raises(NonexistentUTXO):
+        validator().validate(signed_simple_transaction)
+
+
+def test_invalid_inputs_transaction(validator, utxos, signed_simple_transaction):
+    signed_simple_transaction.transaction.inputs[1] = \
+        signed_simple_transaction.transaction.inputs[0]
+    with raises(DuplicatedInput):
+        validator(utxos).validate(signed_simple_transaction)
+
+
+def test_invalid_signatures_len_transaction(validator, utxos, signed_simple_transaction):
+    del signed_simple_transaction.signatures[1:]
+    with raises(SignaturesAmountException):
+        validator(utxos).validate(signed_simple_transaction)
+
+
+def test_invalid_signatures_transaction(validator, utxos, signed_simple_transaction):
+    signed_simple_transaction.signatures[1] = \
+        signed_simple_transaction.signatures[0]
+    with raises(BadSignatureError):
+        validator(utxos).validate(signed_simple_transaction)
+
+
+def test_invalid_size_transaction(validator, utxos, too_much_signed_simple_transaction):
+    with raises(TransactionSizeException):
+        validator(utxos).validate(too_much_signed_simple_transaction)
+
+
+def test_verify_invalid_sums(validator, utxos, signed_simple_transaction):
+    signed_simple_transaction.outputs[0].value = 1000
+    with raises(InputOutputSumsException):
+        validator(utxos).validate(signed_simple_transaction)

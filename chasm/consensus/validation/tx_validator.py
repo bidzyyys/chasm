@@ -10,7 +10,10 @@ from chasm.consensus.primitives.transaction import Transaction, \
 from chasm.consensus.validation.validator import Validator
 from chasm.maintenance.exceptions import DuplicatedInput, \
     NonexistentUTXO, InputOutputSumsException, \
-    SignaturesAmountException
+    SignaturesAmountException, TransactionSizeException
+from chasm.serialization.rlp_serializer import RLPSerializer
+
+MAX_SIZE = 2 ** 20
 
 
 class TxValidator(Validator):
@@ -19,6 +22,7 @@ class TxValidator(Validator):
         self._dutxos = dutxos
         self._active_offers = active_offers
         self._accepted_offers = accepted_offers
+        self._rlp_serializer = RLPSerializer()
 
     @staticmethod
     @dispatch(SignedTransaction)
@@ -28,10 +32,13 @@ class TxValidator(Validator):
     @staticmethod
     @dispatch(MintingTransaction)
     def prepare(tx):
-        return {'tx': tx, 'signatures': None}
+        return {'tx': tx, 'signatures': list()}
 
     def check_size(self, tx):
-        pass
+        data = self._rlp_serializer.encode(tx)
+        if len(data) > MAX_SIZE:
+            raise TransactionSizeException(tx.hash(), len(data))
+        return True
 
     def check_inputs_repetitions(self, tx):
         checked = []
@@ -41,9 +48,6 @@ class TxValidator(Validator):
                                       tx_input.output_no)
             checked.append((tx_input.tx_hash, tx_input.output_no))
         return True
-
-    def check_outputs(self, tx):
-        pass
 
     def check_sums(self, tx):
         utxos = self._get_input_utxos(tx)
@@ -94,59 +98,59 @@ class TxValidator(Validator):
 
     @dispatch(Transaction)
     def do_specific_validation(self, tx: Transaction):
-        print("Transaction")
         return TxValidator.BaseTxValidator(). \
             validate(tx)
 
     @dispatch(OfferTransaction)
     def do_specific_validation(self, tx: OfferTransaction):
-        print("Offer")
         return TxValidator.OfferValidator(). \
             validate(tx)
 
     @dispatch(MatchTransaction)
     def do_specific_validation(self, tx: MatchTransaction):
-        print("Match")
         return TxValidator.MatchTransactionValidator(). \
             validate(tx)
 
     @dispatch(ConfirmationTransaction)
     def do_specific_validation(self, tx: ConfirmationTransaction):
-        print("Confirmation")
         return TxValidator.ConfirmationValidator(). \
             validate(tx)
 
     @dispatch(UnlockingDepositTransaction)
     def do_specific_validation(self, tx: UnlockingDepositTransaction):
-        print("Unlocking")
         return TxValidator.DepositUnlockValidator(). \
             validate(tx)
 
     @dispatch(MintingTransaction)
     def do_specific_validation(self, tx: MintingTransaction):
-        print("Minting")
         return TxValidator.MintingTransactionValidator(). \
             validate(tx)
 
     class OfferValidator(Validator):
         def check_does_not_use_fees_as_inputs(self):
+            # TODO
             pass
 
     class AcceptanceValidator(Validator):
         def check_does_not_use_fees_as_inputs(self):
+            # TODO
             pass
 
     class ConfirmationValidator(Validator):
         def check_uses_fees_inputs_from_the_right_exchange(self):
+            # TODO
             pass
 
     class DepositUnlockValidator(Validator):
+        # TODO
         pass
 
     class MatchTransactionValidator(Validator):
+        # TODO
         pass
 
     class MintingTransactionValidator(Validator):
+        # TODO
         pass
 
     class BaseTxValidator(Validator):
@@ -156,4 +160,5 @@ class TxValidator(Validator):
             return {'tx': obj}
 
         def check_does_not_use_fees_as_inputs(self, tx):
-            pass
+            # TODO
+            return True

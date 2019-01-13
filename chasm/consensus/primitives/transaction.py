@@ -41,6 +41,10 @@ class MintingTransaction(Transaction):
         self.height = height
         super().__init__(outputs=outputs)
 
+    def hash(self):
+        from chasm.serialization.rlp_serializer import RLPSerializer
+        return consensus.HASH_FUNC(RLPSerializer().encode(self)).digest()
+
 
 class OfferTransaction(Transaction):
     @classmethod
