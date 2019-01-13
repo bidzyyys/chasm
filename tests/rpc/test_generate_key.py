@@ -4,6 +4,7 @@ from os.path import isfile, isdir, join
 from ecdsa import VerifyingKey
 from pytest_bdd import scenario, given, when, then, parsers
 
+from chasm.consensus import CURVE
 from chasm.rpc import KEYSTORE
 from chasm.rpc.client import create_account, get_addresses, \
     get_priv_key, get_account_data
@@ -50,6 +51,6 @@ def validate_keys(parameters):
     priv_key = get_priv_key(account=account,
                             pwd=parameters["pwd"])
 
-    pub_key = VerifyingKey.from_der(bytes.fromhex(addresses[0][0]))
+    pub_key = VerifyingKey.from_string(bytes.fromhex(addresses[0][0]), curve=CURVE)
     signature = priv_key.sign(b"message")
     assert pub_key.verify(signature, b"message")

@@ -119,7 +119,7 @@ def generate_keys():
     priv_key = SigningKey.generate(CURVE)
     pub_key = priv_key.get_verifying_key()
 
-    return priv_key.to_der(), pub_key.to_der()
+    return priv_key.to_der(), pub_key.to_string()
 
 
 def create_aes_cipher(password, nonce=None):
@@ -372,7 +372,7 @@ def show_dutxos(args):
     """
     dutxos = get_dutxos(address=args.address, node=args.node,
                         port=args.port)
-    balance = 0.0
+    balance = 0
     for dutxo in dutxos:
         display_txo(dutxo)
         balance += dutxo["value"]
@@ -388,7 +388,7 @@ def show_utxos(args):
     """
     utxos = get_utxos(address=args.address, node=args.node,
                       port=args.port)
-    balance = 0.0
+    balance = 0
     for utxo in utxos:
         display_txo(utxo)
         balance += utxo["value"]
@@ -404,7 +404,7 @@ def show_all_funds(args):
     """
 
     addresses = get_addresses(args.datadir)
-    total_balance = 0.0
+    total_balance = 0
     for address in addresses:
         balance = count_balance(address[0], args.node, args.port)
         print("Balance: {} bdzys".format(balance))
@@ -460,7 +460,6 @@ def display_txo(txo):
     :param txo: UTXO/DUTXO to be displayed
     :return: None
     """
-    print("Hex: {}".format(txo["hex"]))
     print("Value: {} bdzys".format(txo["value"]))
     print("Output number: {}".format(txo["output_no"]))
     print("Transaction(hex): {}\n".format(txo["tx"]))
@@ -669,7 +668,7 @@ def get_utxos_for_tx(node, port, address, amount):
         raise RuntimeError("Cannot get UTXOs of: {}".format(address))
 
     sorted_utxos = sorted(utxos, key=lambda utxo: utxo["value"])
-    funds = 0.0
+    funds = 0
     for index, utxo in enumerate(sorted_utxos):
         funds += utxo["value"]
         if funds >= amount:
@@ -805,7 +804,6 @@ def do_simple_transfer(node, port, amount, receiver, sender, tx_fee, datadir, si
                            owner=sender,
                            tx_fee=tx_fee)
 
-    logger.info("Transaction created successfully!")
     return publish_transaction(node, port, tx,
                                sender, datadir, signing_key), tx
 
