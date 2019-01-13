@@ -51,12 +51,15 @@ class TransactionSizeException(TransactionValidationException):
         super().__init__(tx_hash, f"too much size: {size} bytes")
 
 
-class XpeerFeeOutputException(TransactionValidationException):
-    def __init__(self, tx_hash, output_no):
-        super().__init__(tx_hash, f"transaction sends XpeerFeeOutput, output no: {output_no}")
+class XpeerFeeOutputException(ValueError):
+    pass
 
 
-class UseXpeerFeeOutputExceptionAsInput(TransactionValidationException):
+class XpeerOutputException(ValueError):
+    pass
+
+
+class UseXpeerFeeOutputAsInputException(TransactionValidationException):
     def __init__(self, tx_hash):
         super().__init__(tx_hash, f"transaction use XpeerFeeOutput as input")
 
@@ -82,8 +85,8 @@ class ReceiverUseXpeerOutputBeforeConfirmationError(TransactionValidationExcepti
 
 
 class InvalidAddressLengthOutputError(TransactionValidationException):
-    def __init__(self, tx_hash, length, output_no):
-        super().__init__(tx_hash, f"Invalid address length: {length}, output_no: {output_no}")
+    def __init__(self, tx_hash, output_no):
+        super().__init__(tx_hash, f"Invalid address length, output_no: {output_no}")
 
 
 class InvalidAddressLengthPaymentError(TransactionValidationException):
@@ -113,3 +116,53 @@ class BlockSizeError(BlockValidationError):
     def __init__(self, actual_size):
         from chasm.consensus.validation.block_validator import MAX_BLOCK_SIZE
         super().__init__(f'Block size {actual_size} (max size={MAX_BLOCK_SIZE})')
+
+
+class NegativeOutput(TransactionValidationException):
+    def __init__(self, tx_hash, output_no):
+        super().__init__(tx_hash, f"Try to send negative output, output_no: {output_no}")
+
+
+class OfferExistsError(TransactionValidationException):
+    def __init__(self, tx_hash):
+        super().__init__(tx_hash, f"Try to add existing offer")
+
+
+class MatchNonExistentOfferError(TransactionValidationException):
+    def __init__(self, tx_hash, offer_hash):
+        super().__init__(tx_hash, f"Try to accept nonexistent offer: {offer_hash.hex()}")
+
+
+class DepositOutputError(TransactionValidationException):
+    def __init__(self, tx_hash, output_no):
+        super().__init__(tx_hash, f"Deposit is not a TransferOutput, output_no: {output_no}")
+
+
+class DepositValueError(TransactionValidationException):
+    def __init__(self, tx_hash, index, value, required):
+        super().__init__(tx_hash, f"Too small deposit: {value}, required: {required}, output_no: {index}")
+
+
+class OutputIsNotXpeerFeeOutputError(TransactionValidationException):
+    def __init__(self, tx_hash, index):
+        super().__init__(tx_hash, f"Confirmation fee is not XpeerFeeOutput, output_no: {index}")
+
+
+class ConfFeeIndexOutOfRangeError(TransactionValidationException):
+    def __init__(self, tx_hash, index):
+        super().__init__(tx_hash, f"Confirmation fee index out of range: {index}")
+
+
+class UnknownExchangeTokenError(TransactionValidationException):
+    def __init__(self, tx_hash, token):
+        super().__init__(tx_hash, f"Unknown exchange token: {token}")
+
+
+class ExchangeAmountBelowZeroError(TransactionValidationException):
+    def __init__(self, tx_hash, token, amount):
+        super().__init__(tx_hash, f"Exchange amount below zero: {amount}, token: {token}")
+
+
+class OfferTimeoutBeforeNow(TransactionValidationException):
+    def __init__(self, tx_hash, timeout):
+        super().__init__(tx_hash, f"Offer timeout before now: {timeout}")

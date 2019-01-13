@@ -18,11 +18,15 @@ from chasm.maintenance.exceptions import DuplicatedInput, \
     SignaturesAmountException, TransactionSizeException, \
     ReceiverUseXpeerOutputBeforeConfirmationError, \
     SenderUseXpeerOutputAfterConfirmationError, \
-    SenderUseXpeerOutputBeforeTimeoutError, \
-    UseXpeerFeeOutputExceptionAsInput, \
-    InvalidAddressLengthOutputError, \
-    SendXpeerOutputWithoutExchangeError, \
-    SendXpeerFeeOutputError
+    SenderUseXpeerOutputBeforeTimeoutError, UnknownExchangeTokenError, \
+    UseXpeerFeeOutputAsInputException, DepositValueError, \
+    InvalidAddressLengthOutputError, DepositOutputError, \
+    SendXpeerOutputWithoutExchangeError, MatchNonExistentOfferError, \
+    SendXpeerFeeOutputError, NegativeOutput, OfferExistsError, \
+    OutputIsNotXpeerFeeOutputError, InvalidAddressLengthPaymentError, \
+    ExchangeAmountBelowZeroError, OfferTimeoutBeforeNow, \
+    ConfFeeIndexOutOfRangeError, XpeerFeeOutputException, \
+    XpeerOutputException
 from chasm.serialization.rlp_serializer import RLPSerializer
 
 MAX_SIZE = 2 ** 20
@@ -51,7 +55,16 @@ class TxValidator(Validator):
             raise TransactionSizeException(tx.hash(), len(data))
         return True
 
-    def check_inputs_repetitions(self, tx):
+    @staticmethod
+    def check_outputs_are_positive(tx):
+        for i, output in enumerate(tx.outputs):
+            if output.value < 0:
+                raise NegativeOutput(tx.hash(), i)
+
+        return True
+
+    @staticmethod
+    def check_inputs_repetitions(tx):
         checked = []
         for tx_input in tx.inputs:
             if (tx_input.tx_hash, tx_input.output_no) in checked:
@@ -177,6 +190,10 @@ class TxValidator(Validator):
             self._accepted_offers = accepted_offers
 
         @staticmethod
+        def _validate_address_length(token, address):
+            return len(address) == ADDRESS_LENGTH.get(token)
+
+        @staticmethod
         def prepare(self, obj):
             return {'tx': obj}
 
@@ -184,24 +201,79 @@ class TxValidator(Validator):
         def _validate_output(self, arg, *args):
             raise NotImplementedError
 
-        @dispatch(TransferOutput, int, bytes)
-        def _validate_output(self, output: TransferOutput, output_no, tx_hash):
-            if len(output.receiver) < ADDRESS_LENGTH.get(Tokens.XPEER.value):
-                raise InvalidAddressLengthOutputError(tx_hash, len(output.receiver),
-                                                      output_no)
-            return True
+        @dispatch(TransferOutput)
+        def _validate_output(self, output):
+            return self._validate_address_length(Tokens.XPEER.value,
+                                                 output.receiver)
 
-        @dispatch(XpeerOutput, int, bytes)
-        def _validate_output(self, output: XpeerOutput, output_no, tx_hash):
-            if len(output.receiver) < ADDRESS_LENGTH.get(Tokens.XPEER.value):
-                raise InvalidAddressLengthOutputError(tx_hash, len(output.receiver),
-                                                      output_no)
+        @dispatch(XpeerOutput)
+        def _validate_output(self, output: XpeerOutput):
             if output.exchange not in self._accepted_offers:
-                raise SendXpeerOutputWithoutExchangeError(tx_hash, output_no)
+                raise XpeerOutputException
+
+            return self._validate_address_length(Tokens.XPEER.value,
+                                                 output.receiver) and \
+                   self._validate_address_length(Tokens.XPEER.value,
+                                                 output.sender)
 
         @dispatch(XpeerFeeOutput, int, bytes)
-        def _validate_output(self, output, output_no, tx_hash):
-            raise SendXpeerFeeOutputError(tx_hash, output_no)
+        def _validate_output(self, output):
+            raise XpeerFeeOutputException
+
+        def _validate_outputs(self, tx):
+            for i, output in enumerate(tx.outputs):
+                try:
+                    if self._validate_output(output) is False:
+                        raise InvalidAddressLengthOutputError(tx.hash(), i)
+                except XpeerOutputException:
+                    raise SendXpeerOutputWithoutExchangeError(tx.hash, i)
+                except XpeerFeeOutputException:
+                    SendXpeerFeeOutputError(tx.hash(), i)
+            return True
+
+        def _validate_inputs(self, tx):
+            for tx_input in tx.inputs:
+                if isinstance(self._utxos.get((tx_input.tx_hash,
+                                               tx_input.output_no)),
+                              XpeerFeeOutput):
+                    raise UseXpeerFeeOutputAsInputException(tx.hash())
+            return True
+
+    class ExchangeSideTransactionValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers):
+            self._utxos = utxos
+            self._accepted_offers = accepted_offers
+
+        @dispatch(XpeerFeeOutput)
+        def _validate_output(self, output):
+            return True
+
+        def _validate_deposit(self, tx):
+            if len(tx.outputs) <= tx.deposit_index:
+                raise DepositOutputError
+            output_sum = sum(output.value for output in tx.outputs)
+            input_sum = 0
+            for tx_input in tx.inputs:
+                utxo = self._utxos.get(tx_input.tx_hash, tx_input.output_no)
+                input_sum += utxo.value
+            tx_fee = input_sum - output_sum
+            if tx.outputs[tx.deposit_index].value < tx_fee * 10:
+                raise DepositValueError(tx.hash(), tx.deposit_index,
+                                        tx.outputs[tx.deposit_index].value,
+                                        tx_fee * 10)
+
+            return True
+
+        @staticmethod
+        def _validate_confirmation_fee(tx):
+            if len(tx.outputs) < tx.confirmation_fee_index:
+                raise ConfFeeIndexOutOfRangeError(tx.hash(),
+                                                  tx.confirmation_fee_index)
+            if isinstance(tx.outputs[tx.confirmation_fee_index],
+                          XpeerFeeOutput) is False:
+                raise OutputIsNotXpeerFeeOutputError(tx.hash(),
+                                                     tx.confirmation_fee_index)
+            return True
 
     class BaseTxValidator(TransactionValidator):
         def __init__(self, utxos, accepted_offers):
@@ -211,43 +283,142 @@ class TxValidator(Validator):
             return {'tx': obj}
 
         def check_outputs(self, tx):
-            for i, output in enumerate(tx.outputs):
-                self._validate_output(output, i, tx.hash())
+            return self._validate_outputs(tx)
 
         def check_inputs(self, tx):
-            for tx_input in tx.inputs:
-                if isinstance(self._utxos.get((tx_input.tx_hash,
-                                               tx_input.output_no)),
-                              XpeerFeeOutput):
-                    raise UseXpeerFeeOutputExceptionAsInput(tx.hash())
+            return self._validate_inputs(tx)
 
-    # class OfferValidator(TransactionValidator):
-    #     def __init__(self, utxos, accepted_offers, active_offers):
-    #         self._active_offers = active_offers
-    #         super().__init__(utxos, accepted_offers)
-    #
-    #     def check_does_not_use_fees_as_inputs(self):
-    #         # TODO
-    #         pass
-    #
-    # class AcceptanceValidator(TransactionValidator):
-    #     def __init__(self, utxos, accepted_offers, active_offers):
-    #         self._active_offers = active_offers
-    #         super().__init__(utxos, accepted_offers)
-    #
-    #     def check_does_not_use_fees_as_inputs(self):
-    #         # TODO
-    #         pass
-    #
-    # class ConfirmationValidator(TransactionValidator):
-    #     def __init__(self, utxos, accepted_offers):
-    #         super().__init__(utxos, accepted_offers)
-    #
-    #     def check_uses_fees_inputs_from_the_right_exchange(self):
-    #         # TODO
-    #         pass
-    #
-    # class DepositUnlockValidator(TransactionValidator):
-    #     def __init__(self, utxos, accepted_offers, active_offers):
-    #         self._active_offers = active_offers
-    #         super().__init__(utxos, accepted_offers)
+    class OfferValidator(ExchangeSideTransactionValidator):
+        def __init__(self, utxos, accepted_offers, active_offers):
+            self._active_offers = active_offers
+            super().__init__(utxos, accepted_offers)
+
+        def check_outputs(self, tx):
+            return self._validate_outputs(tx)
+
+        def check_inputs(self, tx):
+            return self._validate_inputs(tx)
+
+        def check_if_exist(self, tx):
+            if tx.hash() in self._active_offers:
+                raise OfferExistsError(tx.hash)
+
+        @staticmethod
+        def _validate_token(token):
+            return token in ADDRESS_LENGTH.keys()
+
+        def check_token(self, tx):
+            if self._validate_token(tx.token_in) is False:
+                raise UnknownExchangeTokenError(tx.hash(), tx.token_in)
+            return True
+
+        def check_expected(self, tx):
+            if self._validate_token(tx.token_out) is False:
+                raise UnknownExchangeTokenError(tx.hash(), tx.token_out)
+            return True
+
+        @staticmethod
+        def check_amount(tx):
+            if tx.value_in < 0:
+                raise ExchangeAmountBelowZeroError(tx.hash(), tx.token_in,
+                                                   tx.value_in)
+            return True
+
+        @staticmethod
+        def check_price(tx):
+            if tx.value_out < 0:
+                raise ExchangeAmountBelowZeroError(tx.hash(), tx.token_out,
+                                                   tx.value_out)
+            return True
+
+        @staticmethod
+        def check_timeout(tx):
+            timeout = datetime.fromtimestamp(tx.timeout)
+            if timeout < datetime.now():
+                raise OfferTimeoutBeforeNow(tx.hash(), timeout)
+
+            return True
+
+        def check_deposit(self, tx):
+            return self._validate_deposit(tx)
+
+        def check_confirmation_fee(self, tx):
+            return self._validate_confirmation_fee(tx)
+
+        def check_payment_address(self, tx):
+            if self._validate_address_length(tx.token_out, tx.address_out):
+                raise InvalidAddressLengthPaymentError(tx.hash(),
+                                                       len(tx.address_out),
+                                                       tx.token_out)
+            return True
+
+    class AcceptanceValidator(ExchangeSideTransactionValidator):
+        def __init__(self, utxos, accepted_offers, active_offers):
+            self._active_offers = active_offers
+            super().__init__(utxos, accepted_offers)
+
+        def check_outputs(self, tx):
+            return self._validate_outputs(tx)
+
+        def check_inputs(self, tx):
+            return self._validate_inputs(tx)
+
+        def check_deposit(self, tx):
+            return self._validate_deposit(tx)
+
+        def check_confirmation_fee(self, tx):
+            return self._validate_confirmation_fee(tx)
+
+        def check_payment_address(self, tx):
+            offer = self._active_offers.get(tx.exchange)
+            token = offer.token_in
+            if self._validate_address_length(token, tx.address_in):
+                raise InvalidAddressLengthPaymentError(tx.hash(),
+                                                       len(tx.address_in),
+                                                       token)
+
+        def check_if_offer_exists(self, tx: MatchTransaction):
+            if tx.exchange not in self._active_offers:
+                raise MatchNonExistentOfferError(tx.hash(), tx.exchange)
+            return True
+
+    class ConfirmationValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers):
+            super().__init__(utxos, accepted_offers)
+
+        def check_inputs(self, tx):
+            raise NotImplementedError
+
+        def check_outputs(self, tx):
+            raise NotImplementedError
+
+        def check_exchange(self, tx):
+            raise NotImplementedError
+
+        def check_proof_in(self, tx):
+            # Currently we have no mechanism to validate other tokens
+            raise NotImplementedError
+
+        def check_proof_out(self, tx):
+            raise NotImplementedError
+
+    class DepositUnlockValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers, active_offers):
+            self._active_offers = active_offers
+            super().__init__(utxos, accepted_offers)
+
+        def check_inputs(self, tx):
+            raise NotImplementedError
+
+        def check_outputs(self, tx):
+            raise NotImplementedError
+
+        def check_exchange(self, tx):
+            raise NotImplementedError
+
+        def check_side(self, tx):
+            raise NotImplementedError
+
+        def check_proof(self, tx):
+            # Currently we have no mechanism to validate other tokens
+            raise NotImplementedError
