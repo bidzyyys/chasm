@@ -11,7 +11,7 @@ from depq import DEPQ
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
 from chasm.consensus.primitives.transaction import SignedTransaction, MintingTransaction, OfferTransaction, \
-    MatchTransaction, UnlockingDepositTransaction
+    MatchTransaction, UnlockingDepositTransaction, ConfirmationTransaction
 from chasm.consensus.validation.block_validator import BlockValidator
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import TxOverwriteError
@@ -69,8 +69,8 @@ class State:
             new_matches = self._extract_matched_offers(block)
             self._apply_new_matches(new_matches, block.timestamp)
 
-            unlocked_utxos = self._extract_unlocked_utxos(block)
-            self._apply_unlocked_utxos(unlocked_utxos)
+            confirmations, unlocks = self._extract_deposits_unlocks(block)
+            self._apply_unlocked_utxos(confirmations, unlocks)
 
             self._apply_block(block, block_hash)
 
@@ -208,8 +208,14 @@ class State:
                 isinstance(tx, SignedTransaction) and isinstance(tx.transaction, MatchTransaction)]
 
     @staticmethod
-    def _extract_unlocked_utxos(block):
-        return {}
+    def _extract_deposits_unlocks(block):
+        confirmations = [tx.transaction for tx in block.transactions
+                         if isinstance(tx, SignedTransaction) and isinstance(tx.transaction, ConfirmationTransaction)]
+
+        unlocks = [tx.transaction for tx in block.transactions
+                   if isinstance(tx, SignedTransaction) and isinstance(tx.transaction, UnlockingDepositTransaction)]
+
+        return confirmations, unlocks
 
     def _apply_block(self, block, block_hash):
         self.blocks[block_hash] = block
@@ -246,8 +252,25 @@ class State:
             self.matched_offers[offer.hash()] = (offer, match, block_timestamp)
             self.db.put_matched_offer(offer.hash(), offer, match, block_timestamp)
 
-    def _apply_unlocked_utxos(self, unlocked_utxos):
-        pass
+    def _apply_unlocked_utxos(self, confirmations, unlocks):
+        for tx in confirmations:
+            (offer, acceptance, _timestamp) = self.matched_offers.pop(tx.exchange)
+            self.db.delete_matched_offer(tx.exchange)
+
+            utxo1 = (offer.hash(), offer.deposit_index)
+            utxo2 = (acceptance.hash(), acceptance.deposit_index)
+
+            dutxo1 = self.dutxos.pop(utxo1)
+            self.db.delete_dutxo(*utxo1)
+
+            dutxo2 = self.dutxos.pop(utxo2)
+            self.db.delete_dutxo(*utxo2)
+
+            self.utxos[utxo1] = dutxo1
+            self.db.put_utxo(*utxo1, output=dutxo1)
+
+            self.utxos[utxo2] = dutxo2
+            self.db.put_utxo(*utxo2, output=dutxo2)
 
     def _clean_timeouted_offers(self):
         pass
