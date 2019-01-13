@@ -272,6 +272,26 @@ class State:
             self.utxos[utxo2] = dutxo2
             self.db.put_utxo(*utxo2, output=dutxo2)
 
+        for tx in unlocks:
+            (offer, acceptance, _timestamp) = self.matched_offers.pop(tx.exchange)
+            self.db.delete_matched_offer(tx.exchange)
+
+            utxo1 = (offer.hash(), offer.deposit_index)
+            utxo2 = (acceptance.hash(), acceptance.deposit_index)
+
+            dutxo1 = self.dutxos.pop(utxo1)
+            self.db.delete_dutxo(*utxo1)
+
+            dutxo2 = self.dutxos.pop(utxo2)
+            self.db.delete_dutxo(*utxo2)
+
+            if tx.proof_side == 0:
+                self.utxos[utxo1] = dutxo1
+                self.db.put_utxo(*utxo1, output=dutxo1)
+            else:
+                self.utxos[utxo2] = dutxo2
+                self.db.put_utxo(*utxo2, output=dutxo2)
+
     def _clean_timeouted_offers(self):
         pass
 
