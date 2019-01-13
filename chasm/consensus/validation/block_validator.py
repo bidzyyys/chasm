@@ -1,5 +1,7 @@
 from chasm.consensus import Block
 from chasm.consensus.validation.tx_validator import Validator
+from chasm.maintenance.exceptions import BlockHashError, BlockDifficultyError, BlockSizeError
+from chasm.serialization.rlp_serializer import RLPSerializer
 
 EXPECTED_BLOCK_INTERVAL = 5  # time interval between two consecutive blocks
 
@@ -9,6 +11,12 @@ INITIAL_MINTING_VALUE = 10 ** 20
 MINTING_VALUE_HALVING_PERIOD = 2 ** 16  # about 4 years
 
 MAX_BLOCK_SIZE = 2 ** 20  # 1MB
+
+
+def check_block_size(block: Block):
+    size = len(RLPSerializer().encode(block))
+    if not BlockStatelessValidator.check_block_size(size):
+        raise BlockSizeError(size)
 
 
 class BlockValidator(Validator):
@@ -25,13 +33,24 @@ class BlockValidator(Validator):
         }
 
     def check_block_difficulty(self, header: Block.Header):
-        pass
+        expected = BlockStatelessValidator.get_expected_difficulty(self._height, self._last_block.difficulty,
+                                                                   self._old_block.timestamp,
+                                                                   self._last_block.timestamp)
 
-    def check_block_hash(self, header: Block.Header):
-        pass
+        if not expected == header.difficulty:
+            raise BlockDifficultyError(expected, header.difficulty)
+
+    @staticmethod
+    def check_block_hash(header: Block.Header):
+        if not BlockStatelessValidator.check_block_hash(header.hash(), header.difficulty):
+            raise BlockHashError(header.hash(), header.difficulty)
 
 
 class BlockStatelessValidator:
+
+    @staticmethod
+    def check_block_size(size):
+        return size <= MAX_BLOCK_SIZE
 
     @staticmethod
     def get_minting_value(height):
@@ -44,10 +63,6 @@ class BlockStatelessValidator:
             return last_diff  # TODO: recalculate difficulty
         else:
             return 16
-
-    @staticmethod
-    def check_block_difficulty(height, last_diff, old_timestamp, last_timestamp):
-        pass
 
     @staticmethod
     def check_block_hash(block_hash, difficulty):

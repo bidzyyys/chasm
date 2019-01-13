@@ -4,7 +4,7 @@ from chasm.consensus import Block
 from chasm.consensus.primitives.transaction import MintingTransaction
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.consensus.validation.block_validator import DIFFICULTY_COMPUTATION_INTERVAL, \
-    BlockStatelessValidator, MAX_BLOCK_SIZE
+    BlockStatelessValidator
 from chasm.serialization.rlp_serializer import RLPSerializer
 from chasm.state.service import StateService
 from chasm.state.state import State
@@ -52,7 +52,7 @@ class BlockBuilder:
 
         block.add_transaction(minting_tx)
 
-        while not serializer.encode(block).__len__() > MAX_BLOCK_SIZE:
+        while not BlockStatelessValidator.check_block_size(len(serializer.encode(block))):
             tx = None
             try:
                 tx = self._state.pop_pending_tx()

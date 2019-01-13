@@ -51,6 +51,17 @@ class RPCError(ValueError):
         super().__init__(message)
 
 
+class BlockDifficultyError(BlockValidationError):
+    def __init__(self, expected, actual):
+        super().__init__(f'Expected difficulty {expected}, but got {actual}')
+
+
 class BlockHashError(BlockValidationError):
-    def __init__(self):
-        super().__init__()
+    def __init__(self, block_hash: bytes, expected_diff: int):
+        super().__init__(f'Expected difficulty {expected_diff}, but got hash: {block_hash.hex()}')
+
+
+class BlockSizeError(BlockValidationError):
+    def __init__(self, actual_size):
+        from chasm.consensus.validation.block_validator import MAX_BLOCK_SIZE
+        super().__init__(f'Block size {actual_size} (max size={MAX_BLOCK_SIZE})')
