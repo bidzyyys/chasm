@@ -7,7 +7,8 @@ from pytest import fixture
 
 from chasm import consensus
 from chasm.consensus import GENESIS_BLOCK, Block
-from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction
+from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction, \
+    MatchTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerFeeOutput
 from chasm.consensus.tokens import Tokens
@@ -74,6 +75,24 @@ def minting_transaction(alice, bob):
 
 
 @fixture
+def offer_transaction(alice, utxo):
+    tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
+                          token_in=Tokens.ETHEREUM.value, token_out=Tokens.BITCOIN.value, value_in=1, value_out=2,
+                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=1000)
+
+    return SignedTransaction.build_signed(tx, [alice.priv])
+
+
+@fixture
+def match_transaction(bob, offer_transaction, second_utxo):
+    match = MatchTransaction(inputs=[TxInput(*second_utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, bob.pub)],
+                             exchange=offer_transaction.hash(), address_in=bob.pub, confirmation_fee_index=0,
+                             deposit_index=1)
+
+    return SignedTransaction.build_signed(match, [bob.priv])
+
+
+@fixture
 def block_with_minting_tx(empty_state, minting_transaction):
     previous = empty_state.get_block_by_no(0)
 
@@ -101,6 +120,11 @@ def filled_state(empty_state, alice):
 @fixture
 def utxo(filled_state):
     return list(filled_state.get_utxos().keys())[0]
+
+
+@fixture
+def second_utxo(filled_state):
+    return list(filled_state.get_utxos().keys())[1]
 
 
 def next_empty_block(state):
@@ -280,29 +304,85 @@ def test_cannot_apply_transaction_with_the_same_hash_twice(filled_state, utxo, a
         filled_state.apply_block(another_block)
 
 
-def test_stores_offer_transaction_and_its_deposit(filled_state, utxo, alice, restored_state):
+def test_stores_offer_transaction_and_its_deposit(filled_state, utxo, alice, restored_state, offer_transaction):
     next_block = next_empty_block(filled_state)
 
-    tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
-                          token_in=Tokens.ETHEREUM.value, token_out=Tokens.BITCOIN.value, value_in=1, value_out=2,
-                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=1000)
-
-    signed = SignedTransaction.build_signed(tx, [alice.priv])
-
-    next_block.add_transaction(signed)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
 
     filled_state.apply_block(next_block)
 
     assert utxo not in filled_state.get_utxos()
     assert utxo not in filled_state.get_dutxos()
 
-    assert (signed.hash(), 0) in filled_state.get_utxos()
-    assert (signed.hash(), 0) not in filled_state.get_dutxos()
+    assert (offer_transaction.hash(), 0) in filled_state.get_utxos()
+    assert (offer_transaction.hash(), 0) not in filled_state.get_dutxos()
 
-    assert (signed.hash(), 1) not in filled_state.get_utxos()
-    assert (signed.hash(), 1) in filled_state.get_dutxos()
+    assert (offer_transaction.hash(), 1) not in filled_state.get_utxos()
+    assert (offer_transaction.hash(), 1) in filled_state.get_dutxos()
 
-    assert signed.hash() in filled_state.get_active_offers()
+    assert offer_transaction.hash() in filled_state.get_active_offers()
 
     with restored_state as state:
-        assert signed.hash() in state.get_active_offers()
+        assert offer_transaction.hash() in state.get_active_offers()
+
+
+def test_stores_offer_match(filled_state, offer_transaction, match_transaction, second_utxo):
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
+    filled_state.apply_block(next_block)
+
+    next_block = next_empty_block(filled_state)
+
+    next_block.add_transaction(match_transaction)
+    next_block.update_merkle_root()
+
+    assert second_utxo in filled_state.get_utxos()
+
+    filled_state.apply_block(next_block)
+
+    assert second_utxo not in filled_state.get_utxos()
+    assert second_utxo not in filled_state.get_dutxos()
+
+    assert (match_transaction.hash(), 0) in filled_state.get_utxos()
+    assert (match_transaction.hash(), 0) not in filled_state.get_dutxos()
+
+    assert (match_transaction.hash(), 1) not in filled_state.get_utxos()
+    assert (match_transaction.hash(), 1) in filled_state.get_dutxos()
+
+    assert offer_transaction.hash() not in filled_state.get_active_offers()
+
+    match = filled_state.get_matched_offers()[offer_transaction.hash()]
+
+    assert (offer_transaction.transaction, match_transaction.transaction, next_block.timestamp) == match
+
+
+def test_persists_offer_match(filled_state, offer_transaction, match_transaction, second_utxo, restored_state):
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
+    filled_state.apply_block(next_block)
+
+    next_block = next_empty_block(filled_state)
+
+    next_block.add_transaction(match_transaction)
+    next_block.update_merkle_root()
+
+    filled_state.apply_block(next_block)
+
+    with restored_state as state:
+        assert second_utxo not in state.get_utxos()
+        assert second_utxo not in state.get_dutxos()
+
+        assert (match_transaction.hash(), 0) in state.get_utxos()
+        assert (match_transaction.hash(), 0) not in state.get_dutxos()
+
+        assert (match_transaction.hash(), 1) not in state.get_utxos()
+        assert (match_transaction.hash(), 1) in state.get_dutxos()
+
+        assert offer_transaction.hash() not in state.get_active_offers()
+
+        match = state.get_matched_offers()[offer_transaction.hash()]
+
+        assert (offer_transaction.transaction, match_transaction.transaction, next_block.timestamp) == match

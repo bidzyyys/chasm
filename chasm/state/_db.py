@@ -24,7 +24,6 @@ class DB:
         OFFER_ACTIVE = b'oa'
         OFFER_MATCHED = b'om'
 
-
     _rlp_serializer = RLPSerializer()
 
     def __init__(self, db_dir, create_if_missing=False):
@@ -161,14 +160,29 @@ class DB:
         return [(index, priority, DB._rlp_serializer.decode(tx_enc)) for index, (priority, tx_enc) in pairs]
 
     def put_active_offer(self, offer):
-        self.put(offer.hash(), DB._rlp_serializer.encode(offer), DB._KeyPrefixes.OFFER_ACTIVE.value)
+        self.put(offer.hash(), DB._rlp_serializer.encode(offer), DB._KeyPrefixes.OFFER_ACTIVE)
 
-    def delete_new_offer(self, offer_hash):
-        self.delete(offer_hash, DB._KeyPrefixes.OFFER_ACTIVE.value)
+    def delete_active_offer(self, offer_hash):
+        self.delete(offer_hash, DB._KeyPrefixes.OFFER_ACTIVE)
 
     def get_active_offers(self):
         new_offers = self.db.prefixed_db(DB._KeyPrefixes.OFFER_ACTIVE.value)
         return [(k, DB._rlp_serializer.decode(v)) for k, v in new_offers]
+
+    def put_matched_offer(self, offer_hash, offer, match, timestamp):
+        encoded = rlp.encode([DB._rlp_serializer.encode(offer), DB._rlp_serializer.encode(match), timestamp])
+        self.put(offer_hash, encoded, DB._KeyPrefixes.OFFER_MATCHED)
+
+    def delete_matched_offer(self, offer_hash):
+        self.delete(offer_hash, DB._KeyPrefixes.OFFER_MATCHED)
+
+    def get_matched_offers(self):
+        matched_offers = self.db.prefixed_db(DB._KeyPrefixes.OFFER_MATCHED.value)
+        enc = [(offer_hash, rlp.decode(encoded, sedes=sedes.List([sedes.raw, sedes.raw, sedes.big_endian_int]))) for
+               offer_hash, encoded in matched_offers]
+
+        return [(offer_hash, (DB._rlp_serializer.decode(enc_offer), DB._rlp_serializer.decode(enc_match), timestamp))
+                for offer_hash, (enc_offer, enc_match, timestamp) in enc]
 
     def close(self):
         self.db.close()

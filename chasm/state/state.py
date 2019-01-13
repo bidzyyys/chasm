@@ -27,7 +27,7 @@ class State:
         self.blocks_by_height = {}
         self.pending_txs = None
         self.active_offers = {}
-        self.accepted_offers = {}
+        self.matched_offers = {}
         self.current_height = 0
         self.buffer_len = pending_queue_size
 
@@ -67,7 +67,7 @@ class State:
             self._apply_new_offers(new_offers)
 
             new_matches = self._extract_matched_offers(block)
-            self._apply_new_matches(new_matches)
+            self._apply_new_matches(new_matches, block.timestamp)
 
             unlocked_utxos = self._extract_unlocked_utxos(block)
             self._apply_unlocked_utxos(unlocked_utxos)
@@ -117,7 +117,7 @@ class State:
 
     def get_matched_offers(self):
         with self._lock:
-            return copy.deepcopy(self.accepted_offers)
+            return copy.deepcopy(self.matched_offers)
 
     def get_dutxos(self):
         with self._lock:
@@ -163,6 +163,7 @@ class State:
             self.dutxos = dict(self.db.get_dutxos())
 
             self.active_offers = dict(self.db.get_active_offers())
+            self.matched_offers = dict(self.db.get_matched_offers())
 
             self.pending_txs = _PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
             self.current_height = self._read_current_height()
@@ -198,12 +199,13 @@ class State:
 
     @staticmethod
     def _extract_new_offers(block):
-        return {tx.hash(): tx.transaction for tx in block.transactions if
-                isinstance(tx, SignedTransaction) and isinstance(tx.transaction, OfferTransaction)}
+        return [tx.transaction for tx in block.transactions if
+                isinstance(tx, SignedTransaction) and isinstance(tx.transaction, OfferTransaction)]
 
     @staticmethod
     def _extract_matched_offers(block):
-        return {}
+        return [tx.transaction for tx in block.transactions if
+                isinstance(tx, SignedTransaction) and isinstance(tx.transaction, MatchTransaction)]
 
     @staticmethod
     def _extract_unlocked_utxos(block):
@@ -231,13 +233,18 @@ class State:
             self.db.delete_utxo(*txo)
 
     def _apply_new_offers(self, offers):
-        for tx_hash, offer_tx in offers.items():
+        for tx in offers:
             # NOTE: we do not check against overwriting as it is checked when adding to txs indices
-            self.active_offers[tx_hash] = offer_tx
-            self.db.put_active_offer(offer_tx)
+            self.active_offers[tx.hash()] = tx
+            self.db.put_active_offer(tx)
 
-    def _apply_new_matches(self, matches):
-        pass
+    def _apply_new_matches(self, matches, block_timestamp):
+        for match in matches:
+            offer = self.active_offers.pop(match.exchange)
+            self.db.delete_active_offer(offer.hash())
+
+            self.matched_offers[offer.hash()] = (offer, match, block_timestamp)
+            self.db.put_matched_offer(offer.hash(), offer, match, block_timestamp)
 
     def _apply_unlocked_utxos(self, unlocked_utxos):
         pass
