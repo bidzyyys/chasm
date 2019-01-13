@@ -163,9 +163,8 @@ def tx_transfer_outputs(tx_transfer_output):
 
 
 @fixture
-def tx_xpeer_output(alice, exchange):
-    (_priv_key, pub_key) = alice
-    return XpeerOutput(value=100, receiver=pub_key, exchange=exchange)
+def tx_xpeer_output(alice, bob, exchange):
+    return XpeerOutput(value=100, receiver=alice.pub, sender=bob.pub, exchange=exchange)
 
 
 @fixture

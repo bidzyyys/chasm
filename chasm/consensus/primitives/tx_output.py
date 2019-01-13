@@ -17,10 +17,11 @@ class TransferOutput(Serializable):
 class XpeerOutput(Serializable):
     @classmethod
     def fields(cls) -> [(str, object)]:
-        return [('value', big_endian_int), ('receiver', binary), ('exchange', binary)]
+        return [('value', big_endian_int), ('receiver', binary), ('sender', binary), ('exchange', binary)]
 
-    def __init__(self, value: int, receiver: bytes, exchange: bytes):
+    def __init__(self, value: int, sender: bytes, receiver: bytes, exchange: bytes):
         self.value = value
+        self.sender = sender
         self.receiver = receiver
         self.exchange = exchange
 
