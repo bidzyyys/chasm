@@ -17,9 +17,8 @@ MAX_SIZE = 2 ** 20
 
 
 class TxValidator(Validator):
-    def __init__(self, utxos, dutxos, active_offers, accepted_offers):
+    def __init__(self, utxos, active_offers, accepted_offers):
         self._utxos = utxos
-        self._dutxos = dutxos
         self._active_offers = active_offers
         self._accepted_offers = accepted_offers
         self._rlp_serializer = RLPSerializer()

@@ -54,9 +54,9 @@ def too_much_signed_simple_transaction(signed_simple_transaction):
 
 @fixture
 def validator():
-    def _get_validator(utxos_=dict(), dutxos_=dict(),
+    def _get_validator(utxos_={},
                        active_offers_=None, accepted_offers_=None):
-        return TxValidator(utxos=utxos_, dutxos=dutxos_,
+        return TxValidator(utxos=utxos_,
                            active_offers=active_offers_, accepted_offers=accepted_offers_)
 
     return _get_validator
