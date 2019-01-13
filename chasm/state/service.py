@@ -1,5 +1,7 @@
 import os
 
+from chasm.consensus.validation.block_validator import BlockValidator
+from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.config import Config
 from chasm.services_manager import Service
 from chasm.state.state import State
@@ -21,8 +23,23 @@ class StateService(Service):
     def stop(self):
         self._state.close()
 
+    def apply_block(self, block):
+        self._build_block_validator().validate(block)
+        self._state.apply_block(block)
+
+    def add_pending_tx(self, tx):
+        self._build_tx_validator().validate(tx)
+        self._state.add_pending_tx(tx)
+
     def __getattribute__(self, item):
         try:
             return Service.__getattribute__(self, item)
         except AttributeError:
             return getattr(self._state, item)
+
+    def _build_block_validator(self):
+        return BlockValidator(self._state.get_utxos(), self._state.get_active_offers(),
+                              self._state.get_accepted_offers(), 1, 1, 1)
+
+    def _build_tx_validator(self):
+        return TxValidator(self._state.get_utxos(), self._state.get_active_offers(), self._state.get_accepted_offers())

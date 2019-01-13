@@ -10,8 +10,8 @@ from depq import DEPQ
 
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
-from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
-from chasm.consensus.validation.block_validator import BlockValidator, DIFFICULTY_COMPUTATION_INTERVAL
+from chasm.consensus.primitives.transaction import SignedTransaction, MintingTransaction
+from chasm.consensus.validation.block_validator import BlockValidator
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import TxOverwriteError
 from chasm.state._db import DB
@@ -50,8 +50,6 @@ class State:
     def apply_block(self, block: Block):
         block_hash = block.hash()
 
-        # self.block_validator.validate(block)
-
         with self._Transaction(self), self._lock:
             self.blocks[block_hash] = block
             self.blocks_by_height[self.current_height + 1] = block_hash
@@ -79,12 +77,7 @@ class State:
             self.db.put_block(block, self.current_height + 1)
             self._set_current_height(self.current_height + 1)
 
-        self._update_validators()
-
     def add_pending_tx(self, tx: SignedTransaction, priority=0):
-
-        self.tx_validator.validate(tx)
-
         with self._lock:
             index = self.pending_txs.push(tx, priority)
             self.db.put_pending_tx(index, tx, priority)
@@ -228,8 +221,6 @@ class State:
             self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
             self.current_height = self._read_current_height()
 
-            self._update_validators()
-
     def _init_database(self):
         self.db.put_block(GENESIS_BLOCK, 0)
         self._set_current_height(0)
@@ -258,11 +249,3 @@ class State:
                     dutxos.append(utxos.pop(-len(tx.outputs) + index))
 
         return utxos, dutxos
-
-    def _update_validators(self):
-        old_block_height = self.current_height - DIFFICULTY_COMPUTATION_INTERVAL
-        last_header = self.get_block_by_no(self.current_height).header
-        old_header = self.get_block_by_no(old_block_height if old_block_height > 0 else 0).header
-
-        self.block_validator = BlockValidator(self.get_utxos(), {}, {}, last_header, old_header, self.current_height)
-        self.tx_validator = TxValidator(self.get_utxos(), self.get_dutxos(), {}, {})

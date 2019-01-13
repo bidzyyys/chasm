@@ -21,6 +21,7 @@ class BlockValidator(Validator):
     def prepare(self, obj: Block):
         return {
             'block': obj,
+            'header': obj.header
         }
 
     def check_block_difficulty(self, header: Block.Header):
