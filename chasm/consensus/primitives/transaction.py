@@ -2,6 +2,7 @@ from ecdsa import SigningKey
 from rlp import sedes
 
 from chasm import consensus
+from chasm.consensus.primitives.tx_input import TxInput
 from chasm.serialization import countable_list, countable_list_of_binaries
 from chasm.serialization.serializable import Serializable
 
@@ -19,7 +20,7 @@ class Transaction(Serializable):
             outputs = []
         if inputs is None:
             inputs = []
-        self.inputs = inputs
+        self.inputs: [TxInput] = inputs
         self.outputs = outputs
 
         self.encoded = RLPSerializer().encode(self)
@@ -125,7 +126,7 @@ class SignedTransaction(Serializable):
         return SignedTransaction(transaction, signatures)
 
     def __init__(self, transaction, signatures):
-        self.transaction = transaction
+        self.transaction: Transaction = transaction
         self.signatures = signatures
 
     def hash(self):

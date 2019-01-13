@@ -1,6 +1,5 @@
 from chasm.consensus import Block
 from chasm.consensus.validation.tx_validator import Validator
-from chasm.maintenance.exceptions import BlockHashError
 
 EXPECTED_BLOCK_INTERVAL = 5  # time interval between two consecutive blocks
 
@@ -8,6 +7,8 @@ DIFFICULTY_COMPUTATION_INTERVAL = 10  # in blocks
 
 INITIAL_MINTING_VALUE = 10 ** 20
 MINTING_VALUE_HALVING_PERIOD = 2 ** 16  # about 4 years
+
+MAX_BLOCK_SIZE = 2 ** 20  # 1MB
 
 
 class BlockValidator(Validator):
@@ -51,7 +52,9 @@ class BlockStatelessValidator:
     def check_block_hash(block_hash, difficulty):
         for k in range(difficulty // 8):
             if block_hash[k] > 0:
-                raise BlockHashError
+                return False
 
-        if block_hash[difficulty // 8] % (2 ** (difficulty % 8)) > 0:
-            raise BlockHashError
+        if block_hash[difficulty // 8] // (2 ** (8 - (difficulty % 8))) > 0:
+            return False
+
+        return True
