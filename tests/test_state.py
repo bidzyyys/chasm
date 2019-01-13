@@ -280,7 +280,7 @@ def test_cannot_apply_transaction_with_the_same_hash_twice(filled_state, utxo, a
         filled_state.apply_block(another_block)
 
 
-def test_transaction_with_deposit(filled_state, utxo, alice):
+def test_stores_offer_transaction_and_its_deposit(filled_state, utxo, alice, restored_state):
     next_block = next_empty_block(filled_state)
 
     tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
@@ -301,3 +301,8 @@ def test_transaction_with_deposit(filled_state, utxo, alice):
 
     assert (signed.hash(), 1) not in filled_state.get_utxos()
     assert (signed.hash(), 1) in filled_state.get_dutxos()
+
+    assert signed.hash() in filled_state.get_active_offers()
+
+    with restored_state as state:
+        assert signed.hash() in state.get_active_offers()

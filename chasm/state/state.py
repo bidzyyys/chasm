@@ -51,7 +51,9 @@ class State:
     def apply_block(self, block: Block):
         block_hash = block.hash()
 
-        with _SaveTransaction(self), self._lock:
+        with _DBTransaction(self), self._lock:
+            self._clean_timeouted_offers()
+
             self._build_tx_indices(block, block_hash)
 
             new_utxos, new_dutxos = self._extract_outputs_from_block(block)
@@ -110,6 +112,7 @@ class State:
 
     def get_active_offers(self):
         with self._lock:
+            self._clean_timeouted_offers()
             return copy.deepcopy(self.active_offers)
 
     def get_matched_offers(self):
@@ -159,6 +162,8 @@ class State:
             self.utxos = dict(self.db.get_utxos())
             self.dutxos = dict(self.db.get_dutxos())
 
+            self.active_offers = dict(self.db.get_active_offers())
+
             self.pending_txs = _PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
             self.current_height = self._read_current_height()
 
@@ -193,7 +198,8 @@ class State:
 
     @staticmethod
     def _extract_new_offers(block):
-        return {}
+        return {tx.hash(): tx.transaction for tx in block.transactions if
+                isinstance(tx, SignedTransaction) and isinstance(tx.transaction, OfferTransaction)}
 
     @staticmethod
     def _extract_matched_offers(block):
@@ -225,12 +231,18 @@ class State:
             self.db.delete_utxo(*txo)
 
     def _apply_new_offers(self, offers):
-        pass
+        for tx_hash, offer_tx in offers.items():
+            # NOTE: we do not check against overwriting as it is checked when adding to txs indices
+            self.active_offers[tx_hash] = offer_tx
+            self.db.put_active_offer(offer_tx)
 
     def _apply_new_matches(self, matches):
         pass
 
     def _apply_unlocked_utxos(self, unlocked_utxos):
+        pass
+
+    def _clean_timeouted_offers(self):
         pass
 
     def _build_tx_indices(self, block, block_hash):
@@ -282,7 +294,7 @@ class _PendingTxsQueue:
         return self.priority_queue.is_empty()
 
 
-class _SaveTransaction:
+class _DBTransaction:
     def __init__(self, state):
         self.associated_state = state
 

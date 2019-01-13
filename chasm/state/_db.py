@@ -14,10 +14,16 @@ from chasm.serialization.serializer import Serializer
 class DB:
     class _KeyPrefixes(Enum):
         BLOCK = b'b'
+
         TRANSACTION = b't'
+        PENDING_TRANSACTION = b'p'
+
         UTXO = b'u'
         DUTXO = b'd'
-        PENDING_TRANSACTION = b'p'
+
+        OFFER_ACTIVE = b'oa'
+        OFFER_MATCHED = b'om'
+
 
     _rlp_serializer = RLPSerializer()
 
@@ -153,6 +159,16 @@ class DB:
                  for key, encoded in enc]
 
         return [(index, priority, DB._rlp_serializer.decode(tx_enc)) for index, (priority, tx_enc) in pairs]
+
+    def put_active_offer(self, offer):
+        self.put(offer.hash(), DB._rlp_serializer.encode(offer), DB._KeyPrefixes.OFFER_ACTIVE.value)
+
+    def delete_new_offer(self, offer_hash):
+        self.delete(offer_hash, DB._KeyPrefixes.OFFER_ACTIVE.value)
+
+    def get_active_offers(self):
+        new_offers = self.db.prefixed_db(DB._KeyPrefixes.OFFER_ACTIVE.value)
+        return [(k, DB._rlp_serializer.decode(v)) for k, v in new_offers]
 
     def close(self):
         self.db.close()

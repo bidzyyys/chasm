@@ -134,8 +134,7 @@ class SignedTransaction(Serializable):
         self.signatures = signatures
 
     def hash(self):
-        from chasm.serialization.rlp_serializer import RLPSerializer
-        return consensus.HASH_FUNC(RLPSerializer().encode(self)).digest()
+        return self.transaction.hash()
 
     @property
     def inputs(self):
