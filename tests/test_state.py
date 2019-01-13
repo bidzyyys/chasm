@@ -6,12 +6,12 @@ import pytest
 from pytest import fixture
 
 from chasm import consensus
-from chasm.maintenance.config import Config
 from chasm.consensus import GENESIS_BLOCK, Block
-from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction
+from chasm.consensus.primitives.transaction import Transaction, MintingTransaction, SignedTransaction, OfferTransaction, \
+    MatchTransaction, ConfirmationTransaction, UnlockingDepositTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerFeeOutput
-from chasm.consensus.xpeer_validation.tokens import Tokens
+from chasm.consensus.tokens import Tokens
 from chasm.maintenance.exceptions import TxOverwriteError
 from chasm.state.state import State
 
@@ -26,7 +26,6 @@ class RestoredState:
     def __enter__(self):
         self.prev_state.close()
         self.state = State(self.data_dir, self.pending_size)
-        self.state.start(None)
         return self.state
 
     def __exit__(self, exc_type, exc_val, exc_tb):
@@ -35,13 +34,12 @@ class RestoredState:
 
 @fixture
 def empty_state(config):
-    data_dir = config.data_dir()
-    pending_size = config.pending_txs()
+    data_dir = config.get('datadir')
+    pending_size = config.get('xpeer_pending_txs')
 
     shutil.rmtree(data_dir, ignore_errors=True)
 
     state = State(data_dir, pending_size)
-    state.start(None)
     yield state
 
     state.close()
@@ -50,8 +48,8 @@ def empty_state(config):
 
 @fixture
 def restored_state(empty_state, config):
-    data_dir = config.data_dir()
-    pending_size = config.pending_txs()
+    data_dir = config.get('datadir')
+    pending_size = config.get('xpeer_pending_txs')
 
     return RestoredState(empty_state, data_dir, pending_size)
 
@@ -74,6 +72,50 @@ def pending_transaction(pending_transactions):
 def minting_transaction(alice, bob):
     outputs = [TransferOutput(100, alice.pub), TransferOutput(100, bob.pub)]
     return MintingTransaction(outputs, height=100)
+
+
+@fixture
+def offer_transaction(alice, utxo):
+    tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
+                          token_in=Tokens.ETHEREUM.value, token_out=Tokens.BITCOIN.value, value_in=1, value_out=2,
+                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=1000)
+
+    return SignedTransaction.build_signed(tx, [alice.priv])
+
+
+@fixture
+def match_transaction(bob, offer_transaction, second_utxo):
+    match = MatchTransaction(inputs=[TxInput(*second_utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, bob.pub)],
+                             exchange=offer_transaction.hash(), address_in=bob.pub, confirmation_fee_index=0,
+                             deposit_index=1)
+
+    return SignedTransaction.build_signed(match, [bob.priv])
+
+
+@fixture
+def confirmation_transaction(carol, offer_transaction, match_transaction, utxos_from_filled_state):
+    tx_inputs = [TxInput(offer_transaction.hash(), 0), TxInput(match_transaction.hash(), 0),
+                 TxInput(*(utxos_from_filled_state[2]))]
+
+    tx = ConfirmationTransaction(inputs=tx_inputs, outputs=[TransferOutput(100, carol.pub)],
+                                 exchange=offer_transaction.hash(), tx_in_proof=b'proof', tx_out_proof=b'other-proof')
+
+    return SignedTransaction.build_signed(tx, [carol.priv])
+
+
+@fixture
+def unlocking_transactions(alice, bob, offer_transaction, match_transaction, utxos_from_filled_state):
+    tx_inputs = [TxInput(offer_transaction.hash(), 0), TxInput(match_transaction.hash(), 0),
+                 TxInput(*(utxos_from_filled_state[2]))]
+
+    unlocking1 = UnlockingDepositTransaction(inputs=tx_inputs, outputs=[TransferOutput(100, alice.pub)],
+                                             exchange=offer_transaction.hash(), proof_side=0, tx_proof=b'proof')
+
+    unlocking2 = UnlockingDepositTransaction(inputs=tx_inputs, outputs=[TransferOutput(100, alice.pub)],
+                                             exchange=offer_transaction.hash(), proof_side=1, tx_proof=b'proof')
+
+    return (SignedTransaction.build_signed(unlocking1, [alice.priv]),
+            SignedTransaction.build_signed(unlocking2, [bob.priv]))
 
 
 @fixture
@@ -104,6 +146,31 @@ def filled_state(empty_state, alice):
 @fixture
 def utxo(filled_state):
     return list(filled_state.get_utxos().keys())[0]
+
+
+@fixture
+def second_utxo(filled_state):
+    return list(filled_state.get_utxos().keys())[1]
+
+
+@fixture
+def filled_state_with_matched_offer(filled_state, offer_transaction, match_transaction):
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
+    filled_state.apply_block(next_block)
+
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(match_transaction)
+    next_block.update_merkle_root()
+    filled_state.apply_block(next_block)
+
+    return filled_state
+
+
+@fixture
+def utxos_from_filled_state(filled_state):
+    return list(filled_state.get_utxos().keys())
 
 
 def next_empty_block(state):
@@ -283,24 +350,183 @@ def test_cannot_apply_transaction_with_the_same_hash_twice(filled_state, utxo, a
         filled_state.apply_block(another_block)
 
 
-def test_transaction_with_deposit(filled_state, utxo, alice):
+def test_stores_offer_transaction_and_its_deposit(filled_state, utxo, alice, restored_state, offer_transaction):
     next_block = next_empty_block(filled_state)
 
-    tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
-                          token_in=Tokens.ETHEREUM.value, token_out=Tokens.BITCOIN.value, value_in=1, value_out=2,
-                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=1000)
-
-    signed = SignedTransaction.build_signed(tx, [alice.priv])
-
-    next_block.add_transaction(signed)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
 
     filled_state.apply_block(next_block)
 
     assert utxo not in filled_state.get_utxos()
     assert utxo not in filled_state.get_dutxos()
 
-    assert (signed.hash(), 0) in filled_state.get_utxos()
-    assert (signed.hash(), 0) not in filled_state.get_dutxos()
+    assert (offer_transaction.hash(), 0) in filled_state.get_utxos()
+    assert (offer_transaction.hash(), 0) not in filled_state.get_dutxos()
 
-    assert (signed.hash(), 1) not in filled_state.get_utxos()
-    assert (signed.hash(), 1) in filled_state.get_dutxos()
+    assert (offer_transaction.hash(), 1) not in filled_state.get_utxos()
+    assert (offer_transaction.hash(), 1) in filled_state.get_dutxos()
+
+    assert offer_transaction.hash() in filled_state.get_active_offers()
+
+    with restored_state as state:
+        assert offer_transaction.hash() in state.get_active_offers()
+
+
+def test_stores_offer_match(filled_state, offer_transaction, match_transaction, second_utxo):
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
+    filled_state.apply_block(next_block)
+
+    next_block = next_empty_block(filled_state)
+
+    next_block.add_transaction(match_transaction)
+    next_block.update_merkle_root()
+
+    assert second_utxo in filled_state.get_utxos()
+
+    filled_state.apply_block(next_block)
+
+    assert second_utxo not in filled_state.get_utxos()
+    assert second_utxo not in filled_state.get_dutxos()
+
+    assert (match_transaction.hash(), 0) in filled_state.get_utxos()
+    assert (match_transaction.hash(), 0) not in filled_state.get_dutxos()
+
+    assert (match_transaction.hash(), 1) not in filled_state.get_utxos()
+    assert (match_transaction.hash(), 1) in filled_state.get_dutxos()
+
+    assert offer_transaction.hash() not in filled_state.get_active_offers()
+
+    match = filled_state.get_matched_offers()[offer_transaction.hash()]
+
+    assert (offer_transaction.transaction, match_transaction.transaction, next_block.timestamp) == match
+
+
+def test_persists_offer_match(filled_state, offer_transaction, match_transaction, second_utxo, restored_state):
+    next_block = next_empty_block(filled_state)
+    next_block.add_transaction(offer_transaction)
+    next_block.update_merkle_root()
+    filled_state.apply_block(next_block)
+
+    next_block = next_empty_block(filled_state)
+
+    next_block.add_transaction(match_transaction)
+    next_block.update_merkle_root()
+
+    filled_state.apply_block(next_block)
+
+    with restored_state as state:
+        assert second_utxo not in state.get_utxos()
+        assert second_utxo not in state.get_dutxos()
+
+        assert (match_transaction.hash(), 0) in state.get_utxos()
+        assert (match_transaction.hash(), 0) not in state.get_dutxos()
+
+        assert (match_transaction.hash(), 1) not in state.get_utxos()
+        assert (match_transaction.hash(), 1) in state.get_dutxos()
+
+        assert offer_transaction.hash() not in state.get_active_offers()
+
+        match = state.get_matched_offers()[offer_transaction.hash()]
+
+        assert (offer_transaction.transaction, match_transaction.transaction, next_block.timestamp) == match
+
+
+def test_confirms_exchange(filled_state_with_matched_offer, offer_transaction, match_transaction,
+                           confirmation_transaction):
+    state = filled_state_with_matched_offer
+
+    next_block = next_empty_block(state)
+    next_block.add_transaction(confirmation_transaction)
+    next_block.update_merkle_root()
+
+    state.apply_block(next_block)
+
+    assert (match_transaction.hash(), 1) not in state.get_dutxos()
+    assert (offer_transaction.hash(), 1) not in state.get_dutxos()
+
+    assert (match_transaction.hash(), 0) not in state.get_utxos()
+    assert (offer_transaction.hash(), 0) not in state.get_utxos()
+
+    assert (match_transaction.hash(), 1) in state.get_utxos()
+    assert (offer_transaction.hash(), 1) in state.get_utxos()
+
+    assert offer_transaction.hash() not in state.get_active_offers()
+    assert offer_transaction.hash() not in state.get_matched_offers()
+
+
+def test_persists_confirmations(filled_state_with_matched_offer, offer_transaction, match_transaction,
+                                confirmation_transaction, restored_state):
+    state = filled_state_with_matched_offer
+
+    next_block = next_empty_block(state)
+    next_block.add_transaction(confirmation_transaction)
+    next_block.update_merkle_root()
+
+    state.apply_block(next_block)
+
+    with restored_state as state:
+        assert (offer_transaction.hash(), 1) not in state.get_dutxos()
+        assert (match_transaction.hash(), 1) not in state.get_dutxos()
+
+        assert (offer_transaction.hash(), 0) not in state.get_utxos()
+        assert (match_transaction.hash(), 0) not in state.get_utxos()
+
+        assert (offer_transaction.hash(), 1) in state.get_utxos()
+        assert (match_transaction.hash(), 1) in state.get_utxos()
+
+        assert offer_transaction.hash() not in state.get_active_offers()
+        assert offer_transaction.hash() not in state.get_matched_offers()
+
+
+def test_unlocks_deposits(filled_state_with_matched_offer, offer_transaction, match_transaction,
+                          unlocking_transactions):
+    state = filled_state_with_matched_offer
+
+    unlocking1, unlocking2 = unlocking_transactions
+
+    next_block = next_empty_block(state)
+    next_block.add_transaction(unlocking1)  # NOTE: we here unlock the other side comparing to the prev test
+    next_block.update_merkle_root()
+
+    state.apply_block(next_block)
+
+    assert (offer_transaction.hash(), 1) not in state.get_dutxos()
+    assert (match_transaction.hash(), 1) not in state.get_dutxos()
+
+    assert (offer_transaction.hash(), 0) not in state.get_utxos()
+    assert (match_transaction.hash(), 0) not in state.get_utxos()
+
+    assert (offer_transaction.hash(), 1) in state.get_utxos()
+    assert (match_transaction.hash(), 1) not in state.get_utxos()
+
+    assert offer_transaction.hash() not in state.get_active_offers()
+    assert offer_transaction.hash() not in state.get_matched_offers()
+
+
+def test_persists_unlocking_deposits(filled_state_with_matched_offer, offer_transaction, match_transaction,
+                                     unlocking_transactions, restored_state):
+    state = filled_state_with_matched_offer
+
+    unlocking1, unlocking2 = unlocking_transactions
+
+    next_block = next_empty_block(state)
+    next_block.add_transaction(unlocking2)
+    next_block.update_merkle_root()
+
+    state.apply_block(next_block)
+
+    with restored_state as state:
+        assert (offer_transaction.hash(), 1) not in state.get_dutxos()
+        assert (match_transaction.hash(), 1) not in state.get_dutxos()
+
+        assert (offer_transaction.hash(), 0) not in state.get_utxos()
+        assert (match_transaction.hash(), 0) not in state.get_utxos()
+
+        assert (offer_transaction.hash(), 1) not in state.get_utxos()
+        assert (match_transaction.hash(), 1) in state.get_utxos()
+
+        assert offer_transaction.hash() not in state.get_active_offers()
+        assert offer_transaction.hash() not in state.get_matched_offers()

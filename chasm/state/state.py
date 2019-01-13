@@ -10,13 +10,15 @@ from depq import DEPQ
 
 from chasm.consensus import GENESIS_BLOCK
 from chasm.consensus.primitives.block import Block
-from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, MintingTransaction
+from chasm.consensus.primitives.transaction import SignedTransaction, MintingTransaction, OfferTransaction, \
+    MatchTransaction, UnlockingDepositTransaction, ConfirmationTransaction
+from chasm.consensus.validation.block_validator import BlockValidator
+from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import TxOverwriteError
-from chasm.services_manager import Service
 from chasm.state._db import DB
 
 
-class State(Service):
+class State:
     def __init__(self, db_dir, pending_queue_size):
         self.blocks = {}
         self.tx_indices = {}
@@ -25,16 +27,17 @@ class State(Service):
         self.blocks_by_height = {}
         self.pending_txs = None
         self.active_offers = {}
-        self.accepted_offers = {}
+        self.matched_offers = {}
         self.current_height = 0
         self.buffer_len = pending_queue_size
 
+        self.block_validator: BlockValidator = None
+        self.tx_validator: TxValidator = None
+
         self._lock = RLock()
 
-        self._db = None
+        self.db = None
         self._db_dir = db_dir
-
-    def start(self, _stop_condition):
 
         try:
             self.db = DB(self._db_dir)
@@ -44,50 +47,39 @@ class State(Service):
             self._init_database()
 
         self.reload()
-        return True
-
-    def stop(self):
-        self.close()
-
-    def is_running(self):
-        return not self.db.is_closed()
 
     def apply_block(self, block: Block):
         block_hash = block.hash()
 
-        with self._Transaction(self), self._lock:
-            self.blocks[block_hash] = block
-            self.blocks_by_height[self.current_height + 1] = block_hash
+        with _DBTransaction(self), self._lock:
+            self._clean_timeouted_offers()
 
-            for tx, i in zip(block.transactions, range(len(block.transactions))):
-                if tx.hash() in self.tx_indices:
-                    raise TxOverwriteError(tx.hash())
-                self.tx_indices[tx.hash()] = (block_hash, i)
+            self._build_tx_indices(block, block_hash)
 
-            used_utxos = self._extract_inputs_from_block(block)
             new_utxos, new_dutxos = self._extract_outputs_from_block(block)
+            self._apply_new_utxos(new_utxos)
+            self._apply_new_dutxos(new_dutxos)
 
-            for utxo in used_utxos:
-                self.utxos.pop(utxo)
-                self.db.delete_utxo(*utxo)
+            spent_txos = self._extract_inputs_from_block(block)
+            self._apply_used_utxos(spent_txos)
 
-            for (tx_hash, index, output) in new_utxos:
-                self.utxos[(tx_hash, index)] = output
-                self.db.put_utxo(tx_hash, index, output)
+            new_offers = self._extract_new_offers(block)
+            self._apply_new_offers(new_offers)
 
-            for (tx_hash, index, output) in new_dutxos:
-                self.dutxos[(tx_hash, index)] = output
-                self.db.put_dutxo(tx_hash, index, output)
+            new_matches = self._extract_matched_offers(block)
+            self._apply_new_matches(new_matches, block.timestamp)
 
-            self.db.put_block(block, self.current_height + 1)
-            self._set_current_height(self.current_height + 1)
+            confirmations, unlocks = self._extract_deposits_unlocks(block)
+            self._apply_unlocked_utxos(confirmations, unlocks)
 
-    def add_pending_tx(self, tx: Transaction, priority=0):
+            self._apply_block(block, block_hash)
+
+    def add_pending_tx(self, tx: SignedTransaction, priority=0):
         with self._lock:
             index = self.pending_txs.push(tx, priority)
             self.db.put_pending_tx(index, tx, priority)
 
-    def pop_pending_tx(self) -> Union[SignedTransaction, MintingTransaction]:
+    def pop_pending_tx(self) -> SignedTransaction:
         with self._lock:
             index, tx = self.pending_txs.pop()
             self.db.delete_pending(index)
@@ -120,11 +112,12 @@ class State(Service):
 
     def get_active_offers(self):
         with self._lock:
+            self._clean_timeouted_offers()
             return copy.deepcopy(self.active_offers)
 
-    def get_accepted_offers(self):
+    def get_matched_offers(self):
         with self._lock:
-            return copy.deepcopy(self.accepted_offers)
+            return copy.deepcopy(self.matched_offers)
 
     def get_dutxos(self):
         with self._lock:
@@ -141,60 +134,6 @@ class State(Service):
 
     def close(self):
         self.db.close()
-
-    class _PendingTxsQueue:
-        def __init__(self, maxlen, elements=None):
-            self.free_indices = queue.Queue(maxsize=maxlen)
-            self.priority_queue = DEPQ(maxlen=maxlen)
-
-            indices = [i for i in range(maxlen)]
-
-            if elements is not None:
-                for index, priority, tx in elements:
-                    indices.remove(index)
-                    self.free_indices.put_nowait(index)
-                    self.push(tx, priority)
-
-            for i in indices:
-                self.free_indices.put_nowait(i)
-
-        def push(self, tx, priority):
-            if self.priority_queue.size() == self.priority_queue.maxlen:
-                if self.priority_queue.low() < priority:
-                    index, _ = self.priority_queue.last()
-                    self.free_indices.put_nowait(index)
-                else:
-                    raise queue.Full
-
-            index = self.free_indices.get_nowait()
-            self.priority_queue.insert((index, tx), priority)
-            return index
-
-        def pop(self):
-            if self.is_empty():
-                raise queue.Empty
-
-            (index, tx), _ = self.priority_queue.popfirst()
-            self.free_indices.put_nowait(index)
-
-            return index, tx
-
-        def is_empty(self):
-            return self.priority_queue.is_empty()
-
-    class _Transaction:
-        def __init__(self, state):
-            self.associated_state = state
-
-        def __enter__(self):
-            self.associated_state.db.start_transaction()
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            if exc_type is not None:
-                self.associated_state.db.dismiss_transaction()
-                self.associated_state.reload()
-            else:
-                self.associated_state.db.execute_transaction()
 
     @staticmethod
     def _build_blocks_from_db_data(db_blocks):
@@ -223,7 +162,10 @@ class State(Service):
             self.utxos = dict(self.db.get_utxos())
             self.dutxos = dict(self.db.get_dutxos())
 
-            self.pending_txs = self._PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
+            self.active_offers = dict(self.db.get_active_offers())
+            self.matched_offers = dict(self.db.get_matched_offers())
+
+            self.pending_txs = _PendingTxsQueue(maxlen=self.buffer_len, elements=self.db.get_pending_txs())
             self.current_height = self._read_current_height()
 
     def _init_database(self):
@@ -249,8 +191,169 @@ class State(Service):
             for output, i in zip(tx.outputs, range(tx.outputs.__len__())):
                 utxos.append((tx.hash(), i, output))
             if isinstance(tx, SignedTransaction):
-                if hasattr(tx.transaction, 'deposit_index'):
+                if isinstance(tx.transaction, (OfferTransaction, MatchTransaction, UnlockingDepositTransaction)):
                     index = tx.transaction.deposit_index
                     dutxos.append(utxos.pop(-len(tx.outputs) + index))
 
         return utxos, dutxos
+
+    @staticmethod
+    def _extract_new_offers(block):
+        return [tx.transaction for tx in block.transactions if
+                isinstance(tx, SignedTransaction) and isinstance(tx.transaction, OfferTransaction)]
+
+    @staticmethod
+    def _extract_matched_offers(block):
+        return [tx.transaction for tx in block.transactions if
+                isinstance(tx, SignedTransaction) and isinstance(tx.transaction, MatchTransaction)]
+
+    @staticmethod
+    def _extract_deposits_unlocks(block):
+        confirmations = [tx.transaction for tx in block.transactions
+                         if isinstance(tx, SignedTransaction) and isinstance(tx.transaction, ConfirmationTransaction)]
+
+        unlocks = [tx.transaction for tx in block.transactions
+                   if isinstance(tx, SignedTransaction) and isinstance(tx.transaction, UnlockingDepositTransaction)]
+
+        return confirmations, unlocks
+
+    def _apply_block(self, block, block_hash):
+        self.blocks[block_hash] = block
+        self.blocks_by_height[self.current_height + 1] = block_hash
+        self.db.put_block(block, self.current_height + 1)
+        self._set_current_height(self.current_height + 1)
+
+    def _apply_new_utxos(self, utxos):
+        for (tx_hash, index, output) in utxos:
+            self.utxos[(tx_hash, index)] = output
+            self.db.put_utxo(tx_hash, index, output)
+
+    def _apply_new_dutxos(self, dutxos):
+        for (tx_hash, index, output) in dutxos:
+            self.dutxos[(tx_hash, index)] = output
+            self.db.put_dutxo(tx_hash, index, output)
+
+    def _apply_used_utxos(self, spend_txos):
+        for txo in spend_txos:
+            self.utxos.pop(txo)
+            self.db.delete_utxo(*txo)
+
+    def _apply_new_offers(self, offers):
+        for tx in offers:
+            # NOTE: we do not check against overwriting as it is checked when adding to txs indices
+            self.active_offers[tx.hash()] = tx
+            self.db.put_active_offer(tx)
+
+    def _apply_new_matches(self, matches, block_timestamp):
+        for match in matches:
+            offer = self.active_offers.pop(match.exchange)
+            self.db.delete_active_offer(offer.hash())
+
+            self.matched_offers[offer.hash()] = (offer, match, block_timestamp)
+            self.db.put_matched_offer(offer.hash(), offer, match, block_timestamp)
+
+    def _apply_unlocked_utxos(self, confirmations, unlocks):
+        for tx in confirmations:
+            (offer, acceptance, _timestamp) = self.matched_offers.pop(tx.exchange)
+            self.db.delete_matched_offer(tx.exchange)
+
+            utxo1 = (offer.hash(), offer.deposit_index)
+            utxo2 = (acceptance.hash(), acceptance.deposit_index)
+
+            dutxo1 = self.dutxos.pop(utxo1)
+            self.db.delete_dutxo(*utxo1)
+
+            dutxo2 = self.dutxos.pop(utxo2)
+            self.db.delete_dutxo(*utxo2)
+
+            self.utxos[utxo1] = dutxo1
+            self.db.put_utxo(*utxo1, output=dutxo1)
+
+            self.utxos[utxo2] = dutxo2
+            self.db.put_utxo(*utxo2, output=dutxo2)
+
+        for tx in unlocks:
+            (offer, acceptance, _timestamp) = self.matched_offers.pop(tx.exchange)
+            self.db.delete_matched_offer(tx.exchange)
+
+            utxo1 = (offer.hash(), offer.deposit_index)
+            utxo2 = (acceptance.hash(), acceptance.deposit_index)
+
+            dutxo1 = self.dutxos.pop(utxo1)
+            self.db.delete_dutxo(*utxo1)
+
+            dutxo2 = self.dutxos.pop(utxo2)
+            self.db.delete_dutxo(*utxo2)
+
+            if tx.proof_side == 0:
+                self.utxos[utxo1] = dutxo1
+                self.db.put_utxo(*utxo1, output=dutxo1)
+            else:
+                self.utxos[utxo2] = dutxo2
+                self.db.put_utxo(*utxo2, output=dutxo2)
+
+    def _clean_timeouted_offers(self):
+        pass
+
+    def _build_tx_indices(self, block, block_hash):
+
+        for tx, i in zip(block.transactions, range(len(block.transactions))):
+            if tx.hash() in self.tx_indices:
+                raise TxOverwriteError(tx.hash())
+            self.tx_indices[tx.hash()] = (block_hash, i)
+
+
+class _PendingTxsQueue:
+    def __init__(self, maxlen, elements=None):
+        self.free_indices = queue.Queue(maxsize=maxlen)
+        self.priority_queue = DEPQ(maxlen=maxlen)
+
+        indices = [i for i in range(maxlen)]
+
+        if elements is not None:
+            for index, priority, tx in elements:
+                indices.remove(index)
+                self.free_indices.put_nowait(index)
+                self.push(tx, priority)
+
+        for i in indices:
+            self.free_indices.put_nowait(i)
+
+    def push(self, tx, priority):
+        if self.priority_queue.size() == self.priority_queue.maxlen:
+            if self.priority_queue.low() < priority:
+                index, _ = self.priority_queue.last()
+                self.free_indices.put_nowait(index)
+            else:
+                raise queue.Full
+
+        index = self.free_indices.get_nowait()
+        self.priority_queue.insert((index, tx), priority)
+        return index
+
+    def pop(self):
+        if self.is_empty():
+            raise queue.Empty
+
+        (index, tx), _ = self.priority_queue.popfirst()
+        self.free_indices.put_nowait(index)
+
+        return index, tx
+
+    def is_empty(self):
+        return self.priority_queue.is_empty()
+
+
+class _DBTransaction:
+    def __init__(self, state):
+        self.associated_state = state
+
+    def __enter__(self):
+        self.associated_state.db.start_transaction()
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if exc_type is not None:
+            self.associated_state.db.dismiss_transaction()
+            self.associated_state.reload()
+        else:
+            self.associated_state.db.execute_transaction()

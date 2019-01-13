@@ -1,7 +1,7 @@
 """RPC module"""
 from enum import Enum
 
-from chasm.consensus.xpeer_validation.tokens import Tokens
+from chasm.consensus.tokens import Tokens
 
 # pylint: disable=invalid-name
 

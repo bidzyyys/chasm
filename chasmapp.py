@@ -1,27 +1,36 @@
 """Full node app"""
 
 import argparse
-import os
 
-from chasm.consensus.blockchain.miner import Miner
-from chasm.maintenance.config import Config
-# pylint: disable=missing-docstring
+from chasm.consensus.mining.miner_service import MinerService
+from chasm.maintenance.config import Config, DEFAULT_CONFIG_FILE
 from chasm.maintenance.logger import Logger
 from chasm.rpc.node import RPCServerService
 from chasm.services_manager import LazyService, ServicesManager
-from chasm.state.state import State
+from chasm.state.service import StateService
 
 
-def get_parser(config):
+def get_parser():
     parser = argparse.ArgumentParser(description='Node app',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-p', "--port", default=config.rpc_port(),
-                        help="port")
+    parser.add_argument('-p', "--port", help="port")
 
-    parser.add_argument('-d', '--datadir', default=config.data_dir(),
-                        help="datadir for chasm storage")
+    parser.add_argument('-d', '--datadir', help="datadir for chasm storage")
+
+    parser.add_argument('-c', '--config', help="path to config file")
+
     return parser
+
+
+def _prepare_config(args):
+    overridden = {}
+    if args.datadir:
+        overridden['datadir'] = args.datadir
+    if args.port:
+        overridden['rpc_port'] = args.port
+
+    return Config(args.config or DEFAULT_CONFIG_FILE, overridden=overridden)
 
 
 def main():
@@ -29,22 +38,24 @@ def main():
     Main function, runs server side
     """
 
-    config = Config()
+    parser = get_parser()
 
-    parser = get_parser(config)
     args = parser.parse_args()
 
-    Logger.level = config.logger_level()
+    config = _prepare_config(args)
+
+    Logger.level = config.get('logger_level')
 
     services = [
-        LazyService('state', State, db_dir=os.path.join(args.datadir, 'db'), pending_queue_size=config.pending_txs()),
-        LazyService('rpc_server', RPCServerService, port=args.port, required_services=['state']),
-        LazyService('miner', Miner, miner_address=config.miner(), block_interval=config.block_interval(),
-                    required_services=['state'])
+        LazyService('state', StateService, config=config),
+        LazyService('rpc_server', RPCServerService, config=config, required_services=['state']),
+        LazyService('miner', MinerService, config=config, required_services=['state'])
     ]
 
     with ServicesManager(services) as manager:
         manager.run()
+
+    exit()
 
 
 if __name__ == "__main__":

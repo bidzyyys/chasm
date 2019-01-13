@@ -35,7 +35,7 @@ class LazyService:
 
 class ServicesManager:
     def __init__(self, services_to_run: [LazyService]):
-        self._running_services: {str: Service} = {}
+        self._running_services: [(str, Service)] = []
         self._services_to_run: [LazyService] = services_to_run
         self._logger = Logger('chasm.manager')
         self._should_close = True
@@ -51,7 +51,7 @@ class ServicesManager:
         self._should_close = True
 
         self._logger.info('Stopping services.')
-        for name, service in self._running_services.items():
+        for name, service in reversed(self._running_services):
             self._logger.info(f'Stopping service: {name}')
             service.stop()
             self._logger.info(f'Stopped service: {name}')
@@ -65,21 +65,23 @@ class ServicesManager:
 
     def start_services(self):
         self._logger.info('Starting services.')
+        running_services = {}
         for lazy in self._services_to_run:
 
             required = []
             for requirement in lazy.required:
-                required.append(self._running_services[requirement])
+                required.append(running_services[requirement])
 
             name, service = lazy.build(required)
             self._start_service(name, service)
-            self._running_services[name] = service
+            self._running_services.append((name, service))
+            running_services[name] = service
 
     def watch(self):
         should_finish = False
         while not should_finish:
             time.sleep(10)
-            for name, service in self._running_services.items():
+            for name, service in self._running_services:
                 if not service.is_running():
                     self._logger.error(colored(f'Service {name} not running - closing application.', 'red'))
                     should_finish = True
@@ -90,7 +92,7 @@ class ServicesManager:
             task = executor.submit(service.start, self.should_close)
             self._logger.info(f'Starting service: {name}')
             try:
-                if task.result(1):
+                if task.result(10):
                     self._logger.info(f'Started service: {name}')
                 else:
                     self._logger.error(colored(f'Failed to start a service: {name}', 'red'))
