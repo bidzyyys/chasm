@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from ecdsa import VerifyingKey, BadSignatureError
 from multipledispatch import dispatch
 
-from chasm.consensus import HASH_FUNC, CURVE
+from chasm.consensus import HASH_FUNC, CURVE, Side
 from chasm.consensus.primitives.transaction import Transaction, \
     SignedTransaction, OfferTransaction, MatchTransaction, \
     UnlockingDepositTransaction, ConfirmationTransaction, \
@@ -27,7 +27,9 @@ from chasm.maintenance.exceptions import DuplicatedInput, \
     ExchangeAmountBelowZeroError, OfferTimeoutBeforeNowError, \
     ConfFeeIndexOutOfRangeError, XpeerFeeOutputException, \
     XpeerOutputException, ConfirmationNotUseXpeerFeeOutputError, \
-    ConfirmationUnknownExchangeError
+    ConfirmationUnknownExchangeError, UnlockDepositUnknownExchangeError, \
+    UnlockDepositUnknownProofSideError, UnlockDepositBeforeOfferTimeoutError, \
+    UnlockDepositActiveOfferError
 from chasm.serialization.rlp_serializer import RLPSerializer
 
 MAX_SIZE = 2 ** 20
@@ -421,17 +423,40 @@ class TxValidator(Validator):
             super().__init__(utxos, accepted_offers)
 
         def check_inputs(self, tx):
-            raise NotImplementedError
+            return self._validate_inputs(tx)
 
         def check_outputs(self, tx):
-            raise NotImplementedError
+            return self._validate_outputs(tx)
 
         def check_exchange(self, tx):
-            raise NotImplementedError
+            if tx.exchange not in self._active_offers and \
+                    tx.exchange not in self._accepted_offers:
+                raise UnlockDepositUnknownExchangeError(tx.hash(),
+                                                        tx.exchange)
+            return True
 
-        def check_side(self, tx):
-            raise NotImplementedError
+        @staticmethod
+        def check_side(tx):
+            if tx.proof_side not in [Side.OFFER_MAKER.value,
+                                     Side.OFFER_TAKER.value]:
+                raise UnlockDepositUnknownProofSideError(tx.hash(),
+                                                         tx.proof_side)
+
+            return True
 
         def check_proof(self, tx):
-            # Currently we have no mechanism to validate other tokens
-            raise NotImplementedError
+            if tx.exchange in self._active_offers:
+                # Unlock unaccepted offer after timeout
+                if tx.proof_side == Side.OFFER_MAKER.value and \
+                        tx.tx_proof == tx.exchange:
+                    offer = self._active_offers.get(tx.tx_proof)
+                    timeout = datetime.fromtimestamp(offer.timeout)
+                    if datetime.now() < timeout:
+                        raise UnlockDepositBeforeOfferTimeoutError(tx.hash(),
+                                                                   tx.tx_proof)
+                else:
+                    raise UnlockDepositActiveOfferError(tx.hash(),
+                                                        tx.exchange)
+            # NOTE: we have no mechanism to validate proof
+            # so we do not check proof of exchange
+            return True

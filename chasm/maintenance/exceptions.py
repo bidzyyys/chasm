@@ -176,3 +176,23 @@ class ConfirmationNotUseXpeerFeeOutputError(TransactionValidationException):
 class ConfirmationUnknownExchangeError(TransactionValidationException):
     def __init__(self, tx_hash, exchange):
         super().__init__(tx_hash, f"Confirmation of unknown exchange: {exchange.hex()}")
+
+
+class UnlockDepositUnknownExchangeError(TransactionValidationException):
+    def __init__(self, tx_hash, exchange):
+        super().__init__(tx_hash, f"UnlockDeposit of unknown exchange: {exchange.hex()}")
+
+
+class UnlockDepositUnknownProofSideError(TransactionValidationException):
+    def __init__(self, tx_hash, side):
+        super().__init__(tx_hash, f"UnlockDeposit of unknown side of the exchange: {side}")
+
+
+class UnlockDepositBeforeOfferTimeoutError(TransactionValidationException):
+    def __init__(self, tx_hash, offer):
+        super().__init__(tx_hash, f"UnlockDeposit of acitve offer: {offer}")
+
+
+class UnlockDepositActiveOfferError(TransactionValidationException):
+    def __init__(self, tx_hash, offer):
+        super().__init__(tx_hash, f"UnlockDeposit of acitve offer: {offer}")

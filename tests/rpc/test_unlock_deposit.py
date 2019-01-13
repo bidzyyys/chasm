@@ -1,9 +1,10 @@
 # pylint: disable=missing-docstring
 from pytest_bdd import scenario, given, when, then, parsers
 
+from chasm.consensus import Side
 from chasm.consensus.primitives.transaction import UnlockingDepositTransaction
-from chasm.rpc import Side, client
-from chasm.rpc.client import get_transaction, do_unlock_deposit, count_balance
+from chasm.rpc import client
+from chasm.rpc.client import get_transaction, do_unlock_deposit
 from . import skip_test, init_address, mock_acceptance
 
 pytestmark = skip_test()
