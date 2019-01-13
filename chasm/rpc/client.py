@@ -43,7 +43,7 @@ def hex_to_address(pub_key_hex):
     :param pub_key_hex: hex
     :return: address
     """
-    return VerifyingKey.from_der(bytes.fromhex(pub_key_hex)). \
+    return VerifyingKey.from_string(bytes.fromhex(pub_key_hex), curve=CURVE). \
         to_string()
 
 
@@ -437,7 +437,7 @@ def fetch_utxos(address, host, port):
     """
     payload = PAYLOAD_TAGS.copy()
     payload[METHOD] = "get_utxos"
-    payload[PARAMS] = [address]
+    payload[PARAMS] = [address.hex()]
 
     utxos = run(host=host, port=port, payload=payload)
 
