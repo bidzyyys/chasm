@@ -163,6 +163,16 @@ class ExchangeAmountBelowZeroError(TransactionValidationException):
         super().__init__(tx_hash, f"Exchange amount below zero: {amount}, token: {token}")
 
 
-class OfferTimeoutBeforeNow(TransactionValidationException):
+class OfferTimeoutBeforeNowError(TransactionValidationException):
     def __init__(self, tx_hash, timeout):
         super().__init__(tx_hash, f"Offer timeout before now: {timeout}")
+
+
+class ConfirmationNotUseXpeerFeeOutputError(TransactionValidationException):
+    def __init__(self, tx_hash, input_no):
+        super().__init__(tx_hash, f"Confirmation should use only XpeerFeeOutput: input_no: {input_no}")
+
+
+class ConfirmationUnknownExchangeError(TransactionValidationException):
+    def __init__(self, tx_hash, exchange):
+        super().__init__(tx_hash, f"Confirmation of unknown exchange: {exchange.hex()}")

@@ -24,9 +24,10 @@ from chasm.maintenance.exceptions import DuplicatedInput, \
     SendXpeerOutputWithoutExchangeError, MatchNonExistentOfferError, \
     SendXpeerFeeOutputError, NegativeOutput, OfferExistsError, \
     OutputIsNotXpeerFeeOutputError, InvalidAddressLengthPaymentError, \
-    ExchangeAmountBelowZeroError, OfferTimeoutBeforeNow, \
+    ExchangeAmountBelowZeroError, OfferTimeoutBeforeNowError, \
     ConfFeeIndexOutOfRangeError, XpeerFeeOutputException, \
-    XpeerOutputException
+    XpeerOutputException, ConfirmationNotUseXpeerFeeOutputError, \
+    ConfirmationUnknownExchangeError
 from chasm.serialization.rlp_serializer import RLPSerializer
 
 MAX_SIZE = 2 ** 20
@@ -302,6 +303,7 @@ class TxValidator(Validator):
         def check_if_exist(self, tx):
             if tx.hash() in self._active_offers:
                 raise OfferExistsError(tx.hash)
+            return True
 
         @staticmethod
         def _validate_token(token):
@@ -335,7 +337,7 @@ class TxValidator(Validator):
         def check_timeout(tx):
             timeout = datetime.fromtimestamp(tx.timeout)
             if timeout < datetime.now():
-                raise OfferTimeoutBeforeNow(tx.hash(), timeout)
+                raise OfferTimeoutBeforeNowError(tx.hash(), timeout)
 
             return True
 
@@ -387,20 +389,31 @@ class TxValidator(Validator):
             super().__init__(utxos, accepted_offers)
 
         def check_inputs(self, tx):
-            raise NotImplementedError
+            for i, tx_input in enumerate(tx.inputs):
+                utxo = self._utxos.get((tx_input.tx_hash, tx_input.output_no))
+                if isinstance(utxo, XpeerFeeOutput) is False:
+                    raise ConfirmationNotUseXpeerFeeOutputError(tx.hash(), i)
+            return True
 
         def check_outputs(self, tx):
-            raise NotImplementedError
+            return self._validate_outputs(tx)
 
         def check_exchange(self, tx):
-            raise NotImplementedError
+            if tx.exchange not in self._accepted_offers:
+                raise ConfirmationUnknownExchangeError(tx.hash(),
+                                                       tx.exchange)
 
-        def check_proof_in(self, tx):
-            # Currently we have no mechanism to validate other tokens
-            raise NotImplementedError
+            return True
 
-        def check_proof_out(self, tx):
-            raise NotImplementedError
+        @staticmethod
+        def check_proof_in(tx):
+            # NOTE: we have no mechanism to validate proof
+            return True
+
+        @staticmethod
+        def check_proof_out(tx):
+            # NOTE: we have no mechanism to validate proof
+            return True
 
     class DepositUnlockValidator(TransactionValidator):
         def __init__(self, utxos, accepted_offers, active_offers):
