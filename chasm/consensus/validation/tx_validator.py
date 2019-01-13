@@ -131,37 +131,41 @@ class TxValidator(Validator):
         self._get_input_utxos(tx)
         return True
 
-    @dispatch(MintingTransaction)
     def check_type_specifics(self, tx):
+        self._do_specific_validation(tx)
+        return True
+
+    @dispatch(MintingTransaction)
+    def _do_specific_validation(self, tx):
         return True
 
     @dispatch(Transaction)
-    def do_specific_validation(self, tx, ):
+    def _do_specific_validation(self, tx):
         return TxValidator.BaseTxValidator(self._utxos,
                                            self._accepted_offers). \
             validate(tx)
 
-    @dispatch(OfferTransaction, list)
-    def do_specific_validation(self, tx: OfferTransaction):
+    @dispatch(OfferTransaction)
+    def _do_specific_validation(self, tx: OfferTransaction):
         return TxValidator.OfferValidator(self._utxos,
                                           self._accepted_offers). \
             validate(tx)
 
-    @dispatch(MatchTransaction, list)
-    def do_specific_validation(self, tx: MatchTransaction):
+    @dispatch(MatchTransaction)
+    def _do_specific_validation(self, tx: MatchTransaction):
         return TxValidator.AcceptanceValidator(self._utxos,
                                                self._accepted_offers,
                                                self._active_offers). \
             validate(tx)
 
-    @dispatch(ConfirmationTransaction, list)
-    def do_specific_validation(self, tx: ConfirmationTransaction):
+    @dispatch(ConfirmationTransaction)
+    def _do_specific_validation(self, tx: ConfirmationTransaction):
         return TxValidator.ConfirmationValidator(self._utxos,
                                                  self._accepted_offers). \
             validate(tx)
 
-    @dispatch(UnlockingDepositTransaction, list)
-    def do_specific_validation(self, tx: UnlockingDepositTransaction):
+    @dispatch(UnlockingDepositTransaction)
+    def _do_specific_validation(self, tx: UnlockingDepositTransaction):
         return TxValidator.DepositUnlockValidator(self._utxos,
                                                   self._accepted_offers,
                                                   self._active_offers). \
@@ -175,6 +179,10 @@ class TxValidator(Validator):
         @staticmethod
         def prepare(self, obj):
             return {'tx': obj}
+
+        @dispatch(object)
+        def _validate_output(self, arg, *args):
+            raise NotImplementedError
 
         @dispatch(TransferOutput, int, bytes)
         def _validate_output(self, output: TransferOutput, output_no, tx_hash):
@@ -203,7 +211,8 @@ class TxValidator(Validator):
             return {'tx': obj}
 
         def check_outputs(self, tx):
-            self._validate_output(tx)
+            for i, output in enumerate(tx.outputs):
+                self._validate_output(output, i, tx.hash())
 
         def check_inputs(self, tx):
             for tx_input in tx.inputs:
@@ -212,33 +221,33 @@ class TxValidator(Validator):
                               XpeerFeeOutput):
                     raise UseXpeerFeeOutputExceptionAsInput(tx.hash())
 
-    class OfferValidator(TransactionValidator):
-        def __init__(self, utxos, accepted_offers, active_offers):
-            self._active_offers = active_offers
-            super().__init__(utxos, accepted_offers)
-
-        def check_does_not_use_fees_as_inputs(self):
-            # TODO
-            pass
-
-    class AcceptanceValidator(TransactionValidator):
-        def __init__(self, utxos, accepted_offers, active_offers):
-            self._active_offers = active_offers
-            super().__init__(utxos, accepted_offers)
-
-        def check_does_not_use_fees_as_inputs(self):
-            # TODO
-            pass
-
-    class ConfirmationValidator(TransactionValidator):
-        def __init__(self, utxos, accepted_offers):
-            super().__init__(utxos, accepted_offers)
-
-        def check_uses_fees_inputs_from_the_right_exchange(self):
-            # TODO
-            pass
-
-    class DepositUnlockValidator(TransactionValidator):
-        def __init__(self, utxos, accepted_offers, active_offers):
-            self._active_offers = active_offers
-            super().__init__(utxos, accepted_offers)
+    # class OfferValidator(TransactionValidator):
+    #     def __init__(self, utxos, accepted_offers, active_offers):
+    #         self._active_offers = active_offers
+    #         super().__init__(utxos, accepted_offers)
+    #
+    #     def check_does_not_use_fees_as_inputs(self):
+    #         # TODO
+    #         pass
+    #
+    # class AcceptanceValidator(TransactionValidator):
+    #     def __init__(self, utxos, accepted_offers, active_offers):
+    #         self._active_offers = active_offers
+    #         super().__init__(utxos, accepted_offers)
+    #
+    #     def check_does_not_use_fees_as_inputs(self):
+    #         # TODO
+    #         pass
+    #
+    # class ConfirmationValidator(TransactionValidator):
+    #     def __init__(self, utxos, accepted_offers):
+    #         super().__init__(utxos, accepted_offers)
+    #
+    #     def check_uses_fees_inputs_from_the_right_exchange(self):
+    #         # TODO
+    #         pass
+    #
+    # class DepositUnlockValidator(TransactionValidator):
+    #     def __init__(self, utxos, accepted_offers, active_offers):
+    #         self._active_offers = active_offers
+    #         super().__init__(utxos, accepted_offers)
