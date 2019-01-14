@@ -55,7 +55,7 @@ def init_address(address, balance=0, utxos=0, dutxos_sum=0, dutxos=0):
 
     outputs = [TransferOutput(balance // utxos, bytes.fromhex(address)) for i in range(utxos)]
 
-    if (balance // utxos) * utxos != balance:
+    if utxos != 0 and (balance // utxos) * utxos != balance:
         outputs[0].value += balance - (balance // utxos) * utxos
 
     tx = Transaction(inputs, outputs)

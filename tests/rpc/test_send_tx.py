@@ -3,9 +3,7 @@ from pytest_bdd import scenario, given, when, then
 
 from chasm.rpc import client
 from chasm.rpc.client import send_tx
-from . import mock_acceptance, skip_test, sleep_for_block
-
-pytestmark = skip_test()
+from . import mock_acceptance, sleep_for_block, init_address
 
 
 @scenario('test_send_tx.feature', 'Send signed transaction')
@@ -14,14 +12,16 @@ def test_send_tx():
 
 
 @given('Transaction with its signature')
-def parameters(alice_account, bob_account, build_tx, rlp_serializer):
+def parameters(chasm_server, alice_account, bob_account, build_tx, rlp_serializer):
     signing_key, sender = alice_account
     _, receiver = bob_account
+    init_address(sender, 20, 1)
+    sleep_for_block()
     tx = build_tx(sender, receiver)
 
     return {
-        "tx": rlp_serializer.encode(tx).hex(),
-        "signature": tx.sign(signing_key.to_string())
+        "tx": tx.encoded.hex(),
+        "signature": tx.sign(signing_key.to_string()).hex()
     }
 
 
