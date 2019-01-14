@@ -1,7 +1,7 @@
 import json
 import os
+import shutil
 from collections import namedtuple
-from shutil import rmtree
 
 from ecdsa import SigningKey
 from merkletools import MerkleTools
@@ -81,7 +81,8 @@ def bob_account():
 @fixture
 def datadir(test_config):
     os.makedirs(test_config.get('datadir'), exist_ok=True)
-    return test_config.get('datadir')
+    yield test_config.get('datadir')
+    shutil.rmtree(test_config.get('datadir'))
 
 
 @fixture(scope="session")
