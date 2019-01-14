@@ -2,9 +2,7 @@
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import get_utxos, count_balance
-from . import skip_test, init_address, sleep_for_block
-
-pytestmark = skip_test()
+from . import init_address, sleep_for_block
 
 
 @scenario('test_get_utxos.feature', 'Get UTXOs of non-existing address')
@@ -18,7 +16,7 @@ def test_get_existing_utxos(node, test_port):
 
 
 @given(parsers.parse('New address'))
-def parameters(alice_account):
+def parameters(chasm_server, alice_account):
     _, address = alice_account
     return {
         "address": address
