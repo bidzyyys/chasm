@@ -91,10 +91,9 @@ class RPCServer:
         :param tx_hash: hash of the transaction
         :return: Transaction / None if tx does not exist
         """
-
         try:
             transaction = self._state.get_transaction(bytes.fromhex(tx_hash))
-        except ValueError:
+        except (ValueError, KeyError):
             self._logger.info("Transaction not found, hex: %s", tx_hash)
             return None
         return json_serializer.encode(transaction.transaction)

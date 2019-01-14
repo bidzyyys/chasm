@@ -6,10 +6,8 @@ from chasm.consensus.primitives.transaction import Transaction
 from chasm.rpc import client
 from chasm.rpc.client import do_simple_transfer, count_balance, \
     get_transaction
-from . import mock_acceptance, skip_test, init_address, \
+from . import mock_acceptance, init_address, \
     sleep_for_block
-
-pytestmark = skip_test()
 
 
 @scenario('test_simple_transfer.feature',
@@ -18,8 +16,9 @@ def test_simple_transfer():
     pass
 
 
-@given(parsers.parse('{owner1} has {xpc1:d} bdzys in {utxos1:d} UTXO and {owner2} has {xpc2} bdzys in {utxos2:d} UTXO'))
-def parameters(alice_account, bob_account, owner1, owner2, xpc1, utxos1, xpc2, utxos2):
+@given(
+    parsers.parse('{owner1} has {xpc1:d} bdzys in {utxos1:d} UTXO and {owner2} has {xpc2:d} bdzys in {utxos2:d} UTXO'))
+def parameters(chasm_server, alice_account, bob_account, owner1, owner2, xpc1, utxos1, xpc2, utxos2):
     key1, addr1 = alice_account
     init_address(address=addr1, balance=xpc1, utxos=utxos1)
     key2, addr2 = bob_account
@@ -47,7 +46,7 @@ def send(parameters, node, test_port, datadir,
                                     datadir=datadir,
                                     signing_key=parameters[sender]["key"])
     assert result
-    parameters["tx"] = tx.hash()
+    parameters["tx"] = tx.hash().hex()
     sleep_for_block()
 
 

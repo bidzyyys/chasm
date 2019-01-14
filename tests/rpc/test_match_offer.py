@@ -6,10 +6,8 @@ from chasm.consensus.primitives.transaction import MatchTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_offer_match, \
     count_balance, fetch_matches
-from . import skip_test, init_address, mock_acceptance, \
+from . import init_address, mock_acceptance, \
     sleep_for_block
-
-pytestmark = skip_test()
 
 
 @scenario('test_match_offer.feature', 'Bob matches offer')
@@ -19,7 +17,7 @@ def test_match_offer():
 
 @given(
     parsers.parse('{maker} has {xpc1:d} bdzys in {utxos1:d} UTXO and {taker} has {xpc2:d} bdzys in {utxos2:d} UTXO'))
-def parameters(alice_account, bob_account, maker, xpc1, utxos1, taker, xpc2, utxos2):
+def parameters(chasm_server, alice_account, bob_account, maker, xpc1, utxos1, taker, xpc2, utxos2):
     key1, addr1 = alice_account
     init_address(addr1, balance=xpc1, utxos=utxos1)
     key2, addr2 = bob_account
@@ -51,9 +49,9 @@ def create_offer(parameters, node, test_port, publish_offer,
 
     sleep_for_block()
     parameters[maker]["receive"] = parameters[maker]["address"]
-    assert get_transaction(node=node, port=test_port, transaction=offer) \
+    parameters["offer"] = offer.hex()
+    assert get_transaction(node=node, port=test_port, transaction=parameters["offer"]) \
            is not None
-    parameters["offer"] = offer
 
 
 @when(parsers.parse(
@@ -70,8 +68,9 @@ def accept_offer(parameters, node, test_port, datadir,
                                    datadir=datadir,
                                    signing_key=parameters[taker]["key"])
     assert result
-    parameters["match"] = match.hash()
+    parameters["match"] = match.hash().hex()
     sleep_for_block()
+
 
 @then('Offer match exists')
 def check_existence(parameters, node, test_port):
@@ -113,4 +112,3 @@ def assert_offers_non_existence(node, test_port):
 def assert_matches_non_existence(node, test_port):
     assert fetch_matches(host=node, port=test_port,
                          match_addr="0000") is None
-

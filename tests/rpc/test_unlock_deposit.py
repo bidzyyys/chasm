@@ -5,9 +5,7 @@ from chasm.consensus import Side
 from chasm.consensus.primitives.transaction import UnlockingDepositTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_unlock_deposit
-from . import skip_test, init_address, mock_acceptance, sleep_for_block
-
-pytestmark = skip_test()
+from . import init_address, mock_acceptance, sleep_for_block
 
 
 @scenario('test_unlock_deposit.feature', 'Alice unlocks deposit')
@@ -16,7 +14,7 @@ def test_unlock_deposit():
 
 
 @given(parsers.parse('{owner} has {xpc:d} bdzys in {utxos:d} UTXO'))
-def parameters(alice_account, owner, xpc, utxos):
+def parameters(chasm_server, alice_account, owner, xpc, utxos):
     key, address = alice_account
     init_address(address=address, balance=xpc, utxos=utxos)
     return {
@@ -40,24 +38,24 @@ def create_offer(parameters, node, test_port, publish_offer,
                           parameters[maker]["address"])
 
     sleep_for_block()
-    assert get_transaction(node=node, port=test_port, transaction=offer) is not None
-    parameters["offer"] = offer
+    parameters["offer"] = offer.hex()
+    assert get_transaction(node=node, port=test_port, transaction=parameters["offer"]) is not None
 
 
 @when(parsers.parse('{maker} creates UnlockDeposit transaction, deposit {deposit:d}, transaction fee {tx_fee:d}'))
 def unlock(parameters, node, test_port, maker, datadir, deposit, tx_fee):
     client.input = mock_acceptance
-    result, unlock = do_unlock_deposit(node=node, port=test_port,
-                                       sender=parameters[maker]["address"],
-                                       offer_hash=parameters["offer"],
-                                       deposit=deposit, tx_fee=tx_fee,
-                                       side=Side.OFFER_MAKER.value,
-                                       proof=parameters["offer"],
-                                       datadir=datadir,
-                                       signing_key=parameters[maker]["key"])
+    result, tx = do_unlock_deposit(node=node, port=test_port,
+                                   sender=parameters[maker]["address"],
+                                   offer_hash=parameters["offer"],
+                                   deposit=deposit, tx_fee=tx_fee,
+                                   side=Side.OFFER_MAKER.value,
+                                   proof=parameters["offer"],
+                                   datadir=datadir,
+                                   signing_key=parameters[maker]["key"])
 
     assert result
-    parameters["unlock"] = unlock.hash()
+    parameters["unlock"] = tx.hash().hex()
     sleep_for_block()
 
 

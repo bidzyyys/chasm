@@ -28,8 +28,7 @@ from chasm.maintenance.exceptions import DuplicatedInput, \
     ConfFeeIndexOutOfRangeError, XpeerFeeOutputException, \
     XpeerOutputException, ConfirmationNotUseXpeerFeeOutputError, \
     ConfirmationUnknownExchangeError, UnlockDepositUnknownExchangeError, \
-    UnlockDepositUnknownProofSideError, UnlockDepositBeforeOfferTimeoutError, \
-    UnlockDepositActiveOfferError
+    UnlockDepositUnknownProofSideError, UnlockDepositActiveOfferError
 from chasm.serialization.rlp_serializer import RLPSerializer
 
 MAX_SIZE = 2 ** 20
@@ -467,14 +466,8 @@ class TxValidator(Validator):
         def check_proof(self, tx):
             if tx.exchange in self._active_offers:
                 # Unlock unaccepted offer after timeout
-                if tx.proof_side == Side.OFFER_MAKER.value and \
-                        tx.tx_proof == tx.exchange:
-                    offer = self._active_offers.get(tx.tx_proof)
-                    timeout = datetime.fromtimestamp(offer.timeout)
-                    if datetime.now() < timeout:
-                        raise UnlockDepositBeforeOfferTimeoutError(tx.hash(),
-                                                                   tx.tx_proof)
-                else:
+                if tx.proof_side != Side.OFFER_MAKER.value or \
+                        tx.tx_proof != tx.exchange:
                     raise UnlockDepositActiveOfferError(tx.hash(),
                                                         tx.exchange)
             # NOTE: we have no mechanism to validate proof
