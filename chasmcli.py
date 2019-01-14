@@ -285,8 +285,8 @@ def main():
     config = _prepare_config(args)
     Logger.level = config.get('logger_level')
 
-    logger = Logger('chasm.cli')
-    rpc.client.logger = Logger('chasm.cli.rpc')
+    logger = Logger('chasm.cli.rpc')
+    rpc.client.logger = logger
 
     args.node = config.get('node')
     args.port = config.get('rpc_port')
