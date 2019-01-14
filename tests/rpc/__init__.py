@@ -1,5 +1,7 @@
 # pylint: disable=missing-docstring, too-many-arguments
 
+from time import sleep
+
 import pytest
 
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
@@ -10,6 +12,10 @@ from chasm.rpc import PAYLOAD_TAGS, PARAMS, METHOD, client
 from chasm.rpc.client import run
 
 CONFIG = Config([DEFAULT_TEST_CONFIG])
+
+
+def sleep_for_block(secs=20):
+    sleep(secs)
 
 
 def skip_test():

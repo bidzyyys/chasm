@@ -3,8 +3,8 @@ from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus.primitives.transaction import UnlockingDepositTransaction
 from chasm.rpc import Side, client
-from chasm.rpc.client import get_transaction, do_unlock_deposit, count_balance
-from . import skip_test, init_address, mock_acceptance
+from chasm.rpc.client import get_transaction, do_unlock_deposit
+from . import skip_test, init_address, mock_acceptance, sleep_for_block
 
 pytestmark = skip_test()
 
@@ -32,11 +32,13 @@ def parameters(alice_account, owner, xpc, utxos):
     '{maker} creates an exchange offer'))
 def create_offer(parameters, node, test_port, publish_offer,
                  maker):
+    sleep_for_block()
     client.input = mock_acceptance
     offer = publish_offer(parameters[maker]["address"],
                           parameters[maker]["key"],
                           parameters[maker]["address"])
 
+    sleep_for_block()
     assert get_transaction(node=node, port=test_port, transaction=offer) is not None
     parameters["offer"] = offer
 
@@ -55,6 +57,7 @@ def unlock(parameters, node, test_port, maker, datadir, deposit, tx_fee):
 
     assert result
     parameters["unlock"] = unlock.hash()
+    sleep_for_block()
 
 
 @then('UnlockDeposit transaction exists')

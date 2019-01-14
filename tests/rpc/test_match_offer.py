@@ -6,7 +6,8 @@ from chasm.consensus.primitives.transaction import MatchTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_offer_match, \
     count_balance, fetch_matches
-from . import skip_test, init_address, mock_acceptance
+from . import skip_test, init_address, mock_acceptance, \
+    sleep_for_block
 
 pytestmark = skip_test()
 
@@ -41,12 +42,14 @@ def parameters(alice_account, bob_account, maker, xpc1, utxos1, taker, xpc2, utx
     '{maker} creates exchange offer: {amount:d} {token} for {price:d} {expected}'))
 def create_offer(parameters, node, test_port, publish_offer,
                  maker, amount, token, price, expected):
+    sleep_for_block()
     client.input = mock_acceptance
     offer = publish_offer(parameters[maker]["address"],
                           parameters[maker]["key"],
                           parameters[maker]["address"],
                           token, amount, expected, price)
 
+    sleep_for_block()
     parameters[maker]["receive"] = parameters[maker]["address"]
     assert get_transaction(node=node, port=test_port, transaction=offer) \
            is not None
@@ -68,7 +71,7 @@ def accept_offer(parameters, node, test_port, datadir,
                                    signing_key=parameters[taker]["key"])
     assert result
     parameters["match"] = match.hash()
-
+    sleep_for_block()
 
 @then('Offer match exists')
 def check_existence(parameters, node, test_port):

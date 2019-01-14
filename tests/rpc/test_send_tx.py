@@ -3,7 +3,7 @@ from pytest_bdd import scenario, given, when, then
 
 from chasm.rpc import client
 from chasm.rpc.client import send_tx
-from . import mock_acceptance, skip_test
+from . import mock_acceptance, skip_test, sleep_for_block
 
 pytestmark = skip_test()
 
@@ -32,6 +32,7 @@ def send(parameters, node, test_port):
                      tx_hex=parameters["tx"],
                      signatures_hex=[parameters["signature"]])
     parameters["result"] = result
+    sleep_for_block()
 
 
 @then('I get acceptance')

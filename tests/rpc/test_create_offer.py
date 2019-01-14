@@ -6,7 +6,8 @@ from chasm.consensus.primitives.transaction import OfferTransaction
 from chasm.rpc import client
 from chasm.rpc.client import count_balance, \
     get_active_offers, get_transaction
-from . import skip_test, mock_acceptance, init_address
+from . import skip_test, mock_acceptance, init_address, \
+    sleep_for_block
 
 pytestmark = skip_test()
 
@@ -30,12 +31,14 @@ def parameters(alice_account, xpc, utxos):
     'Alice creates exchange offer: {amount:d} {token} for {price:d} {expected} until {timeout} confirmation fee {conf_fee:d} xpc transaction fee {tx_fee:d} xpc deposit {deposit:d} xpc with payment on her used address'))
 def create_offer(parameters, alice_account, publish_offer, amount, token, price, expected,
                  timeout, conf_fee, tx_fee, deposit):
+    sleep_for_block()
     signing_key, address = alice_account
     client.input = mock_acceptance
     offer = publish_offer(address, signing_key, address,
                           token, amount, expected, price,
                           deposit, conf_fee, tx_fee,
                           timeout)
+    sleep_for_block()
     parameters["offer"] = offer.hash()
 
 

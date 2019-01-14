@@ -2,7 +2,7 @@
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import get_dutxos
-from . import skip_test, init_address
+from . import skip_test, init_address, sleep_for_block
 
 pytestmark = skip_test()
 
@@ -48,3 +48,4 @@ def check_balance(parameters, balance, dutxos):
 def initialize(parameters, balance, dutxos):
     init_address(address=parameters["address"],
                  dutxos_sum=balance, dutxos=dutxos)
+    sleep_for_block()

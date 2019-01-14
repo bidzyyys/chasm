@@ -2,7 +2,7 @@
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import get_utxos, count_balance
-from . import skip_test, init_address
+from . import skip_test, init_address, sleep_for_block
 
 pytestmark = skip_test()
 
@@ -55,3 +55,4 @@ def check_balance(parameters, balance, utxos):
 def initialize(parameters, balance, utxos):
     init_address(address=parameters["address"],
                  balance=balance, utxos=utxos)
+    sleep_for_block()

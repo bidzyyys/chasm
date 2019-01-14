@@ -1,14 +1,13 @@
 # pylint: disable=missing-docstring
 
-from os.path import isdir
-
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus.primitives.transaction import Transaction
 from chasm.rpc import client
 from chasm.rpc.client import do_simple_transfer, count_balance, \
     get_transaction
-from . import mock_acceptance, skip_test, init_address
+from . import mock_acceptance, skip_test, init_address, \
+    sleep_for_block
 
 pytestmark = skip_test()
 
@@ -40,6 +39,7 @@ def parameters(alice_account, bob_account, owner1, owner2, xpc1, utxos1, xpc2, u
 @when(parsers.parse('{sender} sends {xpc:d} bdzys to {receiver} with {tx_fee:d} bdzys transaction fee'))
 def send(parameters, node, test_port, datadir,
          sender, receiver, xpc, tx_fee):
+    sleep_for_block()
     client.input = mock_acceptance
     result, tx = do_simple_transfer(node=node, port=test_port,
                                     amount=xpc, receiver=parameters[receiver]["address"],
@@ -48,6 +48,7 @@ def send(parameters, node, test_port, datadir,
                                     signing_key=parameters[sender]["key"])
     assert result
     parameters["tx"] = tx.hash()
+    sleep_for_block()
 
 
 @then(parsers.parse('{owner} has {funds:d} bdzys'))
