@@ -78,7 +78,7 @@ def minting_transaction(alice, bob):
 def offer_transaction(alice, utxo):
     tx = OfferTransaction([TxInput(*utxo)], outputs=[XpeerFeeOutput(50), TransferOutput(10, alice.pub)],
                           token_in=Tokens.ETHEREUM.value, token_out=Tokens.BITCOIN.value, value_in=1, value_out=2,
-                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=1000)
+                          address_out=alice.pub, confirmation_fee_index=0, deposit_index=1, timeout=2**32)
 
     return SignedTransaction.build_signed(tx, [alice.priv])
 

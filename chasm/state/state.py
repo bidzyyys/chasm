@@ -293,7 +293,18 @@ class State:
                 self.db.put_utxo(*utxo2, output=dutxo2)
 
     def _clean_timeouted_offers(self):
-        pass
+        last_block_timestamp = self.get_block_by_no(self.current_height).timestamp
+
+        for tx_hash, offer in self.active_offers.items():
+            if offer.timeout < last_block_timestamp:
+                self.active_offers.pop(tx_hash)
+                self.db.delete_active_offer(tx_hash)
+
+                v = self.dutxos.pop((tx_hash, offer.deposit_index))
+                self.db.delete_dutxo((tx_hash, offer.deposit_index))
+
+                self.utxos[(tx_hash, offer.deposit_index)] = v
+                self.db.put_utxo(tx_hash, offer.deposit_index, v)
 
     def _build_tx_indices(self, block, block_hash):
 
