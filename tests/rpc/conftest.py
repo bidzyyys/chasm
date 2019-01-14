@@ -16,7 +16,7 @@ def chasm_server(xprocess, datadir):
     class Starter(ProcessStarter):
         pattern = "Mined new block"
 
-        args = [python_path, chasm_server, '--config', config]
+        args = ['python', chasm_server, '--config', config, '--dev']
 
     logfile = xprocess.ensure('Chasm Server', Starter, restart=True)
     yield logfile

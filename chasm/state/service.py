@@ -8,9 +8,10 @@ from chasm.state.state import State
 
 
 class StateService(Service):
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, dev=False):
         self._state: State = None
         self._config = config
+        self._dev = dev
 
     def start(self, _stop_condition):
         db_dir = os.path.join(self._config.get('datadir'), 'db')
@@ -45,7 +46,7 @@ class StateService(Service):
         old_block = self._state.get_block_by_no(old_block_no)
 
         return BlockValidator(self._state.get_utxos(), self._state.get_active_offers(),
-                              self._state.get_matched_offers(), last_block.header, old_block.header, height)
+                              self._state.get_matched_offers(), last_block.header, old_block.header, height, dev=self._dev)
 
     def _build_tx_validator(self):
         return TxValidator(self._state.get_utxos(), self._state.get_active_offers(), self._state.get_matched_offers())

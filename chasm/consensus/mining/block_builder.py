@@ -12,9 +12,10 @@ from chasm.state.state import State
 
 class BlockBuilder:
 
-    def __init__(self, state: StateService, miner: bytes):
+    def __init__(self, state: StateService, miner: bytes, dev=False):
         self._state: State = state
         self._miner: bytes = miner
+        self._dev = dev
 
     def build_block(self) -> Block:
 
@@ -26,7 +27,8 @@ class BlockBuilder:
 
         minted_value = BlockStatelessValidator.get_minting_value(current_height + 1)
         difficulty = BlockStatelessValidator.get_expected_difficulty(current_height + 1, last_block.difficulty,
-                                                                     old_block.timestamp, last_block.timestamp)
+                                                                     old_block.timestamp, last_block.timestamp,
+                                                                     dev=self._dev)
 
         minting_tx = self._get_minting_tx(minted_value)
 

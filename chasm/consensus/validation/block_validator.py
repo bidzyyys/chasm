@@ -21,10 +21,12 @@ def check_block_size(block: Block):
 
 class BlockValidator(Validator):
 
-    def __init__(self, utxos, offers, accepted_offers, last_block_header, old_block_header, height):
+    def __init__(self, utxos, offers, accepted_offers, last_block_header, old_block_header, height, dev=False):
         self._last_block: Block.Header = last_block_header
         self._old_block: Block.Header = old_block_header
         self._height = height
+
+        self._dev = dev
 
     def prepare(self, obj: Block):
         return {
@@ -40,7 +42,7 @@ class BlockValidator(Validator):
     def check_block_difficulty(self, header: Block.Header):
         expected = BlockStatelessValidator.get_expected_difficulty(self._height, self._last_block.difficulty,
                                                                    self._old_block.timestamp,
-                                                                   self._last_block.timestamp)
+                                                                   self._last_block.timestamp, dev=self._dev)
 
         if not expected == header.difficulty:
             raise BlockDifficultyError(expected, header.difficulty)
@@ -63,7 +65,10 @@ class BlockStatelessValidator:
         return INITIAL_MINTING_VALUE // (2 ** no_of_divisions)
 
     @staticmethod
-    def get_expected_difficulty(height, last_diff, old_timestamp, last_timestamp):
+    def get_expected_difficulty(height, last_diff, old_timestamp, last_timestamp, dev=False):
+        if dev:
+            return 0
+
         if height % DIFFICULTY_COMPUTATION_INTERVAL == 0:
             return 16  # TODO: recalculate difficulty
         else:

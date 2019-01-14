@@ -20,6 +20,8 @@ def get_parser():
 
     parser.add_argument('-c', '--config', help="path to config file")
 
+    parser.add_argument('--dev', action='store_true')
+
     return parser
 
 
@@ -47,9 +49,9 @@ def main():
     Logger.level = config.get('logger_level')
 
     services = [
-        LazyService('state', StateService, config=config),
+        LazyService('state', StateService, dev=args.dev, config=config),
         LazyService('rpc_server', RPCServerService, config=config, required_services=['state']),
-        LazyService('miner', MinerService, config=config, required_services=['state'])
+        LazyService('miner', MinerService, dev=args.dev, config=config, required_services=['state'])
     ]
 
     with ServicesManager(services) as manager:

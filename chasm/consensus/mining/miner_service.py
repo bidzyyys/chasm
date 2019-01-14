@@ -14,10 +14,12 @@ from chasm.state.service import StateService
 class MinerService(Service):
     WORKER_STEP = 10000
 
-    def __init__(self, state: StateService, config: Config):
+    def __init__(self, state: StateService, config: Config, dev=False):
         self._state = state
         self._config = config
         self._thread = Thread(target=self, name=MinerService.__name__)
+
+        self._dev = dev
 
         self._builder = None
         self._workers = None
@@ -52,7 +54,7 @@ class MinerService(Service):
 
         self._logger = Logger('chasm.miner')
 
-        self._builder = BlockBuilder(self._state, miner)
+        self._builder = BlockBuilder(self._state, miner, dev=self._dev)
         self._workers = self._config.get('xpeer_miner_threads')
 
         self._exit_condition = exit_condition
@@ -66,6 +68,10 @@ class MinerService(Service):
         return self._thread.is_alive()
 
     def _mine(self, block):
+
+        if self._dev:
+            time.sleep(1)
+            return 1
 
         searched_nonces = 0
 
