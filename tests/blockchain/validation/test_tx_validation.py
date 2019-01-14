@@ -4,10 +4,21 @@ from pytest import fixture, raises
 
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
-from chasm.consensus.primitives.tx_output import TransferOutput
+from chasm.consensus.primitives.tx_output import TransferOutput, XpeerOutput, XpeerFeeOutput
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
-    InputOutputSumsException, SignaturesAmountException, TransactionSizeException
+    InputOutputSumsException, SignaturesAmountException, TransactionSizeException, \
+    UseXpeerFeeOutputAsInputException, NegativeOutput
+
+
+@fixture
+def xpeer_fee_output():
+    return XpeerFeeOutput(10)
+
+
+@fixture
+def xpeer_output(alice, bob):
+    return XpeerOutput(10, sender=alice.pub, receiver=bob.pub, exchange=b'a')
 
 
 @fixture
@@ -70,6 +81,16 @@ def test_tries_to_spend_duplicated_input(validator, simple_transaction):
 
 def test_spend_duplicated_input(validator, simple_transaction):
     assert validator().check_inputs_repetitions(simple_transaction)
+
+
+def test_tries_to_send_negative_output(validator, utxos, simple_transaction):
+    simple_transaction.outputs[0].value = -10
+    with raises(NegativeOutput):
+        validator(utxos).check_outputs_are_positive(simple_transaction)
+
+
+def test_send_negative_output(validator, utxos, simple_transaction):
+    validator(utxos).check_outputs_are_positive(simple_transaction)
 
 
 def test_tries_to_spend_nonexistent_utxo(validator, simple_transaction):
@@ -153,4 +174,10 @@ def test_invalid_size_transaction(validator, utxos, too_much_signed_simple_trans
 def test_verify_invalid_sums(validator, utxos, signed_simple_transaction):
     signed_simple_transaction.outputs[0].value = 1000
     with raises(InputOutputSumsException):
+        validator(utxos).validate(signed_simple_transaction)
+
+
+def test_verify_simple_transfer_use_xpeer_fee_output(validator, utxos, xpeer_fee_output, signed_simple_transaction):
+    utxos[(b'1', 1)] = xpeer_fee_output
+    with raises(UseXpeerFeeOutputAsInputException):
         validator(utxos).validate(signed_simple_transaction)

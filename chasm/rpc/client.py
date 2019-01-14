@@ -13,7 +13,7 @@ from ecdsa import SigningKey, VerifyingKey
 from ecdsa.der import UnexpectedDER
 from rlp.exceptions import RLPException
 
-from chasm.consensus import CURVE
+from chasm.consensus import CURVE, Side
 from chasm.consensus.primitives.transaction import Transaction, \
     OfferTransaction, MatchTransaction, UnlockingDepositTransaction, \
     SignedTransaction
@@ -24,8 +24,7 @@ from chasm.maintenance.exceptions import IncorrectPassword, RPCError
 from chasm.maintenance.logger import Logger
 from chasm.serialization.json_serializer import JSONSerializer
 from chasm.serialization.rlp_serializer import RLPSerializer
-from . import PWD_LEN, ENCODING, Side, \
-    KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
+from . import PWD_LEN, ENCODING, KEYSTORE, KEY_FILE_REGEX, PAYLOAD_TAGS, METHOD, PARAMS, \
     token_from_name, TIMEOUT_FORMAT, get_token_name, \
     ALL_ADDRESSES
 

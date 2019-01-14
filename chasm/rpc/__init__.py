@@ -1,5 +1,4 @@
 """RPC module"""
-from enum import Enum
 
 from chasm.consensus.tokens import Tokens
 
@@ -30,14 +29,6 @@ TOKENS_DICT = {
 }
 
 TIMEOUT_FORMAT = "%Y-%m-%d::%H:%M:%S"
-
-
-class Side(Enum):
-    """
-    Side of an exchange
-    """
-    OFFER_MAKER = 0
-    OFFER_TAKER = 1
 
 
 def get_token_name(token):

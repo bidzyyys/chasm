@@ -3,9 +3,10 @@
 import argparse
 
 from chasm import rpc
+from chasm.consensus import Side
 from chasm.maintenance.config import Config, DEFAULT_CONFIG_FILE
 from chasm.maintenance.logger import Logger
-from chasm.rpc import list_token_names, TIMEOUT_FORMAT, Side
+from chasm.rpc import list_token_names, TIMEOUT_FORMAT
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, \
     show_keys, show_marketplace, show_matches, show_accepted_offers, show_all_funds, \
