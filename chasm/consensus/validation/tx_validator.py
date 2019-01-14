@@ -164,7 +164,7 @@ class TxValidator(Validator):
     @dispatch(OfferTransaction)
     def _do_specific_validation(self, tx: OfferTransaction):
         return TxValidator.OfferValidator(self._utxos,
-                                          self._accepted_offers). \
+                                          self._accepted_offers, self._active_offers). \
             validate(tx)
 
     @dispatch(MatchTransaction)

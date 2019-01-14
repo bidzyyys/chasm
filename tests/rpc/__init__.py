@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring, too-many-arguments
-
-from time import sleep
+import time
 
 import pytest
 
@@ -8,14 +7,19 @@ from chasm.consensus.primitives.transaction import Transaction, SignedTransactio
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.maintenance.config import Config, DEFAULT_TEST_CONFIG
+from chasm.maintenance.logger import Logger
 from chasm.rpc import PAYLOAD_TAGS, PARAMS, METHOD, client
 from chasm.rpc.client import run
 
 CONFIG = Config([DEFAULT_TEST_CONFIG])
 
+Logger.level = CONFIG.get('logger_level')
 
-def sleep_for_block(secs=20):
-    sleep(secs)
+client.logger = Logger('chasm.cli')
+
+
+def sleep_for_block(secs=10):
+    time.sleep(secs)
 
 
 def skip_test():
@@ -49,7 +53,7 @@ def init_address(address, balance=0, utxos=0, dutxos_sum=0, dutxos=0):
     utxo = client.get_utxos(miner_pub.hex(), CONFIG.get('node'), CONFIG.get('rpc_port'))[0]
     inputs = [TxInput(bytes.fromhex(utxo['tx']), utxo['output_no'])]
 
-    outputs = [TransferOutput(balance // utxos, address) for i in range(utxos)]
+    outputs = [TransferOutput(balance // utxos, bytes.fromhex(address)) for i in range(utxos)]
 
     if (balance // utxos) * utxos != balance:
         outputs[0].value += balance - (balance // utxos) * utxos

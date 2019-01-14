@@ -80,9 +80,8 @@ def bob_account():
 
 @fixture
 def datadir(test_config):
-    os.makedirs(test_config.get('datadir'))
-    yield test_config.get('datadir')
-    rmtree(test_config.get('datadir'), ignore_errors=True)
+    os.makedirs(test_config.get('datadir'), exist_ok=True)
+    return test_config.get('datadir')
 
 
 @fixture(scope="session")
