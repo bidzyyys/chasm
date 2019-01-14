@@ -251,13 +251,21 @@ class TxValidator(Validator):
         def _validate_output(self, output):
             return True
 
+        @dispatch(XpeerOutput)
+        def _validate_output(self, output):
+            return super()._validate_output(output)
+
+        @dispatch(TransferOutput)
+        def _validate_output(self, output):
+            return super()._validate_output(output)
+
         def _validate_deposit(self, tx):
             if len(tx.outputs) <= tx.deposit_index:
                 raise DepositOutputError
             output_sum = sum(output.value for output in tx.outputs)
             input_sum = 0
             for tx_input in tx.inputs:
-                utxo = self._utxos.get(tx_input.tx_hash, tx_input.output_no)
+                utxo = self._utxos.get((tx_input.tx_hash, tx_input.output_no))
                 input_sum += utxo.value
             tx_fee = input_sum - output_sum
             if tx.outputs[tx.deposit_index].value < tx_fee * 10:
@@ -282,8 +290,8 @@ class TxValidator(Validator):
         def __init__(self, utxos, accepted_offers):
             super().__init__(utxos, accepted_offers)
 
-        def prepare(self, obj):
-            return {'tx': obj}
+        def prepare(self, tx):
+            return {'tx': tx}
 
         def check_outputs(self, tx):
             return self._validate_outputs(tx)
@@ -295,6 +303,9 @@ class TxValidator(Validator):
         def __init__(self, utxos, accepted_offers, active_offers):
             self._active_offers = active_offers
             super().__init__(utxos, accepted_offers)
+
+        def prepare(self, tx):
+            return {'tx': tx}
 
         def check_outputs(self, tx):
             return self._validate_outputs(tx)
@@ -350,7 +361,7 @@ class TxValidator(Validator):
             return self._validate_confirmation_fee(tx)
 
         def check_payment_address(self, tx):
-            if self._validate_address_length(tx.token_out, tx.address_out):
+            if self._validate_address_length(tx.token_out, tx.address_out) is False:
                 raise InvalidAddressLengthPaymentError(tx.hash(),
                                                        len(tx.address_out),
                                                        tx.token_out)
@@ -360,6 +371,9 @@ class TxValidator(Validator):
         def __init__(self, utxos, accepted_offers, active_offers):
             self._active_offers = active_offers
             super().__init__(utxos, accepted_offers)
+
+        def prepare(self, tx):
+            return {'tx': tx}
 
         def check_outputs(self, tx):
             return self._validate_outputs(tx)
@@ -376,7 +390,7 @@ class TxValidator(Validator):
         def check_payment_address(self, tx):
             offer = self._active_offers.get(tx.exchange)
             token = offer.token_in
-            if self._validate_address_length(token, tx.address_in):
+            if self._validate_address_length(token, tx.address_in) is False:
                 raise InvalidAddressLengthPaymentError(tx.hash(),
                                                        len(tx.address_in),
                                                        token)
@@ -389,6 +403,9 @@ class TxValidator(Validator):
     class ConfirmationValidator(TransactionValidator):
         def __init__(self, utxos, accepted_offers):
             super().__init__(utxos, accepted_offers)
+
+        def prepare(self, tx):
+            return {'tx': tx}
 
         def check_inputs(self, tx):
             for i, tx_input in enumerate(tx.inputs):
@@ -421,6 +438,9 @@ class TxValidator(Validator):
         def __init__(self, utxos, accepted_offers, active_offers):
             self._active_offers = active_offers
             super().__init__(utxos, accepted_offers)
+
+        def prepare(self, tx):
+            return {'tx': tx}
 
         def check_inputs(self, tx):
             return self._validate_inputs(tx)

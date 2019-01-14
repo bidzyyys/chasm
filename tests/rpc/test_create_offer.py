@@ -6,10 +6,8 @@ from chasm.consensus.primitives.transaction import OfferTransaction
 from chasm.rpc import client
 from chasm.rpc.client import count_balance, \
     get_active_offers, get_transaction
-from . import skip_test, mock_acceptance, init_address, \
+from . import mock_acceptance, init_address, \
     sleep_for_block
-
-# pytestmark = skip_test()
 
 
 @scenario('test_create_offer.feature', 'Alice creates exchange offer')

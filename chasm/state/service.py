@@ -29,7 +29,7 @@ class StateService(Service):
         self._state.apply_block(block)
 
     def add_pending_tx(self, tx):
-        # self._build_tx_validator().validate(tx)
+        self._build_tx_validator().validate(tx)
         self._state.add_pending_tx(tx)
 
     def __getattribute__(self, item):
