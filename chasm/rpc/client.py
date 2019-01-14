@@ -259,9 +259,13 @@ def find_account_files(datadir, filename_regex=KEY_FILE_REGEX):
     """
     datadir = datadir.replace("~", os.path.expanduser("~"))
     keystore = os.path.join(datadir, KEYSTORE)
-    accounts = [os.path.join(keystore, f) \
-                for f in os.listdir(os.path.join(datadir, KEYSTORE))
+    accounts = []
+    try:
+        accounts = [os.path.join(keystore, f) \
+                    for f in os.listdir(os.path.join(datadir, KEYSTORE))
                 if re.match(filename_regex, f)]
+    except FileNotFoundError:
+        logger.warning('Keystore does not exist')
 
     return accounts
 
