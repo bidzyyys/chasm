@@ -4,6 +4,8 @@ from hashlib import sha3_256
 
 from pytest_bdd import scenario, given, when, then, parsers
 from ecdsa import VerifyingKey
+
+from chasm.consensus import CURVE
 from chasm.rpc import client
 from chasm.rpc.client import sign_tx
 from . import mock_acceptance
@@ -38,7 +40,7 @@ def sign(parameters, alice_account, datadir):
 @then('Signature is valid')
 def verify_signature(parameters, alice_account):
     _, address = alice_account
-    assert VerifyingKey.from_der(bytes.fromhex(address)) \
+    assert VerifyingKey.from_string(bytes.fromhex(address), curve=CURVE) \
         .verify(bytes.fromhex(parameters["signature"]),
                 bytes.fromhex(parameters["tx"]),
                 hashfunc=sha3_256)

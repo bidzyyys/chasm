@@ -24,7 +24,7 @@ Entity = namedtuple("Entity", "priv pub")
 
 def _account():
     key = SigningKey.generate(consensus.CURVE)
-    return key, key.get_verifying_key().to_der().hex()
+    return key, key.get_verifying_key().to_string().hex()
 
 
 def _entity():
@@ -87,12 +87,12 @@ def datadir(test_config):
 
 @fixture(scope="session")
 def test_port(test_config):
-    return test_config.rpc_port()
+    return test_config.get('rpc_port')
 
 
 @fixture(scope="session")
 def node(config):
-    return config.cli_node()
+    return config.get('node')
 
 
 @fixture

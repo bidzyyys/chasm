@@ -32,6 +32,11 @@ class BlockValidator(Validator):
             'header': obj.header
         }
 
+    @staticmethod
+    def check_all_transactions(block):
+        for tx in block.transactions:
+            pass
+
     def check_block_difficulty(self, header: Block.Header):
         expected = BlockStatelessValidator.get_expected_difficulty(self._height, self._last_block.difficulty,
                                                                    self._old_block.timestamp,
@@ -60,7 +65,7 @@ class BlockStatelessValidator:
     @staticmethod
     def get_expected_difficulty(height, last_diff, old_timestamp, last_timestamp):
         if height % DIFFICULTY_COMPUTATION_INTERVAL == 0:
-            return last_diff  # TODO: recalculate difficulty
+            return 16  # TODO: recalculate difficulty
         else:
             return 16
 

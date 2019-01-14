@@ -52,7 +52,7 @@ class BlockBuilder:
 
         block.add_transaction(minting_tx)
 
-        while not BlockStatelessValidator.check_block_size(len(serializer.encode(block))):
+        while BlockStatelessValidator.check_block_size(len(serializer.encode(block))):
             tx = None
             try:
                 tx = self._state.pop_pending_tx()

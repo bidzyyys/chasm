@@ -1,6 +1,6 @@
 import os
 
-from chasm.consensus.validation.block_validator import BlockValidator
+from chasm.consensus.validation.block_validator import BlockValidator, DIFFICULTY_COMPUTATION_INTERVAL
 from chasm.consensus.validation.tx_validator import TxValidator
 from chasm.maintenance.config import Config
 from chasm.services_manager import Service
@@ -38,8 +38,14 @@ class StateService(Service):
             return getattr(self._state, item)
 
     def _build_block_validator(self):
+        height = self._state.current_height
+
+        old_block_no = 0 if height - DIFFICULTY_COMPUTATION_INTERVAL < 0 else height - DIFFICULTY_COMPUTATION_INTERVAL
+        last_block = self._state.get_block_by_no(height)
+        old_block = self._state.get_block_by_no(old_block_no)
+
         return BlockValidator(self._state.get_utxos(), self._state.get_active_offers(),
-                              self._state.get_matched_offers(), 1, 1, 1)
+                              self._state.get_matched_offers(), last_block.header, old_block.header, height)
 
     def _build_tx_validator(self):
         return TxValidator(self._state.get_utxos(), self._state.get_active_offers(), self._state.get_matched_offers())
