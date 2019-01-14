@@ -18,7 +18,7 @@ Logger.level = CONFIG.get('logger_level')
 client.logger = Logger('chasm.cli')
 
 
-def sleep_for_block(secs=10):
+def sleep_for_block(secs=20):
     time.sleep(secs)
 
 

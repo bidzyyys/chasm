@@ -38,7 +38,7 @@ class RPCServer:
 
         result = []
         for (tx, output_no), txo in txos.items():
-            if txo.receiver == address:
+            if hasattr(txo, 'receiver') and txo.receiver == address:
                 result.append({
                     "tx": tx.hex(),
                     "output_no": output_no,
@@ -79,7 +79,7 @@ class RPCServer:
         offers = list(filter(lambda o:
                              token_in in (ALL, o.token_in) and
                              token_out in (ALL, o.token_out),
-                             offers))
+                             offers.values()))
 
         serialized_offers = list(map(lambda offer: json_serializer.encode(offer),
                                      offers))

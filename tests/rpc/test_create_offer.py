@@ -9,7 +9,7 @@ from chasm.rpc.client import count_balance, \
 from . import skip_test, mock_acceptance, init_address, \
     sleep_for_block
 
-pytestmark = skip_test()
+# pytestmark = skip_test()
 
 
 @scenario('test_create_offer.feature', 'Alice creates exchange offer')
@@ -18,7 +18,7 @@ def test_create_offer():
 
 
 @given(parsers.parse('Alice has {xpc:d} bdzys in {utxos:d} UTXO'))
-def parameters(alice_account, xpc, utxos):
+def parameters(chasm_server, alice_account, xpc, utxos):
     _, address = alice_account
     init_address(address=address, balance=xpc, utxos=utxos)
     return {
@@ -39,7 +39,7 @@ def create_offer(parameters, alice_account, publish_offer, amount, token, price,
                           deposit, conf_fee, tx_fee,
                           timeout)
     sleep_for_block()
-    parameters["offer"] = offer.hash()
+    parameters["offer"] = offer.hex()
 
 
 @then(parsers.parse('Alice has {balance:d} bdzys'))
