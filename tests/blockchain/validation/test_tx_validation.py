@@ -6,7 +6,7 @@ from ecdsa import BadSignatureError
 from pytest import fixture, raises
 
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, OfferTransaction, \
-    MatchTransaction
+    MatchTransaction, ConfirmationTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerOutput, XpeerFeeOutput
 from chasm.consensus.tokens import Tokens
@@ -18,7 +18,8 @@ from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
     OutputIsNotXpeerFeeOutputError, ConfFeeIndexOutOfRangeError, InvalidAddressLengthOutputError, \
     InvalidAddressLengthPaymentError, SendXpeerFeeOutputError, SendXpeerOutputWithoutExchangeError, \
     ReceiverUseXpeerOutputBeforeConfirmationError, SenderUseXpeerOutputAfterConfirmationError, \
-    SenderUseXpeerOutputBeforeTimeoutError, MatchNonExistentOfferError
+    SenderUseXpeerOutputBeforeTimeoutError, MatchNonExistentOfferError, ConfirmationUnknownExchangeError, \
+    ConfirmationNotUseXpeerFeeOutputError
 
 
 @fixture
@@ -133,6 +134,27 @@ def simple_match(exchange_side_inputs, exchange_side_outputs, simple_offer, xpc_
                             exchange=simple_offer.hash(),
                             address_in=xpc_addr,
                             deposit_index=0, confirmation_fee_index=1)
+
+
+@fixture
+def confirmation_inputs():
+    return [TxInput(b'1', 1), TxInput(b'10', 100)]
+
+
+@fixture
+def confirmation_utxos():
+    return {
+        (b'1', 1): XpeerFeeOutput(60),
+        (b'10', 100): XpeerFeeOutput(50)
+    }
+
+
+@fixture
+def simple_confirmation(confirmation_inputs, alice, simple_offer, proof):
+    return ConfirmationTransaction(inputs=confirmation_inputs,
+                                   outputs=[TransferOutput(110, alice.pub)],
+                                   exchange=simple_offer.hash(),
+                                   tx_in_proof=proof, tx_out_proof=proof)
 
 
 @fixture
@@ -473,3 +495,50 @@ def test_verify_match_confirmation_out_of_range(validator, utxos, simple_match: 
     signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
     with raises(ConfFeeIndexOutOfRangeError):
         validator(utxos).validate(signed_tx)
+
+
+def test_verify_valid_confirmation(validator, confirmation_utxos, simple_confirmation, simple_offer, alice):
+    signed_tx = SignedTransaction.build_signed(simple_confirmation, [alice.priv, alice.priv])
+    assert validator(confirmation_utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_verify_confirmation_unknown_exchange(validator, confirmation_utxos, simple_confirmation, alice):
+    signed_tx = SignedTransaction.build_signed(simple_confirmation, [alice.priv, alice.priv])
+    with raises(ConfirmationUnknownExchangeError):
+        validator(confirmation_utxos, {}, {}).validate(signed_tx)
+
+
+def test_verify_confirmation_invalid_input(validator, confirmation_utxos, simple_confirmation, simple_offer, alice):
+    confirmation_utxos[(b'1', 1)] = TransferOutput(60, alice.pub)
+    signed_tx = SignedTransaction.build_signed(simple_confirmation, [alice.priv, alice.priv])
+    with raises(ConfirmationNotUseXpeerFeeOutputError):
+        validator(confirmation_utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_confirmation_send_xpeer_fee_output(validator, confirmation_utxos, simple_confirmation, simple_offer, alice,
+                                            xpeer_fee_output):
+    simple_confirmation.outputs = [xpeer_fee_output]
+    signed_tx = SignedTransaction.build_signed(simple_confirmation, [alice.priv, alice.priv])
+    with raises(SendXpeerFeeOutputError):
+        validator(confirmation_utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_confirmation_send_xpeer_output_without_exchange(validator, confirmation_utxos, simple_confirmation,
+                                                         simple_offer, alice,
+                                                         xpeer_output):
+    simple_confirmation.outputs = [xpeer_output]
+    signed_tx = SignedTransaction.build_signed(simple_confirmation, [alice.priv, alice.priv])
+    with raises(SendXpeerOutputWithoutExchangeError):
+        validator(confirmation_utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_confirmation_send_xpeer_output_valid_exchange(validator, confirmation_utxos, simple_confirmation,
+                                                       simple_offer, alice,
+                                                       xpeer_output):
+    xpeer_output.exchange = b'a'
+    simple_confirmation.outputs = [xpeer_output]
+    signed_tx = SignedTransaction.build_signed(simple_confirmation, [alice.priv, alice.priv])
+    assert validator(confirmation_utxos, {}, {
+        simple_offer.hash(): list(),
+        b'a': list()
+    }).validate(signed_tx)
