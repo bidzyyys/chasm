@@ -199,10 +199,6 @@ class TxValidator(Validator):
         def prepare(self, obj):
             return {'tx': obj}
 
-        @dispatch(object)
-        def _validate_output(self, arg, *args):
-            raise NotImplementedError
-
         @dispatch(TransferOutput)
         def _validate_output(self, output):
             return self._validate_address_length(Tokens.XPEER.value,
@@ -211,16 +207,16 @@ class TxValidator(Validator):
         @dispatch(XpeerOutput)
         def _validate_output(self, output: XpeerOutput):
             if output.exchange not in self._accepted_offers:
-                raise XpeerOutputException
+                raise XpeerOutputException()
 
             return self._validate_address_length(Tokens.XPEER.value,
                                                  output.receiver) and \
                    self._validate_address_length(Tokens.XPEER.value,
                                                  output.sender)
 
-        @dispatch(XpeerFeeOutput, int, bytes)
+        @dispatch(XpeerFeeOutput)
         def _validate_output(self, output):
-            raise XpeerFeeOutputException
+            raise XpeerFeeOutputException()
 
         def _validate_outputs(self, tx):
             for i, output in enumerate(tx.outputs):
@@ -228,9 +224,9 @@ class TxValidator(Validator):
                     if self._validate_output(output) is False:
                         raise InvalidAddressLengthOutputError(tx.hash(), i)
                 except XpeerOutputException:
-                    raise SendXpeerOutputWithoutExchangeError(tx.hash, i)
+                    raise SendXpeerOutputWithoutExchangeError(tx.hash(), i)
                 except XpeerFeeOutputException:
-                    SendXpeerFeeOutputError(tx.hash(), i)
+                    raise SendXpeerFeeOutputError(tx.hash(), i)
             return True
 
         def _validate_inputs(self, tx):
@@ -259,8 +255,9 @@ class TxValidator(Validator):
             return super()._validate_output(output)
 
         def _validate_deposit(self, tx):
-            if len(tx.outputs) <= tx.deposit_index:
-                raise DepositOutputError
+            if len(tx.outputs) <= tx.deposit_index or \
+                    isinstance(tx.outputs[tx.deposit_index], TransferOutput) is False:
+                raise DepositOutputError(tx.hash(), tx.deposit_index)
             output_sum = sum(output.value for output in tx.outputs)
             input_sum = 0
             for tx_input in tx.inputs:
@@ -314,7 +311,7 @@ class TxValidator(Validator):
 
         def check_if_exist(self, tx):
             if tx.hash() in self._active_offers:
-                raise OfferExistsError(tx.hash)
+                raise OfferExistsError(tx.hash())
             return True
 
         @staticmethod

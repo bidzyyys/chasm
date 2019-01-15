@@ -14,3 +14,5 @@ class Validator(ABC):
         for method in methods:
             parameters = {k: prepared_parameters[k] for k in inspect.getfullargspec(method).args if not k == 'self'}
             method(**parameters)
+
+        return True

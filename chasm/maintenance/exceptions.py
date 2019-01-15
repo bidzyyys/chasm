@@ -52,11 +52,13 @@ class TransactionSizeException(TransactionValidationException):
 
 
 class XpeerFeeOutputException(ValueError):
-    pass
+    def __init__(self, msg=""):
+        super().__init__(msg)
 
 
 class XpeerOutputException(ValueError):
-    pass
+    def __init__(self, msg=""):
+        super().__init__(msg)
 
 
 class UseXpeerFeeOutputAsInputException(TransactionValidationException):
@@ -102,6 +104,8 @@ class SendXpeerOutputWithoutExchangeError(TransactionValidationException):
 class SendXpeerFeeOutputError(TransactionValidationException):
     def __init__(self, tx_hash, output_no):
         super().__init__(tx_hash, f"Try to send XpeerFeeOutput, output_no: {output_no}")
+
+
 class BlockDifficultyError(BlockValidationError):
     def __init__(self, expected, actual):
         super().__init__(f'Expected difficulty {expected}, but got {actual}')
