@@ -5,7 +5,8 @@ import time
 from ecdsa import BadSignatureError
 from pytest import fixture, raises
 
-from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, OfferTransaction
+from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, OfferTransaction, \
+    MatchTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerOutput, XpeerFeeOutput
 from chasm.consensus.tokens import Tokens
@@ -17,7 +18,7 @@ from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
     OutputIsNotXpeerFeeOutputError, ConfFeeIndexOutOfRangeError, InvalidAddressLengthOutputError, \
     InvalidAddressLengthPaymentError, SendXpeerFeeOutputError, SendXpeerOutputWithoutExchangeError, \
     ReceiverUseXpeerOutputBeforeConfirmationError, SenderUseXpeerOutputAfterConfirmationError, \
-    SenderUseXpeerOutputBeforeTimeoutError
+    SenderUseXpeerOutputBeforeTimeoutError, MatchNonExistentOfferError
 
 
 @fixture
@@ -94,6 +95,11 @@ def eth_addr():
 
 
 @fixture(scope='session')
+def xpc_addr(carol):
+    return carol.pub
+
+
+@fixture(scope='session')
 def proof():
     return b'aaaa1234'
 
@@ -118,6 +124,15 @@ def simple_offer(exchange_side_inputs, exchange_side_outputs, btc_addr, timeout)
                             value_out=1, address_out=btc_addr,
                             deposit_index=0, confirmation_fee_index=1,
                             timeout=timeout)
+
+
+@fixture
+def simple_match(exchange_side_inputs, exchange_side_outputs, simple_offer, xpc_addr):
+    return MatchTransaction(inputs=exchange_side_inputs,
+                            outputs=exchange_side_outputs,
+                            exchange=simple_offer.hash(),
+                            address_in=xpc_addr,
+                            deposit_index=0, confirmation_fee_index=1)
 
 
 @fixture
@@ -405,3 +420,56 @@ def test_transfer_sender_use_xpeer_output_after_timeout(validator, utxos_xpeer_o
         None, None, to_timestamp(datetime.datetime.now() - datetime.timedelta(days=15))
     ]}). \
         validate(signed_tx)
+
+
+def test_simple_match_valid(validator, utxos, alice, simple_match, simple_offer):
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    assert validator(utxos, {simple_offer.hash(): simple_offer}).validate(signed_tx)
+
+
+def test_simple_match_nonexistent_offer(validator, utxos, alice, simple_match):
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(MatchNonExistentOfferError):
+        validator(utxos, {}).validate(signed_tx)
+
+
+def test_simple_match_invalid_payment_address(validator, utxos, alice, simple_match, eth_addr, simple_offer):
+    simple_match.address_in = eth_addr
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(InvalidAddressLengthPaymentError):
+        validator(utxos, {simple_offer.hash(): simple_offer}).validate(signed_tx)
+
+
+def test_verify_match_deposit_not_transfer_output(validator, utxos, simple_match: MatchTransaction, alice):
+    simple_match.deposit_index = 1
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(DepositOutputError):
+        validator(utxos).validate(signed_tx)
+
+
+def test_verify_match_deposit_out_of_range(validator, utxos, simple_match: MatchTransaction, alice):
+    simple_match.deposit_index = 6
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(DepositOutputError):
+        validator(utxos).validate(signed_tx)
+
+
+def test_verify_match_deposit_too_small_value(validator, utxos, simple_match: MatchTransaction, alice):
+    simple_match.outputs[simple_match.deposit_index].value = 1
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(DepositValueError):
+        validator(utxos).validate(signed_tx)
+
+
+def test_verify_match_confirmation_not_xpeer_fee_output(validator, utxos, simple_match: MatchTransaction, alice):
+    simple_match.confirmation_fee_index = 0
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(OutputIsNotXpeerFeeOutputError):
+        validator(utxos).validate(signed_tx)
+
+
+def test_verify_match_confirmation_out_of_range(validator, utxos, simple_match: MatchTransaction, alice):
+    simple_match.confirmation_fee_index = 6
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(ConfFeeIndexOutOfRangeError):
+        validator(utxos).validate(signed_tx)
