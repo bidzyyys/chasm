@@ -7,7 +7,9 @@ from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_offer_match, \
     count_balance, fetch_matches
 from . import init_address, mock_acceptance, \
-    sleep_for_block
+    sleep_for_block, skip_test
+
+pytestmark = skip_test()
 
 
 @scenario('test_match_offer.feature', 'Bob matches offer')

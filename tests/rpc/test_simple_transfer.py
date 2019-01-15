@@ -7,7 +7,9 @@ from chasm.rpc import client
 from chasm.rpc.client import do_simple_transfer, count_balance, \
     get_transaction
 from . import mock_acceptance, init_address, \
-    sleep_for_block
+    sleep_for_block, skip_test
+
+pytestmark = skip_test()
 
 
 @scenario('test_simple_transfer.feature',

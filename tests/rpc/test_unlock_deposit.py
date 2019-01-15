@@ -5,7 +5,9 @@ from chasm.consensus import Side
 from chasm.consensus.primitives.transaction import UnlockingDepositTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_unlock_deposit
-from . import init_address, mock_acceptance, sleep_for_block
+from . import init_address, mock_acceptance, sleep_for_block, skip_test
+
+pytestmark = skip_test()
 
 
 @scenario('test_unlock_deposit.feature', 'Alice unlocks deposit')
