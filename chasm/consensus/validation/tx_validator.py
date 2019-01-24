@@ -237,23 +237,6 @@ class TxValidator(Validator):
                     raise UseXpeerFeeOutputAsInputException(tx.hash())
             return True
 
-    class ExchangeSideTransactionValidator(TransactionValidator):
-        def __init__(self, utxos, accepted_offers):
-            self._utxos = utxos
-            self._accepted_offers = accepted_offers
-
-        @dispatch(XpeerFeeOutput)
-        def _validate_output(self, output):
-            return True
-
-        @dispatch(XpeerOutput)
-        def _validate_output(self, output):
-            return super()._validate_output(output)
-
-        @dispatch(TransferOutput)
-        def _validate_output(self, output):
-            return super()._validate_output(output)
-
         def _validate_deposit(self, tx):
             if len(tx.outputs) <= tx.deposit_index or \
                     isinstance(tx.outputs[tx.deposit_index], TransferOutput) is False:
@@ -270,6 +253,23 @@ class TxValidator(Validator):
                                         tx_fee * 10)
 
             return True
+
+    class ExchangeSideTransactionValidator(TransactionValidator):
+        def __init__(self, utxos, accepted_offers):
+            self._utxos = utxos
+            self._accepted_offers = accepted_offers
+
+        @dispatch(XpeerFeeOutput)
+        def _validate_output(self, output):
+            return True
+
+        @dispatch(XpeerOutput)
+        def _validate_output(self, output):
+            return super()._validate_output(output)
+
+        @dispatch(TransferOutput)
+        def _validate_output(self, output):
+            return super()._validate_output(output)
 
         @staticmethod
         def _validate_confirmation_fee(tx):
@@ -443,6 +443,9 @@ class TxValidator(Validator):
 
         def check_outputs(self, tx):
             return self._validate_outputs(tx)
+
+        def check_deposit(self, tx):
+            return self._validate_deposit(tx)
 
         def check_exchange(self, tx):
             if tx.exchange not in self._active_offers and \

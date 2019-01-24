@@ -5,8 +5,9 @@ import time
 from ecdsa import BadSignatureError
 from pytest import fixture, raises
 
+from chasm.consensus import Side
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction, OfferTransaction, \
-    MatchTransaction, ConfirmationTransaction
+    MatchTransaction, ConfirmationTransaction, UnlockingDepositTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, XpeerOutput, XpeerFeeOutput
 from chasm.consensus.tokens import Tokens
@@ -19,7 +20,8 @@ from chasm.maintenance.exceptions import DuplicatedInput, NonexistentUTXO, \
     InvalidAddressLengthPaymentError, SendXpeerFeeOutputError, SendXpeerOutputWithoutExchangeError, \
     ReceiverUseXpeerOutputBeforeConfirmationError, SenderUseXpeerOutputAfterConfirmationError, \
     SenderUseXpeerOutputBeforeTimeoutError, MatchNonExistentOfferError, ConfirmationUnknownExchangeError, \
-    ConfirmationNotUseXpeerFeeOutputError
+    ConfirmationNotUseXpeerFeeOutputError, UnlockDepositActiveOfferError, UnlockDepositUnknownExchangeError, \
+    UnlockDepositUnknownProofSideError
 
 
 @fixture
@@ -81,6 +83,14 @@ def exchange_side_outputs(xpeer_fee_output, deposit, own_transfer):
 
 
 @fixture
+def unlockig_outputs(deposit, own_transfer, xpeer_fee_output):
+    # outputs are counted to cover UTXO and meet deposit requirement
+    # xpeer_fee_output is not used
+    own_transfer.value += xpeer_fee_output.value
+    return [deposit, own_transfer]
+
+
+@fixture
 def exchange_side_inputs():
     return [TxInput(b'1', 1)]
 
@@ -134,6 +144,16 @@ def simple_match(exchange_side_inputs, exchange_side_outputs, simple_offer, xpc_
                             exchange=simple_offer.hash(),
                             address_in=xpc_addr,
                             deposit_index=0, confirmation_fee_index=1)
+
+
+@fixture
+def simple_unlocking(exchange_side_inputs, unlockig_outputs, simple_offer, proof):
+    return UnlockingDepositTransaction(inputs=exchange_side_inputs,
+                                       outputs=unlockig_outputs,
+                                       exchange=simple_offer.hash(),
+                                       proof_side=Side.OFFER_MAKER.value,
+                                       tx_proof=proof,
+                                       deposit_index=0)
 
 
 @fixture
@@ -542,3 +562,318 @@ def test_confirmation_send_xpeer_output_valid_exchange(validator, confirmation_u
         simple_offer.hash(): list(),
         b'a': list()
     }).validate(signed_tx)
+
+
+def test_verify_unlocking_active_offer_bad_proof(validator, utxos, alice, simple_offer, simple_unlocking):
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(UnlockDepositActiveOfferError):
+        validator(utxos, {simple_offer.hash(): simple_offer}).validate(signed_tx)
+
+
+def test_verify_unlocking_active_offer_taker(validator, utxos, alice, simple_offer, simple_unlocking):
+    simple_unlocking.proof_side = Side.OFFER_TAKER.value
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(UnlockDepositActiveOfferError):
+        validator(utxos, {simple_offer.hash(): simple_offer}).validate(signed_tx)
+
+
+def test_verify_unlocking_active_offer_valid(validator, utxos, alice, simple_offer, simple_unlocking):
+    simple_unlocking.tx_proof = simple_offer.hash()
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    validator(utxos, {simple_offer.hash(): simple_offer}).validate(signed_tx)
+
+
+def test_verify_unlocking_accepted_offer_valid(validator, utxos, alice, simple_offer, simple_unlocking):
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    validator(utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_verify_unlocking_unknown_exchange(validator, utxos, alice, simple_unlocking):
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(UnlockDepositUnknownExchangeError):
+        validator(utxos, ).validate(signed_tx)
+
+
+def test_verify_unlocking_unknown_side(validator, utxos, alice, simple_offer, simple_unlocking):
+    simple_unlocking.proof_side = 10
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(UnlockDepositUnknownProofSideError):
+        validator(utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_verify_unlocking_deposit_out_of_range(validator, utxos, simple_unlocking, alice):
+    simple_unlocking.deposit_index = 6
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(DepositOutputError):
+        validator(utxos).validate(signed_tx)
+
+
+def test_verify_unlocking_deposit_too_small_value(validator, utxos, simple_unlocking, alice):
+    simple_unlocking.outputs[simple_unlocking.deposit_index].value = 1
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(DepositValueError):
+        validator(utxos).validate(signed_tx)
+
+
+def test_unlocking_send_xpeer_fee_output(validator, utxos, simple_unlocking, simple_offer, xpeer_fee_output, alice):
+    xpeer_fee_output.value = 87
+    simple_unlocking.outputs[1] = xpeer_fee_output
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(SendXpeerFeeOutputError):
+        validator(utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_unlocking_send_xpeer_output_without_exchange(validator, utxos, simple_unlocking, simple_offer, xpeer_output,
+                                                      alice):
+    xpeer_output.value = 87
+    simple_unlocking.outputs[1] = xpeer_output
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(SendXpeerOutputWithoutExchangeError):
+        validator(utxos, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_unlocking_send_xpeer_output_valid_exchange(validator, utxos, simple_unlocking, xpeer_output, alice,
+                                                    simple_offer):
+    xpeer_output.exchange = simple_offer.hash()
+    xpeer_output.value = 87
+    simple_unlocking.outputs[1] = xpeer_output
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    assert validator(utxos, {}, {simple_offer.hash(): list()}).validate(signed_tx)
+
+
+def test_offer_send_xpeer_output_without_exchange(validator, utxos, simple_offer, xpeer_output,
+                                                  alice):
+    xpeer_output.value = 85
+    xpeer_output.exchange = b'a'
+    simple_offer.outputs[2] = xpeer_output
+    signed_tx = SignedTransaction.build_signed(simple_offer, [alice.priv])
+    with raises(SendXpeerOutputWithoutExchangeError):
+        validator(utxos, {}, {}).validate(signed_tx)
+
+
+def test_offer_send_xpeer_output_valid_exchange(validator, utxos, xpeer_output, alice,
+                                                simple_offer):
+    xpeer_output.exchange = b'a'
+    xpeer_output.value = 85
+    simple_offer.outputs[2] = xpeer_output
+    signed_tx = SignedTransaction.build_signed(simple_offer, [alice.priv])
+    assert validator(utxos, {}, {b'a': list()}).validate(signed_tx)
+
+
+def test_match_send_xpeer_output_without_exchange(validator, utxos, simple_match, simple_offer, xpeer_output,
+                                                  alice):
+    xpeer_output.value = 85
+    simple_match.outputs[2] = xpeer_output
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(SendXpeerOutputWithoutExchangeError):
+        validator(utxos, {simple_offer.hash(): simple_offer}).validate(signed_tx)
+
+
+def test_match_send_xpeer_output_valid_exchange(validator, utxos, simple_match, xpeer_output, alice,
+                                                simple_offer):
+    xpeer_output.exchange = b'a'
+    xpeer_output.value = 85
+    simple_match.outputs[2] = xpeer_output
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    assert validator(utxos, {simple_offer.hash(): simple_offer}, {b'a': list()}).validate(signed_tx)
+
+
+def test_offer_receiver_use_xpeer_output_before_confirmation(validator, utxos_xpeer_output,
+                                                             bob,
+                                                             simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_offer.outputs[0].value = 1
+    simple_offer.outputs[1].value = 1
+    simple_offer.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_offer, [bob.priv])
+    with raises(ReceiverUseXpeerOutputBeforeConfirmationError):
+        validator(utxos_xpeer_output, {}, {b'a': list()}).validate(signed_tx)
+
+
+def test_match_receiver_use_xpeer_output_before_confirmation(validator, utxos_xpeer_output,
+                                                             bob,
+                                                             simple_offer,
+                                                             simple_match):
+    xpeer_output.exchange = b'a'
+    simple_match.outputs[0].value = 1
+    simple_match.outputs[1].value = 1
+    simple_match.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_match, [bob.priv])
+    with raises(ReceiverUseXpeerOutputBeforeConfirmationError):
+        validator(utxos_xpeer_output, {simple_offer.hash(): simple_offer}, {b'a': list()}).validate(signed_tx)
+
+
+def test_unlocking_receiver_use_xpeer_output_before_confirmation(validator, utxos_xpeer_output,
+                                                                 bob,
+                                                                 simple_offer,
+                                                                 simple_unlocking):
+    xpeer_output.exchange = b'a'
+    simple_unlocking.outputs[0].value = 2
+    simple_unlocking.outputs[1].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [bob.priv])
+    with raises(ReceiverUseXpeerOutputBeforeConfirmationError):
+        validator(utxos_xpeer_output, {}, {
+            simple_offer.hash(): list(),
+            b'a': list()}).validate(signed_tx)
+
+
+def test_offer_receiver_use_xpeer_output_after_confirmation(validator, utxos_xpeer_output,
+                                                            bob,
+                                                            simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_offer.outputs[0].value = 1
+    simple_offer.outputs[1].value = 1
+    simple_offer.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_offer, [bob.priv])
+    assert validator(utxos_xpeer_output, {}, {}).validate(signed_tx)
+
+
+def test_match_receiver_use_xpeer_output_after_confirmation(validator, utxos_xpeer_output,
+                                                            bob,
+                                                            simple_offer,
+                                                            simple_match):
+    xpeer_output.exchange = b'a'
+    simple_match.outputs[0].value = 1
+    simple_match.outputs[1].value = 1
+    simple_match.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_match, [bob.priv])
+    assert validator(utxos_xpeer_output, {simple_offer.hash(): simple_offer}, {}).validate(signed_tx)
+
+
+def test_unlocking_receiver_use_xpeer_output_after_confirmation(validator, utxos_xpeer_output,
+                                                                bob,
+                                                                simple_offer,
+                                                                simple_unlocking):
+    xpeer_output.exchange = b'a'
+    simple_unlocking.outputs[0].value = 2
+    simple_unlocking.outputs[1].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [bob.priv])
+    assert validator(utxos_xpeer_output, {}, {simple_offer.hash(): list()}).validate(signed_tx)
+
+
+def test_offer_sender_use_xpeer_output_after_confirmation(validator, utxos_xpeer_output, xpeer_output,
+                                                          alice,
+                                                          simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_offer.outputs[0].value = 1
+    simple_offer.outputs[1].value = 1
+    simple_offer.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_offer, [alice.priv])
+    with raises(SenderUseXpeerOutputAfterConfirmationError):
+        validator(utxos_xpeer_output, {}, {}).validate(signed_tx)
+
+
+def test_match_sender_use_xpeer_output_after_confirmation(validator, utxos_xpeer_output, xpeer_output,
+                                                          alice,
+                                                          simple_match,
+                                                          simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_match.outputs[0].value = 1
+    simple_match.outputs[1].value = 1
+    simple_match.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(SenderUseXpeerOutputAfterConfirmationError):
+        validator(utxos_xpeer_output, {simple_offer.hash(): simple_offer}, {}).validate(signed_tx)
+
+
+def test_unlocking_sender_use_xpeer_output_after_confirmation(validator, utxos_xpeer_output, xpeer_output,
+                                                              alice,
+                                                              simple_unlocking,
+                                                              simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_unlocking.outputs[0].value = 2
+    simple_unlocking.outputs[1].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(SenderUseXpeerOutputAfterConfirmationError):
+        validator(utxos_xpeer_output, {}, {simple_offer.hash(): []}).validate(signed_tx)
+
+
+def test_offer_sender_use_xpeer_output_before_timeout(validator, utxos_xpeer_output, xpeer_output,
+                                                      alice,
+                                                      simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_offer.outputs[0].value = 1
+    simple_offer.outputs[1].value = 1
+    simple_offer.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_offer, [alice.priv])
+    with raises(SenderUseXpeerOutputBeforeTimeoutError):
+        validator(utxos_xpeer_output, {}, {b'a': [
+            None, None, to_timestamp(datetime.datetime.now())]
+        }). \
+            validate(signed_tx)
+
+
+def test_match_sender_use_xpeer_output_before_timeout(validator, utxos_xpeer_output, xpeer_output,
+                                                      alice,
+                                                      simple_match,
+                                                      simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_match.outputs[0].value = 1
+    simple_match.outputs[1].value = 1
+    simple_match.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    with raises(SenderUseXpeerOutputBeforeTimeoutError):
+        validator(utxos_xpeer_output, {simple_offer.hash(): simple_offer}, {b'a': [
+            None, None, to_timestamp(datetime.datetime.now())]
+        }). \
+            validate(signed_tx)
+
+
+def test_unlocking_sender_use_xpeer_output_before_timeout(validator, utxos_xpeer_output, xpeer_output,
+                                                          alice,
+                                                          simple_unlocking,
+                                                          simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_unlocking.outputs[0].value = 2
+    simple_unlocking.outputs[1].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    with raises(SenderUseXpeerOutputBeforeTimeoutError):
+        validator(utxos_xpeer_output, {}, {b'a': [
+            None, None, to_timestamp(datetime.datetime.now())],
+            simple_offer.hash(): []
+        }). \
+            validate(signed_tx)
+
+
+def test_offer_sender_use_xpeer_output_after_timeout(validator, utxos_xpeer_output, xpeer_output,
+                                                     alice,
+                                                     simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_offer.outputs[0].value = 1
+    simple_offer.outputs[1].value = 1
+    simple_offer.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_offer, [alice.priv])
+    assert validator(utxos_xpeer_output, {}, {b'a': [
+        None, None, to_timestamp(datetime.datetime.now() - datetime.timedelta(days=15))
+    ]}). \
+        validate(signed_tx)
+
+
+def test_match_sender_use_xpeer_output_after_timeout(validator, utxos_xpeer_output, xpeer_output,
+                                                     alice,
+                                                     simple_match,
+                                                     simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_match.outputs[0].value = 1
+    simple_match.outputs[1].value = 1
+    simple_match.outputs[2].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_match, [alice.priv])
+    assert validator(utxos_xpeer_output, {simple_offer.hash(): simple_offer}, {b'a': [
+        None, None, to_timestamp(datetime.datetime.now() - datetime.timedelta(days=15))
+    ]}). \
+        validate(signed_tx)
+
+
+def test_unlocking_sender_use_xpeer_output_after_timeout(validator, utxos_xpeer_output, xpeer_output,
+                                                         alice,
+                                                         simple_unlocking,
+                                                         simple_offer):
+    xpeer_output.exchange = b'a'
+    simple_unlocking.outputs[0].value = 2
+    simple_unlocking.outputs[1].value = 0
+    signed_tx = SignedTransaction.build_signed(simple_unlocking, [alice.priv])
+    assert validator(utxos_xpeer_output, {}, {b'a': [
+        None, None, to_timestamp(datetime.datetime.now() - datetime.timedelta(days=15))
+    ],
+        simple_offer.hash(): []}). \
+        validate(signed_tx)
