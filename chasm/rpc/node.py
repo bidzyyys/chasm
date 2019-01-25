@@ -57,6 +57,50 @@ class RPCServer:
         utxos = self._state.get_utxos()
         return self._filter_txos(utxos, bytes.fromhex(address))
 
+    def get_exchange(self, exchange):
+        """
+        Get exchange
+        :param exchange: exchange id
+        :raise ValueError if exchange does not exist
+        :return: tuple [OfferTransaction, MatchTransaction]
+        """
+        exchanges = self._state.get_matched_offers()
+        for pair in exchanges:
+            if pair[0] == exchange:
+                offer = self._state.get_transaction(pair[0]).transaction
+                match = self._state.get_transaction(pair[1]).transaction
+                return offer, match
+        raise ValueError("Exchange: {} does not exist".format(exchange))
+
+    def get_confirmation_utxos(self, exchange):
+        """
+        Return UTXOs of given exchange
+        :param exchange: exchange
+        :return: list of UTXOs dict
+        """
+        self._logger.info("Getting UTXOs of exchange: %s", exchange)
+        utxos = self._state.get_utxos()
+        try:
+            offer, match = self.get_exchange(exchange)
+        except RuntimeError:
+            self._logger.exception("Exchange does not exist!")
+            return []
+
+        return [
+            {
+                "tx": offer.hash().hex(),
+                "output_no": offer.confirmation_fee_index,
+                "value": utxos.get((offer.hash(),
+                                    offer.confirmation_fee_index)).value
+            },
+            {
+                "tx": match.hash().hex(),
+                "output_no": match.confirmation_fee_index,
+                "value": utxos.get((match.hash(),
+                                    match.confirmation_fee_index)).value
+            }
+        ]
+
     def get_dutxos(self, address):
         """
         Return DUTXOs of given address

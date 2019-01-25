@@ -16,7 +16,7 @@ from rlp.exceptions import RLPException
 from chasm.consensus import CURVE, Side
 from chasm.consensus.primitives.transaction import Transaction, \
     OfferTransaction, MatchTransaction, UnlockingDepositTransaction, \
-    SignedTransaction
+    SignedTransaction, ConfirmationTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput, \
     XpeerOutput, XpeerFeeOutput
@@ -263,7 +263,7 @@ def find_account_files(datadir, filename_regex=KEY_FILE_REGEX):
     try:
         accounts = [os.path.join(keystore, f) \
                     for f in os.listdir(os.path.join(datadir, KEYSTORE))
-                if re.match(filename_regex, f)]
+                    if re.match(filename_regex, f)]
     except FileNotFoundError:
         logger.warning('Keystore does not exist')
 
@@ -1220,6 +1220,111 @@ def xpeer_transfer(args):
                                      tx_fee=args.fee,
                                      offer_hash=args.offer,
                                      datadir=args.datadir)
+    if published:
+        logger.info("Transaction sent successfully!")
+
+
+def fetch_confirmation_utxos(host, port, exchange):
+    """
+    Get UTXOs of given address
+    Calls remote method through json-rpc
+    :param exchange: exchange
+    :param host: node hostname
+    :param port: node port
+    :return: list of UTXOs dict
+    """
+    payload = PAYLOAD_TAGS.copy()
+    payload[METHOD] = "get_confirmation_utxos"
+    payload[PARAMS] = [exchange.hex()]
+
+    utxos = run(host=host, port=port, payload=payload)
+
+    return utxos
+
+
+def build_confirmation_inputs(node, port, exchange):
+    """
+    Build confirmation inputs
+    :param node: node hostname
+    :param port: node port
+    :param exchange: exchange(offer hash)
+    :return: inputs and theirs sum
+    """
+
+    try:
+        utxos = fetch_confirmation_utxos(host=node, port=port, exchange=exchange)
+    except RPCError:
+        raise RuntimeError("Cannot get UTXOs of exchange: {}".format(exchange))
+
+    if len(utxos) != 2:
+        raise RuntimeError("Invalid number of xpeer_fee_outputs: {}"
+                           .format(len(utxos)))
+    funds = 0,
+    inputs = []
+    for index, utxo in enumerate(utxos):
+        funds += utxo["value"]
+        tx_input = TxInput(tx_hash=bytes.fromhex(utxo["tx"]),
+                           output_no=int(utxo["output_no"]))
+        inputs.append(tx_input)
+
+    return utxos, funds
+
+
+def build_confirmation(node, port, exchange, proof_in, proof_out, address):
+    """
+    Build confirmation
+    :param node: node hostname
+    :param port: node port
+    :param exchange: exchange(offer hash(hex))
+    :param proof_in: hash of the offer maker's transaction(hex)
+    :param proof_out: hash of the offer taker's transaction(hex)
+    :param address: address of the receiver
+    :return: ConfirmationTransaction
+    """
+    inputs, amount = build_confirmation_inputs(node, port, bytes.fromhex(exchange))
+    output = TransferOutput(value=amount, receiver=address)
+    return ConfirmationTransaction(inputs=inputs,
+                                   outputs=[output],
+                                   exchange=bytes.fromhex(exchange),
+                                   tx_in_proof=bytes.fromhex(proof_in),
+                                   tx_out_proof=bytes.fromhex(proof_out))
+
+
+def do_confirm(node, port, address, exchange, datadir,
+               proof_in, proof_out, signing_key=None):
+    """
+    Build confirmation and publish it
+    :param node: node hostname
+    :param port: node port
+    :param address: address of the receiver
+    :param exchange: exchange (offer hash(hex))
+    :param datadir: datadir with address of the receiver
+    :param proof_in: hash of the offer maker's transaction(hex)
+    :param proof_out: hash of the offer taker's transaction(hex)
+    :param signing_key: only for tests
+    :return: True if transaction is published
+    """
+    tx = build_confirmation(node=node, port=port,
+                            exchange=exchange, proof_in=proof_in,
+                            proof_out=proof_out, address=address)
+
+    logger.info("ConfirmationTransaction created successfully!")
+    return publish_transaction(node, port, tx,
+                               address, datadir, signing_key), tx
+
+
+def confirm(args):
+    """
+    Confirm the exchange
+    :param args: args given by user
+    :return: None
+    """
+    published, _ = do_confirm(node=args.node, port=args.port,
+                              address=args.address,
+                              datadir=args.datadir,
+                              exchange=args.exchange,
+                              proof_in=args.proof_in,
+                              proof_out=args.proof_out)
     if published:
         logger.info("Transaction sent successfully!")
 

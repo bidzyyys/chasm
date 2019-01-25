@@ -10,7 +10,7 @@ from chasm.rpc import list_token_names, TIMEOUT_FORMAT
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, \
     show_keys, show_marketplace, show_matches, show_accepted_offers, show_all_funds, \
-    build_tx, xpeer_transfer, sign, send, show_dutxos, show_utxos
+    build_tx, xpeer_transfer, sign, send, show_dutxos, show_utxos, confirm
 
 
 # pylint: disable=missing-docstring
@@ -18,7 +18,7 @@ def get_parser():
     parser = argparse.ArgumentParser(description='Chasm client',
                                      formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
-    parser.add_argument('-n', '--node', required=False,  help="hostname")
+    parser.add_argument('-n', '--node', required=False, help="hostname")
 
     parser.add_argument('-p', "--port", required=False, help="port")
 
@@ -35,6 +35,7 @@ def get_parser():
 
 def create_subparsers(subparsers):
     create_balance_parser(subparsers)
+    create_confirm_parser(subparsers)
     create_build_parser(subparsers)
     create_dutxo_parser(subparsers)
     create_funds_parser(subparsers)
@@ -82,6 +83,22 @@ def create_send_tx_parser(subparsers):
                         help="list of signatures")
 
     parser.set_defaults(func=send)
+
+
+def create_confirm_parser(subparsers):
+    parser = subparsers.add_parser('confirm',
+                                   description="confirm exchange")
+    parser.add_argument('--address', help="address for income",
+                        required=True)
+    parser.add_argument('--exchange', help="exchange (hash of the offer)",
+                        required=True)
+    parser.add_argument('--proof_in', help="proof of offer maker's transfer(tx hash)",
+                        required=True)
+
+    parser.add_argument('--proof_out', help="proof of offer taker's transfer(tx hash)",
+                        required=True)
+
+    parser.set_defaults(func=confirm)
 
 
 def create_sign_parser(subparsers):
