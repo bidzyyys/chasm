@@ -181,8 +181,8 @@ class RPCServer:
         result = []
         for match_pair in matches:
             try:
-                offer = self._state.get_transaction(match_pair[0]).transaction
-                match = self._state.get_transaction(match_pair[1]).transaction
+                offer = match_pair[0]
+                match = match_pair[1]
                 if offer_addr in (offer.address_out.hex(), ALL_ADDRESSES) and \
                         match_addr in (match.address_in.hex(), ALL_ADDRESSES):
                     result.append((json_serializer.encode(offer),
