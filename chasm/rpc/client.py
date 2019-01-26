@@ -1022,7 +1022,7 @@ def build_match(node, port, address, offer_hash, receive, confirmation_fee, depo
                             outputs=[deposit_output, confirmation_output, own_transfer],
                             exchange=bytes.fromhex(offer_hash),
                             address_in=bytes.fromhex(receive),
-                            confirmation_fee_index=int(0), deposit_index=int(1))
+                            confirmation_fee_index=int(1), deposit_index=int(0))
 
 
 def do_offer_match(node, port, sender, offer_hash, receive_addr, tx_fee,

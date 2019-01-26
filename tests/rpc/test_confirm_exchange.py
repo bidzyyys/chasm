@@ -84,7 +84,7 @@ def confirm(parameters, carol, node, test_port, datadir, proof):
 @then(parsers.parse('There is {count:d} offer matched by {taker}'))
 def check_existing_matches(parameters, node, test_port, count, taker):
     matches = fetch_matches(host=node, port=test_port,
-                            match_addr=parameters[taker]["receive"]) is None
+                            match_addr=parameters[taker]["receive"])
 
     assert len(matches) == count
 

@@ -87,7 +87,7 @@ def check_funds(parameters, node, test_port, owner, amount):
 
 
 @then(parsers.parse('There is {count:d} accepted offer by {creator}'))
-def check_exisitng_accepted_offers(parameters, node, test_port, count, creator):
+def check_existing_accepted_offers(parameters, node, test_port, count, creator):
     matches = fetch_matches(host=node, port=test_port,
                             offer_addr=parameters[creator]["receive"])
 
@@ -105,10 +105,10 @@ def check_existing_matches(parameters, node, test_port, count, creator):
 @then('There is no accepted offer with fake address')
 def assert_offers_non_existence(node, test_port):
     assert fetch_matches(host=node, port=test_port,
-                         offer_addr="0000") is None
+                         offer_addr="0000") == []
 
 
 @then('There is no offer match with fake address')
 def assert_matches_non_existence(node, test_port):
     assert fetch_matches(host=node, port=test_port,
-                         match_addr="0000") is None
+                         match_addr="0000") == []

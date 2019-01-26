@@ -179,7 +179,7 @@ class RPCServer:
         matches = self._state.get_matched_offers()
 
         result = []
-        for match_pair in matches:
+        for match_pair in matches.values():
             try:
                 offer = match_pair[0]
                 match = match_pair[1]
