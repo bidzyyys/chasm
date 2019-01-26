@@ -1257,7 +1257,7 @@ def build_confirmation_inputs(node, port, exchange):
     if len(utxos) != 2:
         raise RuntimeError("Invalid number of xpeer_fee_outputs: {}"
                            .format(len(utxos)))
-    funds = 0,
+    funds = 0
     inputs = []
     for index, utxo in enumerate(utxos):
         funds += utxo["value"]
@@ -1265,7 +1265,7 @@ def build_confirmation_inputs(node, port, exchange):
                            output_no=int(utxo["output_no"]))
         inputs.append(tx_input)
 
-    return utxos, funds
+    return inputs, funds
 
 
 def build_confirmation(node, port, exchange, proof_in, proof_out, address):

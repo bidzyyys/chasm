@@ -65,11 +65,9 @@ class RPCServer:
         :return: tuple [OfferTransaction, MatchTransaction]
         """
         exchanges = self._state.get_matched_offers()
-        for pair in exchanges:
-            if pair[0] == exchange:
-                offer = self._state.get_transaction(pair[0]).transaction
-                match = self._state.get_transaction(pair[1]).transaction
-                return offer, match
+        for pair in exchanges.values():
+            if pair[0].hash().hex() == exchange:
+                return pair[0], pair[1]
         raise ValueError("Exchange: {} does not exist".format(exchange))
 
     def get_confirmation_utxos(self, exchange):
