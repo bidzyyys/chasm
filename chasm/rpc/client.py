@@ -856,8 +856,7 @@ def show_matches(args):
         print("Match:")
         display_match(pair[1])
         print("Offer: {}"
-              .format(rlp_serializer.encode(pair[0])
-                      .hex()))
+              .format(pair[0].hash().hex()))
 
 
 def show_accepted_offers(args):
@@ -875,8 +874,7 @@ def show_accepted_offers(args):
         print("Offer:")
         display_offer(pair[0])
         print("Match: {}"
-              .format(rlp_serializer.encode(pair[1])
-                      .hex()))
+              .format(pair[1].hash().hex()))
 
 
 def fetch_matches(host, port,
