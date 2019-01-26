@@ -55,11 +55,11 @@ def create_offer(parameters, node, test_port, publish_offer,
     '{taker} accepts the offer'))
 def accept_offer(parameters, node, test_port, btc_addr, datadir, taker):
     client.input = mock_acceptance
-    parameters[taker]["receive"] = btc_addr
+    parameters[taker]["receive"] = btc_addr.hex()
     result, match = do_offer_match(node=node, port=test_port,
                                    sender=parameters[taker]["address"],
                                    offer_hash=parameters["offer"],
-                                   receive_addr=btc_addr, tx_fee=1,
+                                   receive_addr=btc_addr.hex(), tx_fee=1,
                                    conf_fee=2, deposit=12,
                                    datadir=datadir,
                                    signing_key=parameters[taker]["key"])
