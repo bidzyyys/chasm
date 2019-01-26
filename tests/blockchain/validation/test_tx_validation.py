@@ -96,26 +96,6 @@ def exchange_side_inputs():
 
 
 @fixture(scope='session')
-def btc_addr():
-    return b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-
-
-@fixture(scope='session')
-def eth_addr():
-    return b'aaaaaaaaaaaaaaaaaaaa'
-
-
-@fixture(scope='session')
-def xpc_addr(carol):
-    return carol.pub
-
-
-@fixture(scope='session')
-def proof():
-    return b'aaaa1234'
-
-
-@fixture(scope='session')
 def timeout():
     dt = datetime.datetime.now()
     dt += datetime.timedelta(days=1)

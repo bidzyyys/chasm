@@ -82,7 +82,7 @@ class RPCServer:
         utxos = self._state.get_utxos()
         try:
             offer, match = self.get_exchange(exchange)
-        except RuntimeError:
+        except ValueError:
             self._logger.exception("Exchange does not exist!")
             return []
 

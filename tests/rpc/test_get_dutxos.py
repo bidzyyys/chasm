@@ -1,10 +1,11 @@
 # pylint: disable=missing-docstring
+import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.rpc.client import get_dutxos
-from . import skip_test, init_address, sleep_for_block
+from . import init_address, sleep_for_block
 
-pytestmark = skip_test()
+pytest.skip("Problem with timeouts and blocks creation", allow_module_level=True)
 
 
 @scenario('test_get_dutxos.feature', 'Get DUTXOs of non-existing address')

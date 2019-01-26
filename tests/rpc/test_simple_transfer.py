@@ -1,5 +1,6 @@
 # pylint: disable=missing-docstring
 
+import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus.primitives.transaction import Transaction
@@ -7,9 +8,9 @@ from chasm.rpc import client
 from chasm.rpc.client import do_simple_transfer, count_balance, \
     get_transaction
 from . import mock_acceptance, init_address, \
-    sleep_for_block, skip_test
+    sleep_for_block
 
-pytestmark = skip_test()
+pytest.skip("Problem with timeouts and blocks creation", allow_module_level=True)
 
 
 @scenario('test_simple_transfer.feature',

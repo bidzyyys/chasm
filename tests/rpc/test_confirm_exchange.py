@@ -1,20 +1,16 @@
-# pylint: disable=missing-docstring
-
 import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
-from chasm.consensus.primitives.transaction import MatchTransaction
+from chasm.consensus.primitives.transaction import ConfirmationTransaction
 from chasm.rpc import client
-from chasm.rpc.client import get_transaction, do_offer_match, \
-    count_balance, fetch_matches
-from . import init_address, mock_acceptance, \
-    sleep_for_block
+from chasm.rpc.client import get_transaction, do_confirm, do_offer_match, fetch_matches
+from . import init_address, sleep_for_block, mock_acceptance
 
 pytest.skip("Problem with timeouts and blocks creation", allow_module_level=True)
 
 
-@scenario('test_match_offer.feature', 'Bob matches offer')
-def test_match_offer():
+@scenario('test_confirm_exchange.feature', 'Exchange confirmation')
+def test_confirm_exchange():
     pass
 
 
@@ -35,7 +31,8 @@ def parameters(chasm_server, alice_account, bob_account, maker, xpc1, utxos1, ta
             "key": key2
         },
         "offer": "",
-        "match": ""
+        "match": "",
+        "confirmation": ""
     }
 
 
@@ -58,16 +55,15 @@ def create_offer(parameters, node, test_port, publish_offer,
 
 
 @when(parsers.parse(
-    '{taker} accepts it deposit: {deposit:d}, confirmation fee: {conf_fee:d}, transaction fee: {tx_fee:d}'))
-def accept_offer(parameters, node, test_port, datadir, btc_addr,
-                 taker, deposit, conf_fee, tx_fee):
+    '{taker} accepts the offer'))
+def accept_offer(parameters, node, test_port, btc_addr, datadir, taker):
     client.input = mock_acceptance
-    parameters[taker]["receive"] = btc_addr.hex()
+    parameters[taker]["receive"] = btc_addr
     result, match = do_offer_match(node=node, port=test_port,
                                    sender=parameters[taker]["address"],
                                    offer_hash=parameters["offer"],
-                                   receive_addr=btc_addr.hex(), tx_fee=tx_fee,
-                                   conf_fee=conf_fee, deposit=deposit,
+                                   receive_addr=btc_addr, tx_fee=1,
+                                   conf_fee=2, deposit=12,
                                    datadir=datadir,
                                    signing_key=parameters[taker]["key"])
     assert result
@@ -75,43 +71,37 @@ def accept_offer(parameters, node, test_port, datadir, btc_addr,
     sleep_for_block()
 
 
-@then('Offer match exists')
+@when('Carol confirms the exchange')
+def confirm(parameters, carol, node, test_port, datadir, proof):
+    client.input = mock_acceptance
+    result, tx = do_confirm(node=node, port=test_port, address=carol.pub,
+                            exchange=parameters['offer'], datadir=datadir,
+                            proof_in=proof, proof_out=proof,
+                            signing_key=carol.priv)
+
+    assert result
+    parameters['confirmation'] = tx.hash().hex()
+
+
+@then(parsers.parse('There is {count:d} offer matched by {taker}'))
+def check_existing_matches(parameters, node, test_port, count, taker):
+    matches = fetch_matches(host=node, port=test_port,
+                            match_addr=parameters[taker]["receive"]) is None
+
+    assert len(matches) == count
+
+
+@then(parsers.parse('{Maker} has {count:d} accepted offer'))
+def check_exisitng_accepted_offers(parameters, node, test_port, count, maker):
+    matches = fetch_matches(host=node, port=test_port,
+                            offer_addr=parameters[maker]["receive"])
+
+    assert len(matches) == count
+
+
+@then('Confirmation exists')
 def check_existence(parameters, node, test_port):
     tx = get_transaction(node=node, port=test_port,
-                         transaction=parameters["match"])
+                         transaction=parameters["confirmation"])
     assert tx is not None
-    assert isinstance(tx, MatchTransaction)
-
-
-@then(parsers.parse('{owner} has {amount:d} xpc'))
-def check_funds(parameters, node, test_port, owner, amount):
-    assert count_balance(parameters[owner]["address"],
-                         node=node, port=test_port) == amount
-
-
-@then(parsers.parse('There is {count:d} accepted offer by {creator}'))
-def check_exisitng_accepted_offers(parameters, node, test_port, count, creator):
-    matches = fetch_matches(host=node, port=test_port,
-                            offer_addr=parameters[creator]["receive"])
-
-    assert len(matches) == count
-
-
-@then(parsers.parse('There is {count:d} offer match by {creator}'))
-def check_existing_matches(parameters, node, test_port, count, creator):
-    matches = fetch_matches(host=node, port=test_port,
-                            match_addr=parameters[creator]["receive"])
-
-    assert len(matches) == count
-
-
-@then('There is no accepted offer with fake address')
-def assert_offers_non_existence(node, test_port):
-    assert fetch_matches(host=node, port=test_port,
-                         offer_addr="0000") is None
-
-
-@then('There is no offer match with fake address')
-def assert_matches_non_existence(node, test_port):
-    assert fetch_matches(host=node, port=test_port,
-                         match_addr="0000") is None
+    assert isinstance(tx, ConfirmationTransaction)

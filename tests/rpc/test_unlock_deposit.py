@@ -1,13 +1,14 @@
 # pylint: disable=missing-docstring
+import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus import Side
 from chasm.consensus.primitives.transaction import UnlockingDepositTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_unlock_deposit
-from . import init_address, mock_acceptance, sleep_for_block, skip_test
+from . import init_address, mock_acceptance, sleep_for_block
 
-pytestmark = skip_test()
+pytest.skip("Problem with timeouts and blocks creation", allow_module_level=True)
 
 
 @scenario('test_unlock_deposit.feature', 'Alice unlocks deposit')

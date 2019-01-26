@@ -1,15 +1,12 @@
 # pylint: disable=missing-docstring, too-many-arguments
 import time
 
-import pytest
-
 from chasm.consensus.primitives.transaction import Transaction, SignedTransaction
 from chasm.consensus.primitives.tx_input import TxInput
 from chasm.consensus.primitives.tx_output import TransferOutput
 from chasm.maintenance.config import Config, DEFAULT_TEST_CONFIG
 from chasm.maintenance.logger import Logger
-from chasm.rpc import PAYLOAD_TAGS, PARAMS, METHOD, client
-from chasm.rpc.client import run
+from chasm.rpc import client
 
 CONFIG = Config([DEFAULT_TEST_CONFIG])
 
@@ -20,26 +17,6 @@ client.logger = Logger('chasm.cli')
 
 def sleep_for_block(secs=3):
     time.sleep(secs)
-
-
-def skip_test():
-    return pytest.mark.skipif(condition=check_server() is False,
-                              reason="requires server running on port: {}"
-                              .format(CONFIG.get('rpc_port')))
-
-
-def check_server(port=CONFIG.get('rpc_port'), node='localhost'):
-    payload = PAYLOAD_TAGS.copy()
-    payload[METHOD] = "hello"
-    payload[PARAMS] = []
-
-    try:
-        response = run(host=node, port=port,
-                       payload=payload)
-    except Exception:
-        return False
-
-    return response == 'elho'
 
 
 def mock_acceptance(s):
