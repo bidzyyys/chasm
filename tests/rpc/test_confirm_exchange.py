@@ -1,12 +1,9 @@
-import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus.primitives.transaction import ConfirmationTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_confirm, do_offer_match, fetch_matches
 from . import init_address, sleep_for_block, mock_acceptance
-
-pytest.skip("Problem with timeouts and blocks creation", allow_module_level=True)
 
 
 @scenario('test_confirm_exchange.feature', 'Exchange confirmation')
@@ -81,6 +78,7 @@ def confirm(parameters, carol, node, test_port, datadir, proof):
 
     assert result
     parameters['confirmation'] = tx.hash().hex()
+    sleep_for_block()
 
 
 @then(parsers.parse('There is {count:d} offer matched by {taker}'))

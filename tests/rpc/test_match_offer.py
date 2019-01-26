@@ -1,6 +1,5 @@
 # pylint: disable=missing-docstring
 
-import pytest
 from pytest_bdd import scenario, given, when, then, parsers
 
 from chasm.consensus.primitives.transaction import MatchTransaction
@@ -9,8 +8,6 @@ from chasm.rpc.client import get_transaction, do_offer_match, \
     count_balance, fetch_matches
 from . import init_address, mock_acceptance, \
     sleep_for_block
-
-pytest.skip("Problem with timeouts and blocks creation", allow_module_level=True)
 
 
 @scenario('test_match_offer.feature', 'Bob matches offer')
