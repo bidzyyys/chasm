@@ -6,7 +6,7 @@ from chasm import rpc
 from chasm.consensus import Side
 from chasm.maintenance.config import Config, DEFAULT_CONFIG_FILE
 from chasm.maintenance.logger import Logger
-from chasm.rpc import list_token_names, TIMEOUT_FORMAT
+from chasm.rpc import list_token_names, TIMEOUT_FORMAT, ALL_ADDRESSES
 from chasm.rpc.client import show_transaction, show_balance, generate_account, \
     create_offer, accept_offer, unlock_deposit, transfer, \
     show_keys, show_marketplace, show_matches, show_accepted_offers, show_all_funds, \
@@ -189,7 +189,7 @@ def create_offer_parser(subparsers):
 def create_offers_parser(subparsers):
     parser = subparsers.add_parser('offers',
                                    description="show accepted offers")
-    parser.add_argument('--address', required=True,
+    parser.add_argument('--address', default=ALL_ADDRESSES,
                         help="address for income")
     parser.set_defaults(func=show_accepted_offers
                         )
@@ -216,7 +216,7 @@ def create_match_parser(subparsers):
 def create_matches_parser(subparsers):
     parser = subparsers.add_parser('matches',
                                    description="show offer matches")
-    parser.add_argument('--address', required=True,
+    parser.add_argument('--address', default=ALL_ADDRESSES,
                         help="address for income")
     parser.set_defaults(func=show_matches)
 
