@@ -1,3 +1,4 @@
+#!/usr/bin/env bash
 pipeline {
     agent any
 
@@ -30,7 +31,8 @@ pipeline {
         }
         stage('Tests') {
             steps {
-                sh  ''' source activate ${BUILD_TAG}
+                sh  '''#!/bin/bash
+                        source activate ${BUILD_TAG}
                         pytest --cov=chasm
                     '''
             }
@@ -38,48 +40,50 @@ pipeline {
         stage('Code style') {
             steps{
                 echo "Checking code style"
-                sh  ''' source activate ${BUILD_TAG}
-                        pylint --disable=C,R -f parseable chasm/ tests/ > pylint.out
+                sh  '''#!/bin/bash
+                        source activate ${BUILD_TAG}
+                        pylint --disable=C,R,W0621 -f parseable chasm/ tests/ |& tee pylint.out
                     '''
             }
-            post{
-                always{
-                    step([$class: 'WarningsPublisher',
-                            parserConfigurations: [[
-                                parserName: 'PyLint',
-                                pattern: 'pylint.out'
-                            ]],
-                            unstableTotalAll: '0',
-                            usePreviousBuildAsReference: true
-                    ])
-                }
-            }
+//            post{
+//                always{
+//                    step([$class: 'WarningsPublisher',
+//                            parserConfigurations: [[
+//                                parserName: 'PyLint',
+//                                pattern: 'pylint.out'
+//                            ]],
+//                            unstableTotalAll: '0',
+//                            usePreviousBuildAsReference: true
+//                    ])
+//                }
+//            }
         }
 
-        stage('Code metrics') {
-            steps {
-                echo "Test coverage"
-                sh  ''' source activate ${BUILD_TAG}
-                        coverage run chasm/chasm.py
-                        python -m coverage xml -o reports/coverage.xml
-                    '''
-            }
-            post{
-                success{
-                    step([$class: 'CoberturaPublisher',
-                                   autoUpdateHealth: false,
-                                   autoUpdateStability: false,
-                                   coberturaReportFile: 'reports/coverage.xml',
-                                   failNoReports: false,
-                                   failUnhealthy: false,
-                                   failUnstable: false,
-                                   maxNumberOfBuilds: 10,
-                                   onlyStable: false,
-                                   sourceEncoding: 'ASCII',
-                                   zoomCoverageChart: false])
-                }
-            }
-        }
+//        stage('Code metrics') {
+//            steps {
+//                echo "Test coverage"
+//                sh  '''#!/bin/bash
+//                        source activate ${BUILD_TAG}
+//                        coverage run chasm/chasm.py
+//                        python -m coverage xml -o reports/coverage.xml
+//                    '''
+//            }
+//            post{
+//                success{
+//                    step([$class: 'CoberturaPublisher',
+//                                   autoUpdateHealth: false,
+//                                   autoUpdateStability: false,
+//                                   coberturaReportFile: 'reports/coverage.xml',
+//                                   failNoReports: false,
+//                                   failUnhealthy: false,
+//                                   failUnstable: false,
+//                                   maxNumberOfBuilds: 10,
+//                                   onlyStable: false,
+//                                   sourceEncoding: 'ASCII',
+//                                   zoomCoverageChart: false])
+//                }
+//            }
+//        }
     }
     post {
         always {
