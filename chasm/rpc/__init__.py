@@ -32,7 +32,11 @@ TIMEOUT_FORMAT = "%Y-%m-%d::%H:%M:%S"
 
 
 def get_token_name(token):
-    return TOKENS_DICT.get(token, "Unknown: {}".format(token))
+    for key in TOKENS_DICT.keys():
+        if key.value == token:
+            return TOKENS_DICT.get(key)
+
+    return "Unknown: {}".format(token)
 
 
 def token_from_name(name):

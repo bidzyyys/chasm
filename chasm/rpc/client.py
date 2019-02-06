@@ -513,7 +513,7 @@ def display_offer(offer: OfferTransaction):
     :param offer: offer to be displayed
     :return: None
     """
-    print("Hash: {}".format(rlp_serializer.encode(offer).hex()))
+    print("Hash: {}".format(offer.hash().hex()))
     print("Token: {}".format(get_token_name(offer.token_in)))
     print("Amount: {}".format(offer.value_in))
     print("Expected token: {}".format(get_token_name(offer.token_out)))
@@ -528,7 +528,7 @@ def display_match(match: MatchTransaction):
     :param match: match to be displayed
     :return: None
     """
-    print("Hash: {}".format(rlp_serializer.encode(match).hex()))
+    print("Hash: {}".format(match.hash().hex()))
     print("Address: {}".format(match.address_in))
 
 
