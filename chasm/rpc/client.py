@@ -529,7 +529,7 @@ def display_match(match: MatchTransaction):
     :return: None
     """
     print("Hash: {}".format(match.hash().hex()))
-    print("Address: {}".format(match.address_in))
+    print("Address: {}".format(match.address_in.hex()))
 
 
 def get_active_offers(token, expected, node, port):
