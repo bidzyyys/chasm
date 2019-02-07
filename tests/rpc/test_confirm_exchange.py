@@ -1,7 +1,5 @@
-from ecdsa import SigningKey
 from pytest_bdd import scenario, given, when, then, parsers
 
-from chasm.consensus import CURVE, HASH_FUNC
 from chasm.consensus.primitives.transaction import ConfirmationTransaction
 from chasm.rpc import client
 from chasm.rpc.client import get_transaction, do_confirm, do_offer_match, fetch_matches
@@ -71,14 +69,13 @@ def accept_offer(parameters, node, test_port, btc_addr, datadir, taker):
 
 
 @when('Carol confirms the exchange')
-def confirm(parameters, carol, node, test_port, datadir, proof):
+def confirm(parameters, carol_account, node, test_port, datadir, proof):
     client.input = mock_acceptance
-    result, tx = do_confirm(node=node, port=test_port, address=carol.pub,
+    key, addr = carol_account
+    result, tx = do_confirm(node=node, port=test_port, address=addr,
                             exchange=parameters['offer'], datadir=datadir,
                             proof_in=proof.hex(), proof_out=proof.hex(),
-                            signing_key=SigningKey.from_string(carol.priv,
-                                                               curve=CURVE,
-                                                               hashfunc=HASH_FUNC))
+                            signing_key=key)
 
     assert result
     parameters['confirmation'] = tx.hash().hex()

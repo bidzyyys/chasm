@@ -78,6 +78,11 @@ def bob_account():
     return _account()
 
 
+@fixture
+def carol_account():
+    return _account()
+
+
 @fixture(scope='session')
 def btc_addr():
     return b'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'

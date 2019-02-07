@@ -1280,7 +1280,7 @@ def build_confirmation(node, port, exchange, proof_in, proof_out, address):
     :return: ConfirmationTransaction
     """
     inputs, amount = build_confirmation_inputs(node, port, bytes.fromhex(exchange))
-    output = TransferOutput(value=amount, receiver=address)
+    output = TransferOutput(value=amount, receiver=hex_to_address(address))
     return ConfirmationTransaction(inputs=inputs,
                                    outputs=[output],
                                    exchange=bytes.fromhex(exchange),
