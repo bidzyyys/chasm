@@ -1,7 +1,7 @@
 Scenario: Alice creates exchange offer
 Given Alice has 100 bdzys in 1 UTXO
 
-When Alice creates exchange offer: 1 btc for 1000 xpc until 2019-02-01::00:00:00 confirmation fee 2 xpc transaction fee 1 xpc deposit 12 xpc with payment on her used address
+When Alice creates exchange offer: 1 btc for 1000 xpc until 2100-02-01::00:00:00 confirmation fee 2 xpc transaction fee 1 xpc deposit 12 xpc with payment on her used address
 
 Then Alice has 85 bdzys
 And Offer exists

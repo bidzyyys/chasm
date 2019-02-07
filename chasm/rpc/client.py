@@ -833,11 +833,11 @@ def transfer(args):
     :return: None
     """
 
-    published, _ = do_simple_transfer(node=args.node, port=args.port, amount=args.value,
-                                      receiver=args.receiver, sender=args.owner,
-                                      tx_fee=args.fee, datadir=args.datadir)
+    published, tx = do_simple_transfer(node=args.node, port=args.port, amount=args.value,
+                                       receiver=args.receiver, sender=args.owner,
+                                       tx_fee=args.fee, datadir=args.datadir)
     if published:
-        logger.info("Transaction sent successfully!")
+        logger.info("Transaction sent successfully! tx: {}".format(tx.hash().hex()))
 
 
 def show_matches(args):
@@ -989,14 +989,14 @@ def create_offer(args):
     :param args: args given by user
     :return: None
     """
-    published, _ = do_offer(node=args.node, port=args.port, sender=args.address,
-                            token=args.token, expected=args.expected, price=args.price,
-                            amount=args.amount, receive_addr=args.receive,
-                            conf_fee=args.confirmation, deposit=args.deposit,
-                            timeout_str=args.timeout, tx_fee=args.fee,
-                            datadir=args.datadir)
+    published, tx = do_offer(node=args.node, port=args.port, sender=args.address,
+                             token=args.token, expected=args.expected, price=args.price,
+                             amount=args.amount, receive_addr=args.receive,
+                             conf_fee=args.confirmation, deposit=args.deposit,
+                             timeout_str=args.timeout, tx_fee=args.fee,
+                             datadir=args.datadir)
     if published:
-        logger.info("Transaction sent successfully!")
+        logger.info("Transaction sent successfully! tx: {}".format(tx.hash().hex()))
 
 
 def build_match(node, port, address, offer_hash, receive, confirmation_fee, deposit, tx_fee):
@@ -1057,15 +1057,15 @@ def accept_offer(args):
     :param args: args given by user
     :return: None
     """
-    published, _ = do_offer_match(node=args.node, port=args.port,
-                                  sender=args.address,
-                                  offer_hash=args.offer,
-                                  receive_addr=args.receive,
-                                  tx_fee=args.fee,
-                                  conf_fee=args.confirmation,
-                                  deposit=args.deposit, datadir=args.datadir)
+    published, tx = do_offer_match(node=args.node, port=args.port,
+                                   sender=args.address,
+                                   offer_hash=args.offer,
+                                   receive_addr=args.receive,
+                                   tx_fee=args.fee,
+                                   conf_fee=args.confirmation,
+                                   deposit=args.deposit, datadir=args.datadir)
     if published:
-        logger.info("Transaction sent successfully!")
+        logger.info("Transaction sent successfully! tx: {}".format(tx.hash().hex()))
 
 
 def build_unlock(node, port, address, offer_hash, deposit, tx_fee, side, proof):
@@ -1129,16 +1129,16 @@ def unlock_deposit(args):
     :param args: args given by user
     :return: None
     """
-    published, _ = do_unlock_deposit(node=args.node, port=args.port,
-                                     sender=args.address,
-                                     offer_hash=args.offer,
-                                     deposit=args.deposit,
-                                     tx_fee=args.fee,
-                                     side=args.side,
-                                     proof=args.proof,
-                                     datadir=args.datadir)
+    published, tx = do_unlock_deposit(node=args.node, port=args.port,
+                                      sender=args.address,
+                                      offer_hash=args.offer,
+                                      deposit=args.deposit,
+                                      tx_fee=args.fee,
+                                      side=args.side,
+                                      proof=args.proof,
+                                      datadir=args.datadir)
     if published:
-        logger.info("Transaction sent successfully!")
+        logger.info("Transaction sent successfully! tx: {}".format(tx.hash().hex()))
 
 
 def get_account_data(datadir, pub_key_hex):
@@ -1211,15 +1211,15 @@ def xpeer_transfer(args):
     :param args: args given by user
     :return: None
     """
-    published, _ = do_xpeer_transfer(node=args.node, port=args.port,
-                                     amount=args.value,
-                                     receiver=args.receiver,
-                                     sender=args.owner,
-                                     tx_fee=args.fee,
-                                     offer_hash=args.offer,
-                                     datadir=args.datadir)
+    published, tx = do_xpeer_transfer(node=args.node, port=args.port,
+                                      amount=args.value,
+                                      receiver=args.receiver,
+                                      sender=args.owner,
+                                      tx_fee=args.fee,
+                                      offer_hash=args.offer,
+                                      datadir=args.datadir)
     if published:
-        logger.info("Transaction sent successfully!")
+        logger.info("Transaction sent successfully! tx: {}".format(tx.hash().hex()))
 
 
 def fetch_confirmation_utxos(host, port, exchange):
@@ -1317,14 +1317,14 @@ def confirm(args):
     :param args: args given by user
     :return: None
     """
-    published, _ = do_confirm(node=args.node, port=args.port,
-                              address=args.address,
-                              datadir=args.datadir,
-                              exchange=args.exchange,
-                              proof_in=args.proof_in,
-                              proof_out=args.proof_out)
+    published, tx = do_confirm(node=args.node, port=args.port,
+                               address=args.address,
+                               datadir=args.datadir,
+                               exchange=args.exchange,
+                               proof_in=args.proof_in,
+                               proof_out=args.proof_out)
     if published:
-        logger.info("Transaction sent successfully!")
+        logger.info("Transaction sent successfully! tx: {}".format(tx.hash().hex()))
 
 
 def publish_transaction(host, port, transaction, pub_key, datadir, signing_key=None):
@@ -1341,10 +1341,14 @@ def publish_transaction(host, port, transaction, pub_key, datadir, signing_key=N
     """
     result = get_acceptance_from_user(transaction)
     if result:
-        signatures = [sign_transaction(transaction=transaction,
-                                       pub_key=pub_key,
-                                       datadir=datadir,
-                                       priv_key=signing_key) for _ in transaction.inputs]
+        signatures = []
+        for tx_input in transaction.inputs:
+            print("Signing transaction for tx input: output_no({}), tx_hash({})"
+                  .format(tx_input.output_no, tx_input.tx_hash.hex()))
+            signatures.append(sign_transaction(transaction=transaction,
+                                               pub_key=pub_key,
+                                               datadir=datadir,
+                                               priv_key=signing_key))
 
         result = send_transaction(host=host, port=port,
                                   transaction=transaction,
